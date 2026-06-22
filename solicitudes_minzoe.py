@@ -277,11 +277,7 @@ COLS_OT = [
 
 @st.cache_resource
 def get_gc():
-    scopes = ["https://www.googleapis.com/auth/spreadsheets",
-              "https://www.googleapis.com/auth/drive"]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"], scopes=scopes)
-    return gspread.authorize(creds)
+    return gspread.service_account_from_dict(dict(st.secrets["gcp_service_account"]))
 
 def get_sheet(tab_name):
     gc = get_gc()
@@ -302,7 +298,8 @@ def gs_load(tab_name, cols):
                     df[c] = ""
             return df[cols]
         return pd.DataFrame(columns=cols)
-    except Exception:
+    except Exception as e:
+        st.warning(f"⚠️ No se pudo cargar '{tab_name}': {e}")
         return pd.DataFrame(columns=cols)
 
 def gs_save(tab_name, df):
@@ -311,9 +308,11 @@ def gs_save(tab_name, df):
         ws.clear()
         if not df.empty:
             data = [df.columns.tolist()] + df.fillna("").astype(str).values.tolist()
-            ws.update(data)
+            ws.update("A1", data)
+        return True
     except Exception as e:
-        st.error(f"Error guardando {tab_name}: {e}")
+        st.error(f"❌ Error guardando '{tab_name}': {e}")
+        return False
 
 
 # ── Carga / guardado ──────────────────────────────────────────────────────────
