@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import hashlib
+import gspread
+from google.oauth2.service_account import Credentials
 
 USUARIOS_FILE     = r"D:\Escritorio\LA ASISTENTE MINZOE\usuarios.csv"
 SOLICITUDES_FILE  = "solicitudes.csv"
@@ -271,51 +273,78 @@ COLS_OT = [
 ]
 
 
+# ── Google Sheets ─────────────────────────────────────────────────────────────
+
+@st.cache_resource
+def get_gc():
+    scopes = ["https://www.googleapis.com/auth/spreadsheets",
+              "https://www.googleapis.com/auth/drive"]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=scopes)
+    return gspread.authorize(creds)
+
+def get_sheet(tab_name):
+    gc = get_gc()
+    sh = gc.open_by_key(st.secrets["spreadsheet_id"])
+    try:
+        return sh.worksheet(tab_name)
+    except gspread.exceptions.WorksheetNotFound:
+        return sh.add_worksheet(title=tab_name, rows=1000, cols=30)
+
+def gs_load(tab_name, cols):
+    try:
+        ws   = get_sheet(tab_name)
+        data = ws.get_all_records()
+        if data:
+            df = pd.DataFrame(data).astype(str).fillna("")
+            for c in cols:
+                if c not in df.columns:
+                    df[c] = ""
+            return df[cols]
+        return pd.DataFrame(columns=cols)
+    except Exception:
+        return pd.DataFrame(columns=cols)
+
+def gs_save(tab_name, df):
+    try:
+        ws = get_sheet(tab_name)
+        ws.clear()
+        if not df.empty:
+            data = [df.columns.tolist()] + df.fillna("").astype(str).values.tolist()
+            ws.update(data)
+    except Exception as e:
+        st.error(f"Error guardando {tab_name}: {e}")
+
+
 # ── Carga / guardado ──────────────────────────────────────────────────────────
 
 def load_sol():
-    if os.path.exists(SOLICITUDES_FILE):
-        return pd.read_csv(SOLICITUDES_FILE, dtype=str)
-    return pd.DataFrame(columns=COLS_SOL)
-
-
-def load_cli():
-    if os.path.exists(CLIENTES_FILE):
-        df = pd.read_csv(CLIENTES_FILE, dtype=str).fillna("")
-        # Limpiar espacios en todos los campos de texto
-        for col in df.columns:
-            df[col] = df[col].str.strip()
-        # Descartar filas sin nombre de empresa
-        df = df[df["Empresa"] != ""].reset_index(drop=True)
-        return df
-    return pd.DataFrame(columns=COLS_CLI)
-
+    return gs_load("solicitudes", COLS_SOL)
 
 def save_sol(df):
-    df.to_csv(SOLICITUDES_FILE, index=False)
+    gs_save("solicitudes", df)
 
+def load_cli():
+    df = gs_load("clientes", COLS_CLI)
+    for col in df.columns:
+        df[col] = df[col].str.strip()
+    return df[df["Empresa"] != ""].reset_index(drop=True)
 
 def save_cli(df):
-    df.to_csv(CLIENTES_FILE, index=False)
-
+    gs_save("clientes", df)
 
 def load_ots():
-    if os.path.exists(OTS_FILE):
-        return pd.read_csv(OTS_FILE, dtype=str).fillna("")
-    return pd.DataFrame(columns=COLS_OT)
-
+    return gs_load("ordenes_trabajo", COLS_OT)
 
 def save_ots(df):
-    df.to_csv(OTS_FILE, index=False)
+    gs_save("ordenes_trabajo", df)
 
 
 def load_cv():
-    if os.path.exists(COMPRAS_FILE):
-        return pd.read_csv(COMPRAS_FILE, dtype=str).fillna("")
-    return pd.DataFrame(columns=COLS_CV)
+    return gs_load("compras_ventas", COLS_CV)
 
 def save_cv(df):
-    df.to_csv(COMPRAS_FILE, index=False)
+    gs_save("compras_ventas", df)
 
 def gen_cv_id(df):
     hoy = datetime.now().strftime("%y%m%d")
@@ -324,12 +353,10 @@ def gen_cv_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CV-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_ventas():
-    if os.path.exists(VENTAS_FILE):
-        return pd.read_csv(VENTAS_FILE, dtype=str).fillna("")
-    return pd.DataFrame(columns=COLS_VENTA)
+    return gs_load("ventas", COLS_VENTA)
 
 def save_ventas(df):
-    df.to_csv(VENTAS_FILE, index=False)
+    gs_save("ventas", df)
 
 def gen_fac_id(df):
     hoy = datetime.now().strftime("%y%m%d")
@@ -338,12 +365,10 @@ def gen_fac_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'FAC-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_costos():
-    if os.path.exists(COSTOS_FILE):
-        return pd.read_csv(COSTOS_FILE, dtype=str).fillna("")
-    return pd.DataFrame(columns=COLS_COSTO)
+    return gs_load("costos", COLS_COSTO)
 
 def save_costos(df):
-    df.to_csv(COSTOS_FILE, index=False)
+    gs_save("costos", df)
 
 def gen_costo_id(df):
     hoy = datetime.now().strftime("%y%m%d")
@@ -360,23 +385,16 @@ def to_num(val):
 
 
 def load_contratos():
-    if os.path.exists(CONTRATOS_FILE):
-        return pd.read_csv(CONTRATOS_FILE, dtype=str).fillna("")
-    return pd.DataFrame(columns=COLS_CONTRATO)
-
+    return gs_load("contratos", COLS_CONTRATO)
 
 def save_contratos(df):
-    df.to_csv(CONTRATOS_FILE, index=False)
-
+    gs_save("contratos", df)
 
 def load_equipos():
-    if os.path.exists(EQUIPOS_FILE):
-        return pd.read_csv(EQUIPOS_FILE, dtype=str).fillna("")
-    return pd.DataFrame(columns=COLS_EQUIPO)
-
+    return gs_load("equipos", COLS_EQUIPO)
 
 def save_equipos(df):
-    df.to_csv(EQUIPOS_FILE, index=False)
+    gs_save("equipos", df)
 
 
 def gen_contrato_id(df):
@@ -549,12 +567,10 @@ def hash_pwd(pwd):
     return hashlib.sha256(pwd.encode()).hexdigest()
 
 def load_usuarios():
-    if os.path.exists(USUARIOS_FILE):
-        return pd.read_csv(USUARIOS_FILE, dtype=str).fillna("")
-    return pd.DataFrame(columns=["nombre", "correo", "password_hash", "rol"])
+    return gs_load("usuarios", ["nombre", "correo", "password_hash", "rol"])
 
 def save_usuarios(df):
-    df.to_csv(USUARIOS_FILE, index=False)
+    gs_save("usuarios", df)
 
 def verificar_login(correo, pwd, usuarios):
     u = usuarios[usuarios["correo"].str.lower() == correo.strip().lower()]

@@ -3,3 +3,5 @@ __pycache__/
 .env
 usuarios.csv
 *.log
+.streamlit/secrets.toml
+*.csv
