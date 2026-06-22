@@ -281,7 +281,9 @@ def get_gc():
 
 def get_sheet(tab_name):
     gc = get_gc()
-    sh = gc.open_by_key(st.secrets["spreadsheet_id"])
+    sid = (st.secrets.get("spreadsheet_id") or
+           st.secrets["gcp_service_account"].get("spreadsheet_id"))
+    sh = gc.open_by_key(sid)
     try:
         return sh.worksheet(tab_name)
     except gspread.exceptions.WorksheetNotFound:
