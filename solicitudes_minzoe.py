@@ -2067,7 +2067,7 @@ elif pagina == "ots":
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
                 # Si viene del dashboard abrir directamente en Editar
                 tab_ini = 1 if ot_pre else 0
-                det, edi, eli = st.tabs(["🔍 Ver detalle", "✏️ Editar", "🗑️ Eliminar"])
+                det, edi, rep, eli = st.tabs(["🔍 Ver detalle", "✏️ Editar", "📄 Reportar", "🗑️ Eliminar"])
 
                 with det:
                     c1, c2 = st.columns(2)
@@ -2188,6 +2188,382 @@ elif pagina == "ots":
                                     msg += f" Solicitud **{ot_row['SOL_Ref']}** marcada como Completado."
                             st.success(msg)
                             st.rerun()
+
+                with rep:
+                    servicio_ot = fila_ot.get("Servicio", "")
+                    if servicio_ot == "Aires Acondicionados":
+                        # Buscar datos del equipo si viene de contrato
+                        equipos = get_equipos()
+                        eq_data = {}
+                        if not equipos.empty:
+                            eq_match = equipos[equipos["ID_Contrato"] == fila_ot.get("SOL_Ref","")]
+                            if not eq_match.empty:
+                                eq_data = eq_match.iloc[0].to_dict()
+
+                        st.markdown(f"### 📄 Reporte HVAC — {id_ot_sel}")
+                        with st.form(f"form_reporte_aires_{id_ot_sel}", clear_on_submit=False):
+
+                            # ── Tipo de mantenimiento ─────────────────────
+                            st.markdown("**Tipo de mantenimiento**")
+                            tc1,tc2,tc3,tc4,tc5 = st.columns(5)
+                            r_prev  = tc1.checkbox("Preventivo",  value=fila_ot.get("Tipo_Servicio","")=="Preventivo")
+                            r_corr  = tc2.checkbox("Correctivo",  value=fila_ot.get("Tipo_Servicio","")=="Correctivo")
+                            r_vis   = tc3.checkbox("Visita Técnica")
+                            r_emer  = tc4.checkbox("Emergencia")
+                            r_inst  = tc5.checkbox("Instalación")
+
+                            st.divider()
+                            # ── Datos del equipo ──────────────────────────
+                            st.markdown("**🔧 Datos del equipo**")
+                            dc1, dc2 = st.columns(2)
+                            with dc1:
+                                r_tipo_eq   = st.text_input("Tipo de equipo",    value=eq_data.get("Servicio",""))
+                                r_marca     = st.text_input("Marca",             value=eq_data.get("Marca",""))
+                                r_modelo    = st.text_input("Modelo",            value=eq_data.get("Modelo",""))
+                                r_ser_cond  = st.text_input("Serial Condensadora", value=eq_data.get("Numero_Serie",""))
+                                r_ser_evap  = st.text_input("Serial Evaporadora")
+                            with dc2:
+                                r_btu       = st.text_input("Capacidad BTU/CFM", value=eq_data.get("Especificaciones",""))
+                                r_refrig    = st.text_input("Tipo de refrigerante", value=eq_data.get("Tipo_Refrigerante","") if "Tipo_Refrigerante" in eq_data else "")
+                                r_ubic_evap = st.text_input("Ubicación Evaporadora", value=eq_data.get("Ubicacion",""))
+                                r_ubic_cond = st.text_input("Ubicación Condensadora")
+
+                            st.divider()
+                            # ── Datos de medición ─────────────────────────
+                            st.markdown("**📊 Datos de medición**")
+                            mc1, mc2, mc3 = st.columns(3)
+                            with mc1:
+                                st.markdown("*Equipo Condensadora*")
+                                m_cond_v = st.text_input("Voltaje",   key="m_cv")
+                                m_cond_a = st.text_input("Amperaje",  key="m_ca")
+                                m_cond_f = st.text_input("N° de Fase",key="m_cf")
+                                st.markdown("*Ventilador Condensadora*")
+                                m_vcond_v = st.text_input("Voltaje",  key="m_vcv")
+                                m_vcond_a = st.text_input("Amperaje", key="m_vca")
+                                m_vcond_f = st.text_input("N° de Fase",key="m_vcf")
+                                m_vcond_hp= st.text_input("HP",       key="m_vchp")
+                                m_vcond_r = st.text_input("RPM",      key="m_vcr")
+                            with mc2:
+                                st.markdown("*Presiones de Refrigerante*")
+                                m_psi_a  = st.text_input("PSI Alta",  key="m_pa")
+                                m_psi_b  = st.text_input("PSI Baja",  key="m_pb")
+                                m_psi_f  = st.text_input("Fecha última medición", key="m_pf")
+                                st.markdown("*Equipo Evaporador*")
+                                m_evap_v = st.text_input("Voltaje",   key="m_ev")
+                                m_evap_a = st.text_input("Amperaje",  key="m_ea")
+                                m_evap_f = st.text_input("N° de Fase",key="m_ef")
+                                st.markdown("*Ventilador Evaporador*")
+                                m_vevap_v= st.text_input("Voltaje",   key="m_vev")
+                                m_vevap_a= st.text_input("Amperaje",  key="m_vea")
+                                m_vevap_f= st.text_input("N° de Fase",key="m_vef")
+                                m_vevap_h= st.text_input("HP",        key="m_vehp")
+                                m_vevap_r= st.text_input("RPM",       key="m_ver")
+                            with mc3:
+                                st.markdown("*Temperatura*")
+                                m_t_sum = st.text_input("Suministro", key="m_ts")
+                                m_t_ret = st.text_input("Retorno",    key="m_tr")
+                                m_t_amb = st.text_input("Ambiente",   key="m_ta")
+                                st.markdown("*Ventilador/Extractor*")
+                                m_ext_v = st.text_input("Voltaje",    key="m_xv")
+                                m_ext_a = st.text_input("Amperaje",   key="m_xa")
+                                m_ext_f = st.text_input("N° de Fase", key="m_xf")
+                                m_ext_h = st.text_input("HP",         key="m_xhp")
+                                m_ext_r = st.text_input("RPM",        key="m_xr")
+                                st.markdown("*Ductos/Rejillas*")
+                                m_caudal= st.text_input("Caudal de Aire", key="m_caudal")
+
+                            st.divider()
+                            # ── Checklist ─────────────────────────────────
+                            st.markdown("**✅ Lista de chequeo**")
+                            cc1, cc2, cc3 = st.columns(3)
+
+                            with cc1:
+                                st.markdown("*EVAPORADORA*")
+                                ck_ev = {
+                                    "Ajuste de Prisioneros y Rotores":        st.checkbox("Ajuste de Prisioneros y Rotores",     key="e1"),
+                                    "Ajuste General de Tornillos":            st.checkbox("Ajuste General de Tornillos",         key="e2"),
+                                    "Lavado de Filtros":                      st.checkbox("Lavado de Filtros",                   key="e3"),
+                                    "Lavado de Serpentines":                  st.checkbox("Lavado de Serpentines",               key="e4"),
+                                    "Limpieza Interior y Exterior":           st.checkbox("Limpieza Interior y Exterior",        key="e5"),
+                                    "Revisión de Rodamientos":                st.checkbox("Revisión de Rodamientos",             key="e6"),
+                                    "Revisión de Rubatex":                    st.checkbox("Revisión de Rubatex",                 key="e7"),
+                                    "Revisión de Válvulas":                   st.checkbox("Revisión de Válvulas",                key="e8"),
+                                    "Revisión y Ajuste Termostato":           st.checkbox("Revisión y Ajuste Termostato",        key="e9"),
+                                    "Rev. y Limp. Accesorios Eléctricos":    st.checkbox("Rev. y Limp. Accesorios Eléctricos",  key="e10"),
+                                    "Rev. y Limp. Bomba de Condensado":       st.checkbox("Rev. y Limp. Bomba de Condensado",    key="e11"),
+                                    "Tensión y Cambio de Correa":             st.checkbox("Tensión y Cambio de Correa",          key="e12"),
+                                }
+                                st.markdown("*TUBERÍA REFRIGERACIÓN*")
+                                ck_tub = {
+                                    "Aislamiento Térmico":                    st.checkbox("Aislamiento Térmico",                 key="t1"),
+                                    "Diámetro de Tuberías":                   st.checkbox("Diámetro de Tuberías",                key="t2"),
+                                    "Longitud de las Tuberías":               st.checkbox("Longitud de las Tuberías",            key="t3"),
+                                    "Puntos de Soporte":                      st.checkbox("Puntos de Soporte",                   key="t4"),
+                                    "Revisión de Soldaduras y Conexiones":    st.checkbox("Revisión de Soldaduras y Conexiones", key="t5"),
+                                    "Revisión de Tuberías de Drenaje":        st.checkbox("Revisión de Tuberías de Drenaje",     key="t6"),
+                                    "Tapa de las Válvulas":                   st.checkbox("Tapa de las Válvulas",                key="t7"),
+                                    "Válvulas de Servicio":                   st.checkbox("Válvulas de Servicio",                key="t8"),
+                                }
+
+                            with cc2:
+                                st.markdown("*CONDENSADORA*")
+                                ck_co = {
+                                    "Ajuste de Motores Ventiladores":         st.checkbox("Ajuste de Motores Ventiladores",      key="c1"),
+                                    "Ajuste General de Tornillos":            st.checkbox("Ajuste General de Tornillos",         key="c2"),
+                                    "Lavado de Serpentín":                    st.checkbox("Lavado de Serpentín",                 key="c3"),
+                                    "Limpieza de Rejillas":                   st.checkbox("Limpieza de Rejillas",                key="c4"),
+                                    "Limpieza Interior y Exterior":           st.checkbox("Limpieza Interior y Exterior",        key="c5"),
+                                    "Lubricación de Rodamientos":             st.checkbox("Lubricación de Rodamientos",          key="c6"),
+                                    "Pruebas de Protección Alta":             st.checkbox("Pruebas de Protección Alta",          key="c7"),
+                                    "Pruebas de Protección Baja":             st.checkbox("Pruebas de Protección Baja",          key="c8"),
+                                    "Revisión de Rejillas":                   st.checkbox("Revisión de Rejillas",                key="c9"),
+                                    "Revisión Rubatex Existente":             st.checkbox("Revisión Rubatex Existente",          key="c10"),
+                                    "Rev. y Limp. Accesorios Eléctricos":    st.checkbox("Rev. y Limp. Accesorios Eléctricos",  key="c11"),
+                                    "Verificación de Fugas de Gas":          st.checkbox("Verificación de Fugas de Gas",        key="c12"),
+                                    "Verificación de Presiones":              st.checkbox("Verificación de Presiones",           key="c13"),
+                                    "Verificación de Soportería":             st.checkbox("Verificación de Soportería",          key="c14"),
+                                }
+
+                            with cc3:
+                                st.markdown("*VENTILADORES Y EXTRACTORES*")
+                                ck_vent = {
+                                    "Verificación de Vibraciones":            st.checkbox("Verificación de Vibraciones",         key="v1"),
+                                    "Revisión de Correas":                    st.checkbox("Revisión de Correas",                 key="v2"),
+                                    "Revisión de Ejes":                       st.checkbox("Revisión de Ejes",                    key="v3"),
+                                    "Revisión y Limpieza de Motores":         st.checkbox("Revisión y Limpieza de Motores",      key="v4"),
+                                    "Revisión de Chumaceras":                 st.checkbox("Revisión de Chumaceras",              key="v5"),
+                                    "Lubricación de Chumaceras y Bujes":      st.checkbox("Lubricación de Chumaceras y Bujes",   key="v6"),
+                                    "Ajuste de Cuñas y Prisioneros":          st.checkbox("Ajuste de Cuñas y Prisioneros",       key="v7"),
+                                    "Rev. y Limp. Contactos Eléctricos":     st.checkbox("Rev. y Limp. Contactos Eléctricos",   key="v8"),
+                                }
+                                st.markdown("*DUCTOS Y REJILLAS*")
+                                ck_duc = {
+                                    "Limpieza Externa":                       st.checkbox("Limpieza Externa",                    key="d1"),
+                                    "Limpieza Interna":                       st.checkbox("Limpieza Interna",                    key="d2"),
+                                    "Verificación de Obstrucciones":          st.checkbox("Verificación de Obstrucciones",       key="d3"),
+                                    "Ajuste de Tornillería":                  st.checkbox("Ajuste de Tornillería",               key="d4"),
+                                }
+
+                            st.divider()
+                            # ── Tiempo, calificación y firmas ─────────────
+                            st.markdown("**⏱️ Tiempo de servicio y calificación**")
+                            fc1, fc2, fc3, fc4 = st.columns(4)
+                            with fc1:
+                                r_hora_lleg = st.text_input("Hora de llegada", value=fila_ot.get("Hora_Inicio",""))
+                                r_hora_sal  = st.text_input("Hora de salida",  value=fila_ot.get("Hora_Final",""))
+                            with fc2:
+                                r_calif = st.selectbox("Calificación", ["0-5 Malo","6-8 Medio","9-10 Bueno"])
+                            with fc3:
+                                r_pend = st.radio("Trabajo pendiente", ["Sí","No"], horizontal=True)
+                            with fc4:
+                                r_oper = st.radio("Equipo en operación", ["Sí","No"], horizontal=True)
+
+                            r_obs = st.text_area("Observaciones adicionales", value=fila_ot.get("Observaciones",""))
+
+                            st.markdown("**✍️ Firmas**")
+                            sc1, sc2, sc3 = st.columns(3)
+                            with sc1:
+                                r_nom_tec  = st.text_input("Nombre técnico",   value=fila_ot.get("Tecnico",""))
+                                r_superv   = st.text_input("Supervisor")
+                            with sc2:
+                                r_nom_cli  = st.text_input("Nombre cliente",   value=fila_ot.get("Nombre_Contacto",""))
+                                r_fec_firma= st.text_input("Fecha",            value=fila_ot.get("Fecha_Ejecucion",""))
+
+                            generar = st.form_submit_button("🖨️ Generar Reporte para Imprimir", type="primary", use_container_width=True)
+
+                            if generar:
+                                def ck(val): return "✔" if val else ""
+                                tipo_mto = " | ".join(filter(None,[
+                                    "Preventivo" if r_prev else "",
+                                    "Correctivo" if r_corr else "",
+                                    "Visita Técnica" if r_vis else "",
+                                    "Emergencia" if r_emer else "",
+                                    "Instalación" if r_inst else "",
+                                ]))
+                                html = f"""<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<title>Reporte HVAC {id_ot_sel}</title>
+<style>
+  body{{font-family:Arial,sans-serif;font-size:10px;margin:15px;color:#111}}
+  h1{{color:#dc2626;font-size:16px;margin:0}} h2{{font-size:11px;color:#dc2626;margin:4px 0}}
+  .header{{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #dc2626;padding-bottom:6px;margin-bottom:8px}}
+  .logo{{font-size:18px;font-weight:900;color:#dc2626}}
+  table{{width:100%;border-collapse:collapse;margin-bottom:6px}}
+  td,th{{border:1px solid #ccc;padding:3px 5px;font-size:9px}}
+  th{{background:#dc2626;color:white;font-weight:bold;text-align:left}}
+  .section{{background:#dc2626;color:white;font-weight:bold;padding:3px 5px;font-size:9px;margin:4px 0 2px 0}}
+  .ck{{width:14px;text-align:center;font-weight:bold}}
+  .firma-box{{border-top:1px solid #111;margin-top:20px;min-width:120px;font-size:8px;text-align:center}}
+  @media print{{body{{margin:5px}} .no-print{{display:none}}}}
+</style></head><body>
+<div class="header">
+  <div>
+    <div class="logo">🏗️ CONSTRUCCIONES MINZOE SAS</div>
+    <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
+    <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+  </div>
+  <div style="text-align:right">
+    <b>FORMATO MANTENIMIENTO HVAC</b><br>
+    <b>OT: {id_ot_sel}</b><br>
+    Fecha: {r_fec_firma}
+  </div>
+</div>
+
+<div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto}</div>
+
+<table><tr>
+  <th colspan="2">DATOS DEL CLIENTE</th>
+  <th colspan="2">DATOS DEL EQUIPO</th>
+</tr><tr>
+  <td><b>Cliente:</b></td><td>{fila_ot['Cliente']}</td>
+  <td><b>Tipo de equipo:</b></td><td>{r_tipo_eq}</td>
+</tr><tr>
+  <td><b>Ciudad:</b></td><td>{fila_ot.get('Sede','')}</td>
+  <td><b>Marca:</b></td><td>{r_marca}</td>
+</tr><tr>
+  <td><b>Sucursal:</b></td><td>{fila_ot.get('Sede','')}</td>
+  <td><b>Modelo:</b></td><td>{r_modelo}</td>
+</tr><tr>
+  <td><b>Contacto:</b></td><td>{fila_ot.get('Nombre_Contacto','')}</td>
+  <td><b>Serial Condensadora:</b></td><td>{r_ser_cond}</td>
+</tr><tr>
+  <td></td><td></td>
+  <td><b>Serial Evaporadora:</b></td><td>{r_ser_evap}</td>
+</tr><tr>
+  <td></td><td></td>
+  <td><b>Capacidad BTU/CFM:</b></td><td>{r_btu}</td>
+</tr><tr>
+  <td></td><td></td>
+  <td><b>Tipo de Refrigerante:</b></td><td>{r_refrig}</td>
+</tr><tr>
+  <td></td><td></td>
+  <td><b>Ubic. Evaporadora:</b></td><td>{r_ubic_evap}</td>
+</tr><tr>
+  <td></td><td></td>
+  <td><b>Ubic. Condensadora:</b></td><td>{r_ubic_cond}</td>
+</tr></table>
+
+<div class="section">DATOS DE MEDICIÓN</div>
+<table><tr>
+  <th colspan="2">Eq. Condensadora</th>
+  <th colspan="2">Vent. Condensadora</th>
+  <th colspan="2">Presiones Refrig.</th>
+  <th colspan="2">Eq. Evaporador</th>
+  <th colspan="2">Vent. Evaporador</th>
+</tr><tr>
+  <td>Voltaje</td><td>{m_cond_v}</td>
+  <td>Voltaje</td><td>{m_vcond_v}</td>
+  <td>PSI Alta</td><td>{m_psi_a}</td>
+  <td>Voltaje</td><td>{m_evap_v}</td>
+  <td>Voltaje</td><td>{m_vevap_v}</td>
+</tr><tr>
+  <td>Amperaje</td><td>{m_cond_a}</td>
+  <td>Amperaje</td><td>{m_vcond_a}</td>
+  <td>PSI Baja</td><td>{m_psi_b}</td>
+  <td>Amperaje</td><td>{m_evap_a}</td>
+  <td>Amperaje</td><td>{m_vevap_a}</td>
+</tr><tr>
+  <td>N° Fase</td><td>{m_cond_f}</td>
+  <td>N° Fase</td><td>{m_vcond_f}</td>
+  <td>Últ. Med.</td><td>{m_psi_f}</td>
+  <td>N° Fase</td><td>{m_evap_f}</td>
+  <td>N° Fase</td><td>{m_vevap_f}</td>
+</tr><tr>
+  <td></td><td></td>
+  <td>HP</td><td>{m_vcond_hp}</td>
+  <td></td><td></td>
+  <td></td><td></td>
+  <td>HP</td><td>{m_vevap_h}</td>
+</tr><tr>
+  <td></td><td></td>
+  <td>RPM</td><td>{m_vcond_r}</td>
+  <td></td><td></td>
+  <td></td><td></td>
+  <td>RPM</td><td>{m_vevap_r}</td>
+</tr></table>
+
+<table><tr>
+  <th colspan="2">Temperatura</th>
+  <th colspan="2">Ventilador/Extractor</th>
+  <th colspan="2">Ductos/Rejillas</th>
+</tr><tr>
+  <td>Suministro</td><td>{m_t_sum}</td>
+  <td>Voltaje</td><td>{m_ext_v}</td>
+  <td>Caudal de Aire</td><td>{m_caudal}</td>
+</tr><tr>
+  <td>Retorno</td><td>{m_t_ret}</td>
+  <td>Amperaje</td><td>{m_ext_a}</td>
+  <td></td><td></td>
+</tr><tr>
+  <td>Ambiente</td><td>{m_t_amb}</td>
+  <td>HP / RPM</td><td>{m_ext_h} / {m_ext_r}</td>
+  <td></td><td></td>
+</tr></table>
+
+<div class="section">LISTA DE CHEQUEO</div>
+<table><tr>
+  <th colspan="3">EVAPORADORA</th>
+  <th colspan="3">CONDENSADORA</th>
+  <th colspan="3">VENTILADORES Y EXTRACTORES</th>
+</tr>
+{''.join(f"<tr><td class='ck'>{ck(v)}</td><td>{k}</td><td></td>" +
+         (f"<td class='ck'>{ck(list(ck_co.values())[i])}</td><td>{list(ck_co.keys())[i]}</td><td></td>" if i < len(ck_co) else "<td></td><td></td><td></td>") +
+         (f"<td class='ck'>{ck(list(ck_vent.values())[i])}</td><td>{list(ck_vent.keys())[i]}</td><td></td></tr>" if i < len(ck_vent) else "<td></td><td></td><td></td></tr>")
+         for i,(k,v) in enumerate(ck_ev.items()))}
+</table>
+
+<table><tr>
+  <th colspan="3">TUBERÍA REFRIGERACIÓN Y DESAGÜE</th>
+  <th colspan="3">DUCTOS Y REJILLAS</th>
+</tr>
+{''.join(f"<tr><td class='ck'>{ck(v)}</td><td>{k}</td><td></td>" +
+         (f"<td class='ck'>{ck(list(ck_duc.values())[i])}</td><td>{list(ck_duc.keys())[i]}</td><td></td></tr>" if i < len(ck_duc) else "<td></td><td></td><td></td></tr>")
+         for i,(k,v) in enumerate(ck_tub.items()))}
+</table>
+
+<div class="section">OBSERVACIONES ADICIONALES</div>
+<table><tr><td style="min-height:40px">{r_obs}</td></tr></table>
+
+<table style="margin-top:8px"><tr>
+  <th>TIEMPO DE SERVICIO</th><th>CALIFICACIÓN</th><th>TRABAJO PENDIENTE</th><th>EQ. EN OPERACIÓN</th>
+</tr><tr>
+  <td>Llegada: {r_hora_lleg}<br>Salida: {r_hora_sal}</td>
+  <td>{r_calif}</td>
+  <td>{r_pend}</td>
+  <td>{r_oper}</td>
+</tr></table>
+
+<div style="display:flex;justify-content:space-between;margin-top:20px">
+  <div>
+    <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA TÉCNICO</div>
+    <div style="font-size:9px;margin-top:3px">Nombre: {r_nom_tec}</div>
+    <div style="font-size:9px">Supervisor: {r_superv}</div>
+  </div>
+  <div>
+    <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA Y SELLO CLIENTE</div>
+    <div style="font-size:9px;margin-top:3px">Nombre: {r_nom_cli}</div>
+    <div style="font-size:9px">Fecha: {r_fec_firma}</div>
+  </div>
+</div>
+
+<div class="no-print" style="margin-top:16px;text-align:center">
+  <button onclick="window.print()" style="background:#dc2626;color:white;border:none;padding:10px 30px;font-size:14px;border-radius:6px;cursor:pointer">
+    🖨️ Imprimir / Guardar como PDF
+  </button>
+</div>
+</body></html>"""
+
+                                st.download_button(
+                                    "⬇️ Descargar Reporte HTML",
+                                    data=html,
+                                    file_name=f"Reporte_HVAC_{id_ot_sel}.html",
+                                    mime="text/html",
+                                    use_container_width=True,
+                                )
+                                st.info("💡 Abre el archivo descargado y presiona el botón 'Imprimir / Guardar como PDF' para obtener el PDF.")
+
+                    else:
+                        st.info("📋 Formato Locativos — próximamente")
 
                 with eli:
                     st.warning(f"¿Eliminar la OT **{id_ot_sel}** de **{fila_ot['Cliente']}**? No se puede deshacer.")
