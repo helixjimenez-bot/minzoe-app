@@ -474,6 +474,50 @@ def carpeta_sede(sede_nombre):
     limpio = "".join(c for c in sede_nombre if c.isalnum() or c in " _-").strip()
     return "00_" + "_".join(w.capitalize() for w in limpio.split())
 
+def get_drive_service():
+    from google.oauth2.service_account import Credentials
+    from googleapiclient.discovery import build
+    creds = Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"]),
+        scopes=["https://www.googleapis.com/auth/drive"]
+    )
+    return build("drive", "v3", credentials=creds)
+
+def drive_buscar_o_crear_carpeta(service, nombre, parent_id):
+    q = (f"name='{nombre}' and '{parent_id}' in parents "
+         f"and mimeType='application/vnd.google-apps.folder' and trashed=false")
+    res = service.files().list(q=q, fields="files(id)").execute()
+    files = res.get("files", [])
+    if files:
+        return files[0]["id"]
+    meta = {"name": nombre, "mimeType": "application/vnd.google-apps.folder",
+            "parents": [parent_id]}
+    folder = service.files().create(body=meta, fields="id").execute()
+    return folder["id"]
+
+def guardar_en_drive(html, cliente, sede, ot_id, fecha_ot):
+    try:
+        from googleapiclient.http import MediaInMemoryUpload
+        service  = get_drive_service()
+        root_id  = st.secrets.get("drive_root_id") or st.secrets["gcp_service_account"].get("drive_root_id")
+        fecha    = fecha_ot or datetime.now().strftime("%Y-%m-%d")
+        anio     = fecha[:4]
+        mes      = fecha[5:7] if len(fecha) >= 7 else datetime.now().strftime("%m")
+
+        cli_id  = drive_buscar_o_crear_carpeta(service, carpeta_cliente(cliente), root_id)
+        anio_id = drive_buscar_o_crear_carpeta(service, f"01_{anio}", cli_id)
+        mes_id  = drive_buscar_o_crear_carpeta(service, MESES_CARPETA.get(mes, f"{mes}_mes"), anio_id)
+        sede_id = drive_buscar_o_crear_carpeta(service, carpeta_sede(sede), mes_id)
+
+        nombre = f"{ot_id}_{carpeta_sede(sede)}_{fecha}.html"
+        meta   = {"name": nombre, "parents": [sede_id]}
+        media  = MediaInMemoryUpload(html.encode("utf-8"), mimetype="text/html")
+        service.files().create(body=meta, media_body=media, fields="id").execute()
+        return True, f"Drive → {carpeta_cliente(cliente)}/01_{anio}/{MESES_CARPETA.get(mes,'')}/{carpeta_sede(sede)}/{nombre}"
+    except Exception as e:
+        return False, str(e)
+
+
 def guardar_reporte_local(html, cliente, sede, ot_id, fecha_ot):
     """Guarda el reporte en H:\\03_CLIENTES\\... Retorna (ok, ruta_o_error)."""
     try:
@@ -2608,26 +2652,28 @@ elif pagina == "ots":
 </div>
 </body></html>"""
 
-                                # Intentar guardar en H:\ automáticamente
-                                ok, resultado = guardar_reporte_local(
-                                    html,
-                                    fila_ot["Cliente"],
-                                    fila_ot.get("Sede",""),
-                                    id_ot_sel,
-                                    fila_ot.get("Fecha_Ejecucion",""),
-                                )
-                                if ok:
-                                    st.success(f"✅ Reporte guardado automáticamente en:\n`{resultado}`")
-                                    st.info("Abre el archivo y usa el botón '🖨️ Imprimir' para generar el PDF.")
+                                _cli  = fila_ot["Cliente"]
+                                _sede = fila_ot.get("Sede","")
+                                _fec  = fila_ot.get("Fecha_Ejecucion","")
+                                msgs  = []
+                                # 1️⃣ Guardar en H:\
+                                ok_h, res_h = guardar_reporte_local(html, _cli, _sede, id_ot_sel, _fec)
+                                if ok_h:
+                                    msgs.append(f"✅ **Disco H:\\** → `{res_h}`")
                                 else:
-                                    st.warning(f"⚠️ No se pudo guardar en H:\\ ({resultado}). Descárgalo manualmente:")
-                                    st.download_button(
-                                        "⬇️ Descargar Reporte HVAC",
-                                        data=html,
+                                    msgs.append(f"⚠️ Disco H:\\ no disponible: {res_h}")
+                                # 2️⃣ Guardar en Google Drive
+                                ok_d, res_d = guardar_en_drive(html, _cli, _sede, id_ot_sel, _fec)
+                                if ok_d:
+                                    msgs.append(f"✅ **Google Drive** → {res_d}")
+                                else:
+                                    msgs.append(f"⚠️ Google Drive: {res_d}")
+                                for m in msgs:
+                                    st.markdown(m)
+                                if not ok_h and not ok_d:
+                                    st.download_button("⬇️ Descargar Reporte HVAC", data=html,
                                         file_name=f"Reporte_HVAC_{id_ot_sel}.html",
-                                        mime="text/html",
-                                        use_container_width=True,
-                                    )
+                                        mime="text/html", use_container_width=True)
 
                     else:
                         # ── FORMATO LOCATIVOS ─────────────────────────────
@@ -2835,25 +2881,26 @@ HA SIDO ENTREGADO POR EL CONTRATISTA Y QUE EL TRABAJO HA SIDO EJECUTADO A SATISF
 </div>
 </body></html>"""
 
-                                ok, resultado = guardar_reporte_local(
-                                    html_loc,
-                                    fila_ot["Cliente"],
-                                    fila_ot.get("Sede",""),
-                                    id_ot_sel,
-                                    fila_ot.get("Fecha_Ejecucion",""),
-                                )
-                                if ok:
-                                    st.success(f"✅ Reporte guardado automáticamente en:\n`{resultado}`")
-                                    st.info("Abre el archivo y usa el botón '🖨️ Imprimir' para generar el PDF.")
+                                _cli  = fila_ot["Cliente"]
+                                _sede = fila_ot.get("Sede","")
+                                _fec  = fila_ot.get("Fecha_Ejecucion","")
+                                msgs  = []
+                                ok_h, res_h = guardar_reporte_local(html_loc, _cli, _sede, id_ot_sel, _fec)
+                                if ok_h:
+                                    msgs.append(f"✅ **Disco H:\\** → `{res_h}`")
                                 else:
-                                    st.warning(f"⚠️ No se pudo guardar en H:\\ ({resultado}). Descárgalo manualmente:")
-                                    st.download_button(
-                                        "⬇️ Descargar Reporte Locativos",
-                                        data=html_loc,
+                                    msgs.append(f"⚠️ Disco H:\\ no disponible: {res_h}")
+                                ok_d, res_d = guardar_en_drive(html_loc, _cli, _sede, id_ot_sel, _fec)
+                                if ok_d:
+                                    msgs.append(f"✅ **Google Drive** → {res_d}")
+                                else:
+                                    msgs.append(f"⚠️ Google Drive: {res_d}")
+                                for m in msgs:
+                                    st.markdown(m)
+                                if not ok_h and not ok_d:
+                                    st.download_button("⬇️ Descargar Reporte Locativos", data=html_loc,
                                         file_name=f"Reporte_Locativos_{id_ot_sel}.html",
-                                        mime="text/html",
-                                        use_container_width=True,
-                                    )
+                                        mime="text/html", use_container_width=True)
 
                 with eli:
                     st.warning(f"¿Eliminar la OT **{id_ot_sel}** de **{fila_ot['Cliente']}**? No se puede deshacer.")
