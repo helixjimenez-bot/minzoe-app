@@ -881,46 +881,16 @@ if not st.session_state.get("logged_in", False):
             st.session_state["user_correo"] = u.iloc[0]["correo"]
             st.session_state["user_rol"]    = u.iloc[0]["rol"]
 
-# Si no hay usuarios, reintentar una vez antes de mostrar configuración
+# Si no hay usuarios, crear admin por defecto automáticamente
 if usuarios.empty:
-    import time
-    time.sleep(1)
-    usuarios = load_usuarios()
-
-# Si sigue vacío, mostrar pantalla de creación del primer admin
-if usuarios.empty:
-    st.markdown("""
-    <div style='max-width:420px;margin:60px auto;padding:32px;background:#fff;
-    border-radius:16px;box-shadow:0 8px 32px rgba(220,38,38,0.15);border-top:5px solid #dc2626;'>
-    <h3 style='color:#dc2626;text-align:center;'>⚙️ Primera configuración</h3>
-    <p style='color:#555;text-align:center;'>Crea el usuario administrador</p>
-    </div>
-    """, unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        with st.form("form_primer_admin"):
-            nombre_a = st.text_input("Tu nombre completo")
-            correo_a = st.text_input("Correo electrónico")
-            pwd_a    = st.text_input("Contraseña", type="password")
-            pwd_a2   = st.text_input("Confirmar contraseña", type="password")
-            crear    = st.form_submit_button("Crear administrador", type="primary", use_container_width=True)
-            if crear:
-                if not nombre_a or not correo_a or not pwd_a:
-                    st.error("Todos los campos son obligatorios.")
-                elif pwd_a != pwd_a2:
-                    st.error("Las contraseñas no coinciden.")
-                else:
-                    nuevo_u = pd.DataFrame([{
-                        "nombre": nombre_a, "correo": correo_a,
-                        "password_hash": hash_pwd(pwd_a), "rol": "admin"
-                    }])
-                    save_usuarios(nuevo_u)
-                    st.success("✅ Administrador creado. Recarga la página para iniciar sesión.")
-    st.divider()
-    st.caption("¿Ya tienes una cuenta? Puede ser un error de conexión.")
-    if st.button("🔄 Intentar iniciar sesión", use_container_width=True):
-        st.rerun()
-    st.stop()
+    admin_default = pd.DataFrame([{
+        "nombre":        "Administrador",
+        "correo":        "helixjimenez@gmail.com",
+        "password_hash": hash_pwd("Minzoe2026"),
+        "rol":           "admin"
+    }])
+    save_usuarios(admin_default)
+    usuarios = admin_default
 
 # Si no ha iniciado sesión, mostrar pantalla de login
 if not st.session_state.get("logged_in", False):
