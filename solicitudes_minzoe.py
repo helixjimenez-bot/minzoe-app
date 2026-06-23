@@ -1967,7 +1967,13 @@ elif pagina == "ots":
     df = get_df(); ots = get_ots(); cli = get_cli()
     st.subheader("🛠️ Órdenes de Trabajo")
 
-    accion_ot = st.radio("", ["➕ Nueva OT", "📋 Ver OTs"], horizontal=True, label_visibility="collapsed")
+    # Mantener selección después de guardar reporte
+    if st.session_state.get("_ot_volver_ver"):
+        st.session_state["accion_ot_radio"] = "📋 Ver OTs"
+        st.session_state.pop("_ot_volver_ver", None)
+
+    accion_ot = st.radio("", ["➕ Nueva OT", "📋 Ver OTs"], horizontal=True,
+                         label_visibility="collapsed", key="accion_ot_radio")
     st.divider()
 
     # ── NUEVA OT ──────────────────────────────────────────────────────────────
@@ -2665,6 +2671,7 @@ elif pagina == "ots":
                         # ── FUERA del form: guardar y mostrar resultados ──
                         _html_key = f"hvac_html_{id_ot_sel}"
                         if _html_key in st.session_state:
+                            st.session_state["_ot_volver_ver"] = True
                             _html = st.session_state[_html_key]
                             _cli  = st.session_state.get(f"hvac_cli_{id_ot_sel}","")
                             _sede = st.session_state.get(f"hvac_sede_{id_ot_sel}","")
@@ -2899,6 +2906,7 @@ HA SIDO ENTREGADO POR EL CONTRATISTA Y QUE EL TRABAJO HA SIDO EJECUTADO A SATISF
                         # ── FUERA del form: guardar locativos ─────────────
                         _loc_key = f"loc_html_{id_ot_sel}"
                         if _loc_key in st.session_state:
+                            st.session_state["_ot_volver_ver"] = True
                             _html_l = st.session_state[_loc_key]
                             _cli_l  = st.session_state.get(f"loc_cli_{id_ot_sel}","")
                             _sede_l = st.session_state.get(f"loc_sede_{id_ot_sel}","")
