@@ -1351,7 +1351,9 @@ elif pagina == "ver":
 # PÁGINA: DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "resumen":
-    df = get_df(); ots = get_ots(); cv = get_cv(); contratos = get_contratos()
+    import plotly.express as px
+    import plotly.graph_objects as go
+    df = get_df(); ots = get_ots(); ventas = get_ventas(); costos = get_costos(); contratos = get_contratos()
     hoy_dash = datetime.now()
     mes_dash = hoy_dash.strftime("%Y-%m")
 
@@ -1517,27 +1519,174 @@ elif pagina == "resumen":
 
     st.divider()
 
-    # ── SECCIÓN 5: GRÁFICAS ───────────────────────────────────────────────────
-    st.markdown('<p class="section-title">📈 ANÁLISIS</p>', unsafe_allow_html=True)
+    # ── SECCIÓN 5: GRÁFICAS PLOTLY ────────────────────────────────────────────
+    st.markdown('<p class="section-title">📊 ANÁLISIS VISUAL</p>', unsafe_allow_html=True)
+
+    ROJO   = "#dc2626"
+    AZUL   = "#1e3a8a"
+    VERDE  = "#064e3b"
+    COLORES_GRAF = [ROJO,"#1e3a8a","#064e3b","#7c3aed","#ea580c","#0d9488","#d97706","#db2777"]
+
+    # ── Fila 1: Solicitudes por mes | Solicitudes por servicio ────────────────
     c1, c2 = st.columns(2)
     with c1:
-        if not df.empty:
-            st.markdown("**Solicitudes por servicio**")
-            st.bar_chart(df["Servicio"].value_counts())
-        if not ots.empty:
-            st.markdown("**OTs por estado**")
-            st.bar_chart(ots["Estado"].value_counts())
+        if not df.empty and "Fecha" in df.columns:
+            try:
+                df_t = df.copy()
+                df_t["Mes"] = pd.to_datetime(df_t["Fecha"], errors="coerce").dt.strftime("%Y-%m")
+                mes_cnt = df_t.groupby("Mes").size().reset_index(name="Solicitudes").sort_values("Mes")
+                fig = px.bar(mes_cnt, x="Mes", y="Solicitudes",
+                             title="📅 Solicitudes por mes",
+                             color_discrete_sequence=[ROJO],
+                             text="Solicitudes")
+                fig.update_traces(textposition="outside")
+                fig.update_layout(showlegend=False, plot_bgcolor="white",
+                                  paper_bgcolor="white", font_color="#111",
+                                  title_font_color=ROJO)
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception:
+                st.info("Sin datos de solicitudes por mes")
+
     with c2:
-        if not cv.empty:
-            st.markdown("**Ventas vs Utilidad por servicio**")
-            rsrv = cv.groupby("Servicio").apply(
-                lambda g: pd.Series({"Ventas": g["Valor_Antes_IVA"].apply(to_num).sum(),
-                                     "Utilidad": g["Utilidad"].apply(to_num).sum()})
-            ).reset_index()
-            st.bar_chart(rsrv.set_index("Servicio")[["Ventas","Utilidad"]])
+        if not df.empty and "Servicio" in df.columns:
+            srv_cnt = df["Servicio"].value_counts().reset_index()
+            srv_cnt.columns = ["Servicio", "Cantidad"]
+            fig = px.bar(srv_cnt, x="Cantidad", y="Servicio", orientation="h",
+                         title="🔧 Solicitudes por servicio",
+                         color="Servicio", color_discrete_sequence=COLORES_GRAF,
+                         text="Cantidad")
+            fig.update_traces(textposition="outside")
+            fig.update_layout(showlegend=False, plot_bgcolor="white",
+                              paper_bgcolor="white", font_color="#111",
+                              title_font_color=ROJO)
+            st.plotly_chart(fig, use_container_width=True)
+
+    # ── Fila 2: Estado solicitudes | Canal de comunicación ────────────────────
+    c1, c2 = st.columns(2)
+    with c1:
+        if not df.empty and "Estado" in df.columns:
+            est_cnt = df["Estado"].value_counts().reset_index()
+            est_cnt.columns = ["Estado", "Cantidad"]
+            colores_est = {"Pendiente":"#d97706","Aprobado":"#1e3a8a",
+                           "Completado":"#064e3b","Cancelado":ROJO}
+            fig = px.pie(est_cnt, names="Estado", values="Cantidad",
+                         title="📋 Estado de Solicitudes",
+                         color="Estado", color_discrete_map=colores_est,
+                         hole=0.45)
+            fig.update_layout(font_color="#111", title_font_color=ROJO,
+                              paper_bgcolor="white")
+            st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        if not df.empty and "Canal" in df.columns:
+            can_cnt = df["Canal"].value_counts().reset_index()
+            can_cnt.columns = ["Canal", "Cantidad"]
+            fig = px.pie(can_cnt, names="Canal", values="Cantidad",
+                         title="📱 Canal de comunicación",
+                         color_discrete_sequence=COLORES_GRAF, hole=0.45)
+            fig.update_layout(font_color="#111", title_font_color=ROJO,
+                              paper_bgcolor="white")
+            st.plotly_chart(fig, use_container_width=True)
+
+    # ── Fila 3: OTs por estado | OTs por técnico ─────────────────────────────
+    c1, c2 = st.columns(2)
+    with c1:
+        if not ots.empty and "Estado" in ots.columns:
+            ot_est = ots["Estado"].value_counts().reset_index()
+            ot_est.columns = ["Estado", "Cantidad"]
+            colores_ot = {"Programada":"#7c3aed","En ejecución":"#ea580c",
+                          "Finalizada":"#064e3b","Cancelada":ROJO}
+            fig = px.pie(ot_est, names="Estado", values="Cantidad",
+                         title="🛠️ OTs por estado",
+                         color="Estado", color_discrete_map=colores_ot,
+                         hole=0.45)
+            fig.update_layout(font_color="#111", title_font_color=ROJO,
+                              paper_bgcolor="white")
+            st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        if not ots.empty and "Tecnico" in ots.columns:
+            tec_cnt = ots[ots["Tecnico"].str.strip() != ""]["Tecnico"].value_counts().head(8).reset_index()
+            tec_cnt.columns = ["Técnico", "OTs"]
+            if not tec_cnt.empty:
+                fig = px.bar(tec_cnt, x="OTs", y="Técnico", orientation="h",
+                             title="👷 OTs por técnico",
+                             color_discrete_sequence=[AZUL], text="OTs")
+                fig.update_traces(textposition="outside")
+                fig.update_layout(showlegend=False, plot_bgcolor="white",
+                                  paper_bgcolor="white", font_color="#111",
+                                  title_font_color=ROJO)
+                st.plotly_chart(fig, use_container_width=True)
+
+    # ── Fila 4: Top clientes | Ventas vs Costos ───────────────────────────────
+    c1, c2 = st.columns(2)
+    with c1:
+        if not df.empty and "Cliente" in df.columns:
+            top_cli = df["Cliente"].value_counts().head(8).reset_index()
+            top_cli.columns = ["Cliente", "Solicitudes"]
+            fig = px.bar(top_cli, x="Solicitudes", y="Cliente", orientation="h",
+                         title="🏆 Top clientes por solicitudes",
+                         color_discrete_sequence=[ROJO], text="Solicitudes")
+            fig.update_traces(textposition="outside")
+            fig.update_layout(showlegend=False, plot_bgcolor="white",
+                              paper_bgcolor="white", font_color="#111",
+                              title_font_color=ROJO)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        if not ventas.empty and not costos.empty:
+            try:
+                v_mes = ventas.copy()
+                v_mes["Mes"] = pd.to_datetime(v_mes["Fecha_Facturacion"], errors="coerce").dt.strftime("%Y-%m")
+                v_mes["Venta"] = v_mes["Valor_Antes_IVA"].apply(to_num)
+                v_agg = v_mes.groupby("Mes")["Venta"].sum().reset_index()
+
+                c_mes = costos.copy()
+                c_mes["Mes"] = pd.to_datetime(c_mes["Fecha"], errors="coerce").dt.strftime("%Y-%m")
+                c_mes["Costo"] = c_mes["Total_Costo"].apply(to_num)
+                c_agg = c_mes.groupby("Mes")["Costo"].sum().reset_index()
+
+                fin_df = v_agg.merge(c_agg, on="Mes", how="outer").fillna(0).sort_values("Mes")
+                fig = go.Figure()
+                fig.add_trace(go.Bar(name="Ventas", x=fin_df["Mes"], y=fin_df["Venta"],
+                                     marker_color=AZUL, text=fin_df["Venta"].apply(lambda x: f"${x:,.0f}")))
+                fig.add_trace(go.Bar(name="Costos", x=fin_df["Mes"], y=fin_df["Costo"],
+                                     marker_color=ROJO, text=fin_df["Costo"].apply(lambda x: f"${x:,.0f}")))
+                fig.update_layout(title="💰 Ventas vs Costos por mes",
+                                  barmode="group", plot_bgcolor="white",
+                                  paper_bgcolor="white", font_color="#111",
+                                  title_font_color=ROJO, showlegend=True)
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception:
+                pass
+
+    # ── Fila 5: SLA | Tipo de servicio ────────────────────────────────────────
+    c1, c2 = st.columns(2)
+    with c1:
         if not df.empty and "SLA" in df.columns:
-            st.markdown("**Solicitudes por SLA**")
-            st.bar_chart(df["SLA"].value_counts())
+            sla_cnt = df["SLA"].value_counts().reset_index()
+            sla_cnt.columns = ["SLA", "Cantidad"]
+            colores_sla = {"Programado":VERDE,"Urgencia":"#d97706","Emergencia":ROJO}
+            fig = px.pie(sla_cnt, names="SLA", values="Cantidad",
+                         title="⏱️ Distribución por SLA",
+                         color="SLA", color_discrete_map=colores_sla, hole=0.45)
+            fig.update_layout(font_color="#111", title_font_color=ROJO,
+                              paper_bgcolor="white")
+            st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        if not df.empty and "Tipo_Servicio" in df.columns:
+            tipo_cnt = df[df["Tipo_Servicio"].str.strip() != ""]["Tipo_Servicio"].value_counts().reset_index()
+            tipo_cnt.columns = ["Tipo", "Cantidad"]
+            if not tipo_cnt.empty:
+                fig = px.bar(tipo_cnt, x="Tipo", y="Cantidad",
+                             title="🔩 Tipo de servicio",
+                             color_discrete_sequence=[ROJO], text="Cantidad")
+                fig.update_traces(textposition="outside")
+                fig.update_layout(showlegend=False, plot_bgcolor="white",
+                                  paper_bgcolor="white", font_color="#111",
+                                  title_font_color=ROJO)
+                st.plotly_chart(fig, use_container_width=True)
 
     st.divider()
 
@@ -1547,17 +1696,25 @@ elif pagina == "resumen":
     with c1:
         st.markdown("**Últimas 5 solicitudes**")
         if not df.empty:
-            st.dataframe(df.sort_values("Fecha", ascending=False).head(5)
-                         [["ID","Fecha","Cliente","Servicio","Estado"]],
-                         use_container_width=True, hide_index=True)
+            tabla_html(df.sort_values("Fecha", ascending=False).head(5)
+                       [["ID","Fecha","Cliente","Servicio","Estado"]].reset_index(drop=True),
+                       color_col="Estado",
+                       colores_estado={"Pendiente":("#fff3cd","#7d5a00"),
+                                       "Aprobado":("#d1e7dd","#0a5c36"),
+                                       "Completado":("#cfe2ff","#0a3678"),
+                                       "Cancelado":("#f8d7da","#7f1d1d")})
         else:
             st.info("Sin solicitudes")
     with c2:
         st.markdown("**Últimas 5 OTs**")
         if not ots.empty:
-            st.dataframe(ots.sort_values("Fecha_Creacion", ascending=False).head(5)
-                         [["ID","Fecha_Creacion","Cliente","Servicio","Estado"]],
-                         use_container_width=True, hide_index=True)
+            tabla_html(ots.sort_values("Fecha_Creacion", ascending=False).head(5)
+                       [["ID","Fecha_Creacion","Cliente","Servicio","Estado"]].reset_index(drop=True),
+                       color_col="Estado",
+                       colores_estado={"Programada":("#e0e7ff","#1e3a8a"),
+                                       "En ejecución":("#fef3c7","#78350f"),
+                                       "Finalizada":("#d1fae5","#064e3b"),
+                                       "Cancelada":("#fee2e2","#7f1d1d")})
         else:
             st.info("Sin OTs")
 
