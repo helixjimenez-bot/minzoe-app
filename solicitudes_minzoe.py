@@ -2477,7 +2477,8 @@ elif pagina == "compras_ventas":
                 "Anulada":   ("#f3f4f6", "#374151"),
             }
             tabla_html(vista_v.reset_index(drop=True),
-                       color_col="Estado_Pago", colores_estado=COLORES_PAGO)
+                       color_col="Estado_Pago", colores_estado=COLORES_PAGO,
+                       fmt_cols=["Valor_Antes_IVA","IVA","Retefuente","Retica","Total_A_Pagar"])
             st.caption(f"{len(ventas)} factura(s) registrada(s).")
 
             buf_v = io.BytesIO()
@@ -2560,7 +2561,8 @@ elif pagina == "compras_ventas":
         if costos.empty:
             st.info("Aún no hay costos registrados.")
         else:
-            tabla_html(costos.reset_index(drop=True))
+            tabla_html(costos.reset_index(drop=True),
+                       fmt_cols=["Valor_Tecnico","Valor_Materiales","Total_Costo"])
             buf_c = io.BytesIO()
             with pd.ExcelWriter(buf_c, engine="openpyxl") as w:
                 costos.to_excel(w, index=False, sheet_name="Costos")
