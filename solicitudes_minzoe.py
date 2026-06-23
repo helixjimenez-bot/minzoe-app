@@ -508,10 +508,17 @@ def guardar_en_drive(html, cliente, sede, ot_id, fecha_ot):
         root_id  = (st.secrets.get("drive_root_id") or
                     st.secrets["gcp_service_account"].get("drive_root_id",""))
         if not root_id:
-            return False, "Falta 'drive_root_id' en los Secrets de Streamlit Cloud. Agrégalo en Settings → Secrets."
-        fecha    = fecha_ot or datetime.now().strftime("%Y-%m-%d")
-        anio     = fecha[:4]
-        mes      = fecha[5:7] if len(fecha) >= 7 else datetime.now().strftime("%m")
+            return False, "Falta 'drive_root_id' en los Secrets de Streamlit Cloud."
+
+        # Obtener el driveId de la Unidad Compartida
+        root_info = service.files().get(
+            fileId=root_id, fields="id,driveId", supportsAllDrives=True
+        ).execute()
+        shared_drive_id = root_info.get("driveId", root_id)
+
+        fecha  = fecha_ot or datetime.now().strftime("%Y-%m-%d")
+        anio   = fecha[:4]
+        mes    = fecha[5:7] if len(fecha) >= 7 else datetime.now().strftime("%m")
 
         cli_id  = drive_buscar_o_crear_carpeta(service, carpeta_cliente(cliente), root_id)
         anio_id = drive_buscar_o_crear_carpeta(service, f"01_{anio}", cli_id)
@@ -520,11 +527,15 @@ def guardar_en_drive(html, cliente, sede, ot_id, fecha_ot):
 
         nombre = f"{ot_id}_{carpeta_sede(sede)}_{fecha}.html"
         meta   = {"name": nombre, "parents": [sede_id]}
+        if shared_drive_id:
+            meta["driveId"] = shared_drive_id
         media  = MediaInMemoryUpload(html.encode("utf-8"), mimetype="text/html")
         service.files().create(
-            body=meta, media_body=media, fields="id", supportsAllDrives=True
+            body=meta, media_body=media, fields="id",
+            supportsAllDrives=True, includeItemsFromAllDrives=True
         ).execute()
-        return True, f"Drive → {carpeta_cliente(cliente)}/01_{anio}/{MESES_CARPETA.get(mes,'')}/{carpeta_sede(sede)}/{nombre}"
+        ruta = f"{carpeta_cliente(cliente)}/01_{anio}/{MESES_CARPETA.get(mes,'')}/{carpeta_sede(sede)}/{nombre}"
+        return True, ruta
     except Exception as e:
         return False, str(e)
 
