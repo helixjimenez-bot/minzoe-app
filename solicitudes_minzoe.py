@@ -2656,28 +2656,34 @@ elif pagina == "ots":
 </div>
 </body></html>"""
 
-                                _cli  = fila_ot["Cliente"]
-                                _sede = fila_ot.get("Sede","")
-                                _fec  = fila_ot.get("Fecha_Ejecucion","")
-                                msgs  = []
-                                # 1️⃣ Guardar en H:\
-                                ok_h, res_h = guardar_reporte_local(html, _cli, _sede, id_ot_sel, _fec)
-                                if ok_h:
-                                    msgs.append(f"✅ **Disco H:\\** → `{res_h}`")
-                                else:
-                                    msgs.append(f"⚠️ Disco H:\\ no disponible: {res_h}")
-                                # 2️⃣ Guardar en Google Drive
-                                ok_d, res_d = guardar_en_drive(html, _cli, _sede, id_ot_sel, _fec)
-                                if ok_d:
-                                    msgs.append(f"✅ **Google Drive** → {res_d}")
-                                else:
-                                    msgs.append(f"⚠️ Google Drive: {res_d}")
-                                for m in msgs:
-                                    st.markdown(m)
-                                if not ok_h and not ok_d:
-                                    st.download_button("⬇️ Descargar Reporte HVAC", data=html,
-                                        file_name=f"Reporte_HVAC_{id_ot_sel}.html",
-                                        mime="text/html", use_container_width=True)
+                                # Guardar html en session_state para procesar FUERA del form
+                                st.session_state[f"hvac_html_{id_ot_sel}"] = html
+                                st.session_state[f"hvac_cli_{id_ot_sel}"]  = fila_ot["Cliente"]
+                                st.session_state[f"hvac_sede_{id_ot_sel}"] = fila_ot.get("Sede","")
+                                st.session_state[f"hvac_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
+
+                        # ── FUERA del form: guardar y mostrar resultados ──
+                        _html_key = f"hvac_html_{id_ot_sel}"
+                        if _html_key in st.session_state:
+                            _html = st.session_state[_html_key]
+                            _cli  = st.session_state.get(f"hvac_cli_{id_ot_sel}","")
+                            _sede = st.session_state.get(f"hvac_sede_{id_ot_sel}","")
+                            _fec  = st.session_state.get(f"hvac_fec_{id_ot_sel}","")
+                            ok_h, res_h = guardar_reporte_local(_html, _cli, _sede, id_ot_sel, _fec)
+                            ok_d, res_d = guardar_en_drive(_html, _cli, _sede, id_ot_sel, _fec)
+                            if ok_h:
+                                st.success(f"✅ **Disco H:\\** → `{res_h}`")
+                            else:
+                                st.warning(f"⚠️ Disco H:\\ no disponible: {res_h}")
+                            if ok_d:
+                                st.success(f"✅ **Google Drive** → {res_d}")
+                            else:
+                                st.warning(f"⚠️ Google Drive: {res_d}")
+                            if not ok_h and not ok_d:
+                                st.download_button("⬇️ Descargar Reporte HVAC", data=_html,
+                                    file_name=f"Reporte_HVAC_{id_ot_sel}.html",
+                                    mime="text/html", use_container_width=True)
+                            del st.session_state[_html_key]
 
                     else:
                         # ── FORMATO LOCATIVOS ─────────────────────────────
@@ -2885,26 +2891,33 @@ HA SIDO ENTREGADO POR EL CONTRATISTA Y QUE EL TRABAJO HA SIDO EJECUTADO A SATISF
 </div>
 </body></html>"""
 
-                                _cli  = fila_ot["Cliente"]
-                                _sede = fila_ot.get("Sede","")
-                                _fec  = fila_ot.get("Fecha_Ejecucion","")
-                                msgs  = []
-                                ok_h, res_h = guardar_reporte_local(html_loc, _cli, _sede, id_ot_sel, _fec)
-                                if ok_h:
-                                    msgs.append(f"✅ **Disco H:\\** → `{res_h}`")
-                                else:
-                                    msgs.append(f"⚠️ Disco H:\\ no disponible: {res_h}")
-                                ok_d, res_d = guardar_en_drive(html_loc, _cli, _sede, id_ot_sel, _fec)
-                                if ok_d:
-                                    msgs.append(f"✅ **Google Drive** → {res_d}")
-                                else:
-                                    msgs.append(f"⚠️ Google Drive: {res_d}")
-                                for m in msgs:
-                                    st.markdown(m)
-                                if not ok_h and not ok_d:
-                                    st.download_button("⬇️ Descargar Reporte Locativos", data=html_loc,
-                                        file_name=f"Reporte_Locativos_{id_ot_sel}.html",
-                                        mime="text/html", use_container_width=True)
+                                st.session_state[f"loc_html_{id_ot_sel}"] = html_loc
+                                st.session_state[f"loc_cli_{id_ot_sel}"]  = fila_ot["Cliente"]
+                                st.session_state[f"loc_sede_{id_ot_sel}"] = fila_ot.get("Sede","")
+                                st.session_state[f"loc_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
+
+                        # ── FUERA del form: guardar locativos ─────────────
+                        _loc_key = f"loc_html_{id_ot_sel}"
+                        if _loc_key in st.session_state:
+                            _html_l = st.session_state[_loc_key]
+                            _cli_l  = st.session_state.get(f"loc_cli_{id_ot_sel}","")
+                            _sede_l = st.session_state.get(f"loc_sede_{id_ot_sel}","")
+                            _fec_l  = st.session_state.get(f"loc_fec_{id_ot_sel}","")
+                            ok_h, res_h = guardar_reporte_local(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
+                            ok_d, res_d = guardar_en_drive(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
+                            if ok_h:
+                                st.success(f"✅ **Disco H:\\** → `{res_h}`")
+                            else:
+                                st.warning(f"⚠️ Disco H:\\ no disponible: {res_h}")
+                            if ok_d:
+                                st.success(f"✅ **Google Drive** → {res_d}")
+                            else:
+                                st.warning(f"⚠️ Google Drive: {res_d}")
+                            if not ok_h and not ok_d:
+                                st.download_button("⬇️ Descargar Reporte Locativos", data=_html_l,
+                                    file_name=f"Reporte_Locativos_{id_ot_sel}.html",
+                                    mime="text/html", use_container_width=True)
+                            del st.session_state[_loc_key]
 
                 with eli:
                     st.warning(f"¿Eliminar la OT **{id_ot_sel}** de **{fila_ot['Cliente']}**? No se puede deshacer.")
