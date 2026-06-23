@@ -499,7 +499,10 @@ def guardar_en_drive(html, cliente, sede, ot_id, fecha_ot):
     try:
         from googleapiclient.http import MediaInMemoryUpload
         service  = get_drive_service()
-        root_id  = st.secrets.get("drive_root_id") or st.secrets["gcp_service_account"].get("drive_root_id")
+        root_id  = (st.secrets.get("drive_root_id") or
+                    st.secrets["gcp_service_account"].get("drive_root_id",""))
+        if not root_id:
+            return False, "Falta 'drive_root_id' en los Secrets de Streamlit Cloud. Agrégalo en Settings → Secrets."
         fecha    = fecha_ot or datetime.now().strftime("%Y-%m-%d")
         anio     = fecha[:4]
         mes      = fecha[5:7] if len(fecha) >= 7 else datetime.now().strftime("%m")
