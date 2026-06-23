@@ -532,7 +532,7 @@ def guardar_en_drive(html, cliente, sede, ot_id, fecha_ot):
         media  = MediaInMemoryUpload(html.encode("utf-8"), mimetype="text/html")
         service.files().create(
             body=meta, media_body=media, fields="id",
-            supportsAllDrives=True, includeItemsFromAllDrives=True
+            supportsAllDrives=True
         ).execute()
         ruta = f"{carpeta_cliente(cliente)}/01_{anio}/{MESES_CARPETA.get(mes,'')}/{carpeta_sede(sede)}/{nombre}"
         return True, ruta
