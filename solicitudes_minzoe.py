@@ -7,6 +7,21 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 USUARIOS_FILE     = r"D:\Escritorio\LA ASISTENTE MINZOE\usuarios.csv"
+
+# ── Rutas de guardado de reportes ─────────────────────────────────────────────
+BASE_REPORTES = r"H:\03_CLIENTES"
+
+CLIENTES_CARPETA = {
+    "ALTIPAL":   "01_Altipal",
+    "PAGAFACIL": "00_Pagafacil",
+    "CORRESPONSALES": "02_Corresponsales",
+}
+
+MESES_CARPETA = {
+    "01":"01_enero","02":"02_febrero","03":"03_marzo","04":"04_abril",
+    "05":"05_mayo","06":"06_junio","07":"07_julio","08":"08_agosto",
+    "09":"09_septiembre","10":"10_octubre","11":"11_noviembre","12":"12_diciembre",
+}
 SOLICITUDES_FILE  = "solicitudes.csv"
 CLIENTES_FILE     = "clientes.csv"
 OTS_FILE          = "ordenes_trabajo.csv"
@@ -442,6 +457,46 @@ def generate_ot_id(df):
         return f"{prefijo}001"
     nums = ids_hoy.str.extract(r"OT-\d{6}-(\d{3})")[0].astype(int)
     return f"{prefijo}{nums.max() + 1:03d}"
+
+
+def carpeta_cliente(cliente_nombre):
+    """Devuelve el nombre de carpeta del cliente o crea uno genérico."""
+    nombre_up = cliente_nombre.upper()
+    for key, carpeta in CLIENTES_CARPETA.items():
+        if key in nombre_up:
+            return carpeta
+    # Cliente no mapeado → crear carpeta con nombre normalizado
+    limpio = "".join(c for c in cliente_nombre.title() if c.isalnum() or c == " ").strip()
+    return "00_" + "_".join(limpio.split()[:3])
+
+def carpeta_sede(sede_nombre):
+    """Convierte nombre de sede a formato de carpeta: 00_Cedi_Cartagena"""
+    limpio = "".join(c for c in sede_nombre if c.isalnum() or c in " _-").strip()
+    return "00_" + "_".join(w.capitalize() for w in limpio.split())
+
+def guardar_reporte_local(html, cliente, sede, ot_id, fecha_ot):
+    """Guarda el reporte en H:\\03_CLIENTES\\... Retorna (ok, ruta_o_error)."""
+    try:
+        if not os.path.exists(BASE_REPORTES):
+            return False, f"No se encontró el disco H:\\ ({BASE_REPORTES})"
+        fecha = fecha_ot or datetime.now().strftime("%Y-%m-%d")
+        anio  = fecha[:4]
+        mes   = fecha[5:7] if len(fecha) >= 7 else datetime.now().strftime("%m")
+        ruta  = os.path.join(
+            BASE_REPORTES,
+            carpeta_cliente(cliente),
+            f"01_{anio}",
+            MESES_CARPETA.get(mes, f"{mes}_mes"),
+            carpeta_sede(sede),
+        )
+        os.makedirs(ruta, exist_ok=True)
+        nombre = f"{ot_id}_{carpeta_sede(sede)}_{fecha}.html"
+        ruta_completa = os.path.join(ruta, nombre)
+        with open(ruta_completa, "w", encoding="utf-8") as f:
+            f.write(html)
+        return True, ruta_completa
+    except Exception as e:
+        return False, str(e)
 
 
 def fmt_cop(val):
@@ -2369,7 +2424,7 @@ elif pagina == "ots":
                                 r_nom_cli  = st.text_input("Nombre cliente",   value=fila_ot.get("Nombre_Contacto",""))
                                 r_fec_firma= st.text_input("Fecha",            value=fila_ot.get("Fecha_Ejecucion",""))
 
-                            generar = st.form_submit_button("🖨️ Generar Reporte para Imprimir", type="primary", use_container_width=True)
+                            generar = st.form_submit_button("✅ Finalizar y Guardar", type="primary", use_container_width=True)
 
                             if generar:
                                 def ck(val): return "✔" if val else ""
@@ -2553,14 +2608,26 @@ elif pagina == "ots":
 </div>
 </body></html>"""
 
-                                st.download_button(
-                                    "⬇️ Descargar Reporte HTML",
-                                    data=html,
-                                    file_name=f"Reporte_HVAC_{id_ot_sel}.html",
-                                    mime="text/html",
-                                    use_container_width=True,
+                                # Intentar guardar en H:\ automáticamente
+                                ok, resultado = guardar_reporte_local(
+                                    html,
+                                    fila_ot["Cliente"],
+                                    fila_ot.get("Sede",""),
+                                    id_ot_sel,
+                                    fila_ot.get("Fecha_Ejecucion",""),
                                 )
-                                st.info("💡 Abre el archivo descargado y presiona el botón 'Imprimir / Guardar como PDF' para obtener el PDF.")
+                                if ok:
+                                    st.success(f"✅ Reporte guardado automáticamente en:\n`{resultado}`")
+                                    st.info("Abre el archivo y usa el botón '🖨️ Imprimir' para generar el PDF.")
+                                else:
+                                    st.warning(f"⚠️ No se pudo guardar en H:\\ ({resultado}). Descárgalo manualmente:")
+                                    st.download_button(
+                                        "⬇️ Descargar Reporte HVAC",
+                                        data=html,
+                                        file_name=f"Reporte_HVAC_{id_ot_sel}.html",
+                                        mime="text/html",
+                                        use_container_width=True,
+                                    )
 
                     else:
                         # ── FORMATO LOCATIVOS ─────────────────────────────
@@ -2645,7 +2712,7 @@ elif pagina == "ots":
                             l_nom_cli  = sc1.text_input("Nombre cliente",   value=fila_ot.get("Nombre_Contacto",""), key="l_ncli")
                             l_fec_fir  = sc2.text_input("Fecha firma",      value=fila_ot.get("Fecha_Ejecucion",""), key="l_ffir")
 
-                            gen_loc = st.form_submit_button("🖨️ Generar Reporte para Imprimir", type="primary", use_container_width=True)
+                            gen_loc = st.form_submit_button("✅ Finalizar y Guardar", type="primary", use_container_width=True)
 
                             if gen_loc:
                                 def ck(v): return "✔" if v else ""
@@ -2768,14 +2835,25 @@ HA SIDO ENTREGADO POR EL CONTRATISTA Y QUE EL TRABAJO HA SIDO EJECUTADO A SATISF
 </div>
 </body></html>"""
 
-                                st.download_button(
-                                    "⬇️ Descargar Reporte Locativos",
-                                    data=html_loc,
-                                    file_name=f"Reporte_Locativos_{id_ot_sel}.html",
-                                    mime="text/html",
-                                    use_container_width=True,
+                                ok, resultado = guardar_reporte_local(
+                                    html_loc,
+                                    fila_ot["Cliente"],
+                                    fila_ot.get("Sede",""),
+                                    id_ot_sel,
+                                    fila_ot.get("Fecha_Ejecucion",""),
                                 )
-                                st.info("💡 Abre el archivo y presiona 'Imprimir / Guardar como PDF'.")
+                                if ok:
+                                    st.success(f"✅ Reporte guardado automáticamente en:\n`{resultado}`")
+                                    st.info("Abre el archivo y usa el botón '🖨️ Imprimir' para generar el PDF.")
+                                else:
+                                    st.warning(f"⚠️ No se pudo guardar en H:\\ ({resultado}). Descárgalo manualmente:")
+                                    st.download_button(
+                                        "⬇️ Descargar Reporte Locativos",
+                                        data=html_loc,
+                                        file_name=f"Reporte_Locativos_{id_ot_sel}.html",
+                                        mime="text/html",
+                                        use_container_width=True,
+                                    )
 
                 with eli:
                     st.warning(f"¿Eliminar la OT **{id_ot_sel}** de **{fila_ot['Cliente']}**? No se puede deshacer.")
