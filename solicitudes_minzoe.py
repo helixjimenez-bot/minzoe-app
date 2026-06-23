@@ -307,12 +307,16 @@ def gs_load(tab_name, cols_tuple):
 
 def gs_save(tab_name, df):
     try:
-        ws = get_sheet(tab_name)
-        ws.clear()
-        if not df.empty:
-            data = [df.columns.tolist()] + df.fillna("").astype(str).values.tolist()
-            ws.update("A1", data)
-        st.cache_data.clear()  # Limpiar caché después de guardar
+        ws   = get_sheet(tab_name)
+        data = [df.columns.tolist()] + df.fillna("").astype(str).values.tolist()
+        # Escribir primero, luego limpiar filas sobrantes
+        ws.update("A1", data)
+        # Borrar filas extra si el nuevo df es más corto
+        total_filas = ws.row_count
+        nuevas_filas = len(data)
+        if total_filas > nuevas_filas + 1:
+            ws.delete_rows(nuevas_filas + 1, total_filas)
+        st.cache_data.clear()
         return True
     except Exception as e:
         st.error(f"❌ Error guardando '{tab_name}': {e}")
