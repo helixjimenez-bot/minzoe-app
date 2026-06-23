@@ -1969,7 +1969,7 @@ elif pagina == "ots":
                         f"🔧 *TRABAJO*\n"
                         f"Servicio: {fila_ot['Servicio']}\n"
                         f"Descripción: {fila_ot['Descripcion']}\n"
-                        f"Fecha ejecución: {fila_ot['Fecha_Ejecucion']} {fila_ot['Hora_Ejecucion']}\n\n"
+                        f"Fecha ejecución: {fila_ot.get('Fecha_Ejecucion','')} {fila_ot.get('Hora_Inicio','')} - {fila_ot.get('Hora_Final','')}\n\n"
                         f"🔩 *Materiales:* {fila_ot.get('Materiales') or 'Por definir'}\n"
                         f"💵 *Valor:* ${fila_ot.get('Valor_COP', '')} COP\n"
                         f"📋 *Estado:* {fila_ot['Estado']}\n\n"
