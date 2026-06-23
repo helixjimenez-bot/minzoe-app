@@ -5,7 +5,6 @@ import os
 import hashlib
 import gspread
 from google.oauth2.service_account import Credentials
-import extra_streamlit_components as stx
 
 USUARIOS_FILE     = r"D:\Escritorio\LA ASISTENTE MINZOE\usuarios.csv"
 SOLICITUDES_FILE  = "solicitudes.csv"
@@ -622,11 +621,6 @@ def pagina_login():
                     st.session_state["user_nombre"] = user["nombre"]
                     st.session_state["user_correo"] = user["correo"]
                     st.session_state["user_rol"]    = user["rol"]
-                    # Guardar cookie por 30 días
-                    cookie_manager.set("minzoe_correo", user["correo"],
-                                       expires_at=datetime.now() + timedelta(days=30))
-                    cookie_manager.set("minzoe_hash", user["password_hash"],
-                                       expires_at=datetime.now() + timedelta(days=30))
                     st.rerun()
                 else:
                     st.error("Correo o contraseña incorrectos.")
@@ -866,20 +860,7 @@ input[type="date"], input[type="time"] {
 """, unsafe_allow_html=True)
 
 # ── Verificar login ──────────────────────────────────────────────────────────
-cookie_manager = stx.CookieManager(key="minzoe_cookies")
 usuarios = load_usuarios()
-
-# Restaurar sesión desde cookie si existe
-if not st.session_state.get("logged_in", False):
-    cookie_correo = cookie_manager.get("minzoe_correo")
-    cookie_hash   = cookie_manager.get("minzoe_hash")
-    if cookie_correo and cookie_hash and not usuarios.empty:
-        u = usuarios[usuarios["correo"].str.lower() == cookie_correo.lower()]
-        if not u.empty and u.iloc[0]["password_hash"] == cookie_hash:
-            st.session_state["logged_in"]   = True
-            st.session_state["user_nombre"] = u.iloc[0]["nombre"]
-            st.session_state["user_correo"] = u.iloc[0]["correo"]
-            st.session_state["user_rol"]    = u.iloc[0]["rol"]
 
 # Si no hay usuarios, crear admin por defecto automáticamente
 if usuarios.empty:
@@ -979,8 +960,6 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     if st.button("🚪 Cerrar sesión", use_container_width=True, type="secondary"):
-        cookie_manager.delete("minzoe_correo")
-        cookie_manager.delete("minzoe_hash")
         for k in ["logged_in","user_nombre","user_correo","user_rol"]:
             st.session_state.pop(k, None)
         st.rerun()
