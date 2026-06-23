@@ -1482,8 +1482,13 @@ elif pagina == "resumen":
                 st.markdown('<div class="alert-box alert-green">✅ Sin OTs vencidas ni próximas a vencer</div>', unsafe_allow_html=True)
             else:
                 for _, r in ots_a.head(5).iterrows():
-                    cls = "alert-red" if "Vencida" in r["⚠️"] else "alert-yellow"
-                    st.markdown(f'<div class="alert-box {cls}"><strong>{r["⚠️"]}</strong> — {r["ID"]} | {r["Cliente"]} | {r["Fecha_Limite"]}</div>', unsafe_allow_html=True)
+                    cls   = "alert-red" if "Vencida" in r["⚠️"] else "alert-yellow"
+                    label = f"{r['⚠️']} — {r['ID']} | {r['Cliente']} | {r['Fecha_Limite']}"
+                    if st.button(label, key=f"alerta_ot_{r['ID']}",
+                                 use_container_width=True):
+                        st.session_state["pagina"]        = "ots"
+                        st.session_state["ot_preselect"]  = r["ID"]
+                        st.rerun()
         else:
             st.markdown('<div class="alert-box alert-green">✅ Sin alertas</div>', unsafe_allow_html=True)
 
@@ -1926,10 +1931,18 @@ elif pagina == "ots":
 
             st.divider()
             ids_ot_lista = ots.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))["ID"].tolist()
-            id_ot_sel = st.selectbox("Selecciona una OT", ids_ot_lista, key="id_ot_sel")
+
+            # Pre-seleccionar si viene del dashboard
+            ot_pre = st.session_state.pop("ot_preselect", None)
+            idx_pre = ids_ot_lista.index(ot_pre) if ot_pre and ot_pre in ids_ot_lista else 0
+
+            id_ot_sel = st.selectbox("Selecciona una OT", ids_ot_lista,
+                                     index=idx_pre, key="id_ot_sel")
 
             if id_ot_sel:
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
+                # Si viene del dashboard abrir directamente en Editar
+                tab_ini = 1 if ot_pre else 0
                 det, edi, eli = st.tabs(["🔍 Ver detalle", "✏️ Editar", "🗑️ Eliminar"])
 
                 with det:
