@@ -881,7 +881,13 @@ if not st.session_state.get("logged_in", False):
             st.session_state["user_correo"] = u.iloc[0]["correo"]
             st.session_state["user_rol"]    = u.iloc[0]["rol"]
 
-# Si no hay usuarios, mostrar pantalla de creación del primer admin
+# Si no hay usuarios, reintentar una vez antes de mostrar configuración
+if usuarios.empty:
+    import time
+    time.sleep(1)
+    usuarios = load_usuarios()
+
+# Si sigue vacío, mostrar pantalla de creación del primer admin
 if usuarios.empty:
     st.markdown("""
     <div style='max-width:420px;margin:60px auto;padding:32px;background:#fff;
@@ -910,6 +916,10 @@ if usuarios.empty:
                     }])
                     save_usuarios(nuevo_u)
                     st.success("✅ Administrador creado. Recarga la página para iniciar sesión.")
+    st.divider()
+    st.caption("¿Ya tienes una cuenta? Puede ser un error de conexión.")
+    if st.button("🔄 Intentar iniciar sesión", use_container_width=True):
+        st.rerun()
     st.stop()
 
 # Si no ha iniciado sesión, mostrar pantalla de login
