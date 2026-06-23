@@ -1733,7 +1733,7 @@ elif pagina == "clientes":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "ots":
     import io
-    df = get_df(); ots = get_ots()
+    df = get_df(); ots = get_ots(); cli = get_cli()
     st.subheader("🛠️ Órdenes de Trabajo")
 
     accion_ot = st.radio("", ["➕ Nueva OT", "📋 Ver OTs"], horizontal=True, label_visibility="collapsed")
