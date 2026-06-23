@@ -2563,7 +2563,219 @@ elif pagina == "ots":
                                 st.info("💡 Abre el archivo descargado y presiona el botón 'Imprimir / Guardar como PDF' para obtener el PDF.")
 
                     else:
-                        st.info("📋 Formato Locativos — próximamente")
+                        # ── FORMATO LOCATIVOS ─────────────────────────────
+                        st.markdown(f"### 📄 Reporte Locativos — {id_ot_sel}")
+                        with st.form(f"form_reporte_loc_{id_ot_sel}", clear_on_submit=False):
+
+                            # Tipo de mantenimiento
+                            st.markdown("**Tipo de mantenimiento**")
+                            lc1,lc2,lc3,lc4 = st.columns(4)
+                            l_prev = lc1.checkbox("Preventivo",  key="l_prev")
+                            l_corr = lc2.checkbox("Correctivo",  key="l_corr")
+                            l_vis  = lc3.checkbox("Visita Técnica", key="l_vis")
+                            l_emer = lc4.checkbox("Emergencia",  key="l_emer")
+
+                            st.divider()
+
+                            # Datos del cliente + Sistema
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown("**📍 Datos del cliente**")
+                                l_area = st.text_input("Área intervenida", key="l_area")
+
+                                st.markdown("**⚙️ Sistema**")
+                                sc1, sc2 = st.columns(2)
+                                with sc1:
+                                    l_mec  = st.checkbox("Mecánico",    key="l_mec")
+                                    l_neu  = st.checkbox("Neumático",   key="l_neu")
+                                    l_ele  = st.checkbox("Eléctrico",   key="l_ele")
+                                    l_hid  = st.checkbox("Hidráulico",  key="l_hid")
+                                with sc2:
+                                    l_elec = st.checkbox("Electrónico", key="l_elec")
+                                    l_loc  = st.checkbox("Locativo",    key="l_loc")
+                                    l_otro_sis = st.checkbox("Otro",    key="l_otro_sis")
+
+                            st.divider()
+
+                            # Actividades de trabajo
+                            st.markdown("**🔧 Actividades de trabajo**")
+                            ITEMS_LOC = [
+                                "Pisos","Techos","Paredes","Puertas","Rejillas",
+                                "Desagüas","Sanitarios","Tomas Eléctricas","Luminarias",
+                                "Estanterías","Cajoneras","Cerraduras","Chapas",
+                                "Sillas","Puestos de Trabajo","Otro",
+                            ]
+                            l_act = {}
+                            hdr = st.columns([2,1,1,1,1,3])
+                            hdr[0].markdown("**Ítem**")
+                            hdr[1].markdown("**Buen Estado**")
+                            hdr[2].markdown("**Mal Estado**")
+                            hdr[3].markdown("**Req. Reparación**")
+                            hdr[4].markdown("**Inst. Repuestos**")
+                            hdr[5].markdown("**Observaciones**")
+                            for item in ITEMS_LOC:
+                                k = item.lower().replace(" ","_").replace(".","")
+                                cols = st.columns([2,1,1,1,1,3])
+                                cols[0].markdown(item)
+                                buen = cols[1].checkbox("", key=f"l_b_{k}")
+                                mal  = cols[2].checkbox("", key=f"l_m_{k}")
+                                req  = cols[3].checkbox("", key=f"l_r_{k}")
+                                inst = cols[4].checkbox("", key=f"l_i_{k}")
+                                obs  = cols[5].text_input("", key=f"l_o_{k}", label_visibility="collapsed")
+                                l_act[item] = {"buen":buen,"mal":mal,"req":req,"inst":inst,"obs":obs}
+
+                            st.divider()
+                            l_obs = st.text_area("Observaciones generales", value=fila_ot.get("Observaciones",""), key="l_obs")
+
+                            st.markdown("**⏱️ Tiempo, calificación y firmas**")
+                            fc1, fc2, fc3, fc4 = st.columns(4)
+                            with fc1:
+                                l_lleg = st.text_input("Hora llegada", value=fila_ot.get("Hora_Inicio",""), key="l_lleg")
+                                l_sal  = st.text_input("Hora salida",  value=fila_ot.get("Hora_Final",""),  key="l_sal")
+                            with fc2:
+                                l_cal  = st.selectbox("Calificación", ["0-5 Malo","6-8 Medio","9-10 Bueno"], key="l_cal")
+                            with fc3:
+                                l_pend = st.radio("Trabajo pendiente",  ["Sí","No"], horizontal=True, key="l_pend")
+                            with fc4:
+                                l_oper = st.radio("Equipo en operación",["Sí","No"], horizontal=True, key="l_oper")
+
+                            sc1, sc2, sc3 = st.columns(3)
+                            l_nom_tec  = sc1.text_input("Nombre técnico",  value=fila_ot.get("Tecnico",""), key="l_ntec")
+                            l_superv   = sc2.text_input("Supervisor",       key="l_sup")
+                            l_nom_cli  = sc1.text_input("Nombre cliente",   value=fila_ot.get("Nombre_Contacto",""), key="l_ncli")
+                            l_fec_fir  = sc2.text_input("Fecha firma",      value=fila_ot.get("Fecha_Ejecucion",""), key="l_ffir")
+
+                            gen_loc = st.form_submit_button("🖨️ Generar Reporte para Imprimir", type="primary", use_container_width=True)
+
+                            if gen_loc:
+                                def ck(v): return "✔" if v else ""
+                                tipo_mto = " | ".join(filter(None,[
+                                    "Preventivo" if l_prev else "",
+                                    "Correctivo" if l_corr else "",
+                                    "Visita Técnica" if l_vis else "",
+                                    "Emergencia" if l_emer else "",
+                                ]))
+                                sistemas = ", ".join(filter(None,[
+                                    "Mecánico" if l_mec else "","Neumático" if l_neu else "",
+                                    "Eléctrico" if l_ele else "","Hidráulico" if l_hid else "",
+                                    "Electrónico" if l_elec else "","Locativo" if l_loc else "",
+                                    "Otro" if l_otro_sis else "",
+                                ]))
+                                filas_act = "".join(
+                                    f"<tr><td>{item}</td>"
+                                    f"<td style='text-align:center'>{ck(v['buen'])}</td>"
+                                    f"<td style='text-align:center'>{ck(v['mal'])}</td>"
+                                    f"<td style='text-align:center'>{ck(v['req'])}</td>"
+                                    f"<td style='text-align:center'>{ck(v['inst'])}</td>"
+                                    f"<td>{v['obs']}</td></tr>"
+                                    for item,v in l_act.items()
+                                )
+                                html_loc = f"""<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<title>Reporte Locativos {id_ot_sel}</title>
+<style>
+  body{{font-family:Arial,sans-serif;font-size:10px;margin:15px;color:#111}}
+  .logo{{font-size:18px;font-weight:900;color:#dc2626}}
+  .header{{display:flex;justify-content:space-between;align-items:center;
+           border-bottom:2px solid #dc2626;padding-bottom:6px;margin-bottom:8px}}
+  table{{width:100%;border-collapse:collapse;margin-bottom:6px}}
+  td,th{{border:1px solid #ccc;padding:3px 5px;font-size:9px}}
+  th{{background:#dc2626;color:white;font-weight:bold;text-align:left}}
+  .section{{background:#dc2626;color:white;font-weight:bold;
+            padding:3px 5px;font-size:9px;margin:4px 0 2px 0}}
+  .firma-box{{border-top:1px solid #111;margin-top:20px;min-width:120px;
+              font-size:8px;text-align:center;padding-top:4px}}
+  @media print{{.no-print{{display:none}}}}
+</style></head><body>
+
+<div class="header">
+  <div>
+    <div class="logo">🏗️ CONSTRUCCIONES MINZOE SAS</div>
+    <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
+    <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+  </div>
+  <div style="text-align:right">
+    <b>FORMATO MANTENIMIENTO Y REPARACIONES LOCATIVAS</b><br>
+    <b>OT: {id_ot_sel}</b><br>
+    Fecha: {l_fec_fir}
+  </div>
+</div>
+
+<div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto} &nbsp;&nbsp; <b>Sistema:</b> {sistemas}</div>
+
+<table><tr>
+  <th colspan="2">DATOS DEL CLIENTE</th>
+</tr><tr>
+  <td><b>Cliente:</b></td><td>{fila_ot['Cliente']}</td>
+</tr><tr>
+  <td><b>Ciudad:</b></td><td>{fila_ot.get('Sede','')}</td>
+</tr><tr>
+  <td><b>Sucursal:</b></td><td>{fila_ot.get('Sede','')}</td>
+</tr><tr>
+  <td><b>Contacto:</b></td><td>{fila_ot.get('Nombre_Contacto','')}</td>
+</tr><tr>
+  <td><b>Área intervenida:</b></td><td>{l_area}</td>
+</tr></table>
+
+<div style="background:#f8f8f8;border:1px solid #ccc;padding:6px;margin:6px 0;font-size:8px">
+EL INTERVENTOR (O SUPERVISOR/ENCARGADO, SI CORRESPONDE) CERTIFICA QUE EL PRODUCTO OBJETO DEL CONTRATO
+HA SIDO ENTREGADO POR EL CONTRATISTA Y QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
+</div>
+
+<div class="section">ACTIVIDADES DE TRABAJO</div>
+<table>
+<tr>
+  <th style="width:15%">Ítem</th>
+  <th style="width:10%;text-align:center">Buen Estado</th>
+  <th style="width:10%;text-align:center">Mal Estado</th>
+  <th style="width:12%;text-align:center">Req. Reparación</th>
+  <th style="width:12%;text-align:center">Inst. Repuestos</th>
+  <th>Observaciones</th>
+</tr>
+{filas_act}
+</table>
+
+<div class="section">OBSERVACIONES GENERALES</div>
+<table><tr><td style="min-height:35px">{l_obs}</td></tr></table>
+
+<table style="margin-top:6px"><tr>
+  <th>TIEMPO DE SERVICIO</th><th>CALIFICACIÓN</th><th>TRABAJO PENDIENTE</th><th>EQ EN OPERACIÓN</th>
+</tr><tr>
+  <td>Llegada: {l_lleg}<br>Salida: {l_sal}</td>
+  <td>{l_cal}</td>
+  <td>{l_pend}</td>
+  <td>{l_oper}</td>
+</tr></table>
+
+<div style="display:flex;justify-content:space-between;margin-top:20px">
+  <div>
+    <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA TÉCNICO</div>
+    <div style="font-size:9px;margin-top:3px">Nombre: {l_nom_tec}</div>
+    <div style="font-size:9px">Supervisor: {l_superv}</div>
+  </div>
+  <div>
+    <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA Y SELLO CLIENTE</div>
+    <div style="font-size:9px;margin-top:3px">Nombre: {l_nom_cli}</div>
+    <div style="font-size:9px">Fecha: {l_fec_fir}</div>
+  </div>
+</div>
+
+<div class="no-print" style="margin-top:16px;text-align:center">
+  <button onclick="window.print()" style="background:#dc2626;color:white;border:none;
+    padding:10px 30px;font-size:14px;border-radius:6px;cursor:pointer">
+    🖨️ Imprimir / Guardar como PDF
+  </button>
+</div>
+</body></html>"""
+
+                                st.download_button(
+                                    "⬇️ Descargar Reporte Locativos",
+                                    data=html_loc,
+                                    file_name=f"Reporte_Locativos_{id_ot_sel}.html",
+                                    mime="text/html",
+                                    use_container_width=True,
+                                )
+                                st.info("💡 Abre el archivo y presiona 'Imprimir / Guardar como PDF'.")
 
                 with eli:
                     st.warning(f"¿Eliminar la OT **{id_ot_sel}** de **{fila_ot['Cliente']}**? No se puede deshacer.")
