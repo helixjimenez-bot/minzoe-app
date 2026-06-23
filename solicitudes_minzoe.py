@@ -486,13 +486,19 @@ def get_drive_service():
 def drive_buscar_o_crear_carpeta(service, nombre, parent_id):
     q = (f"name='{nombre}' and '{parent_id}' in parents "
          f"and mimeType='application/vnd.google-apps.folder' and trashed=false")
-    res = service.files().list(q=q, fields="files(id)").execute()
+    res = service.files().list(
+        q=q, fields="files(id)",
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True
+    ).execute()
     files = res.get("files", [])
     if files:
         return files[0]["id"]
     meta = {"name": nombre, "mimeType": "application/vnd.google-apps.folder",
             "parents": [parent_id]}
-    folder = service.files().create(body=meta, fields="id").execute()
+    folder = service.files().create(
+        body=meta, fields="id", supportsAllDrives=True
+    ).execute()
     return folder["id"]
 
 def guardar_en_drive(html, cliente, sede, ot_id, fecha_ot):
@@ -515,7 +521,9 @@ def guardar_en_drive(html, cliente, sede, ot_id, fecha_ot):
         nombre = f"{ot_id}_{carpeta_sede(sede)}_{fecha}.html"
         meta   = {"name": nombre, "parents": [sede_id]}
         media  = MediaInMemoryUpload(html.encode("utf-8"), mimetype="text/html")
-        service.files().create(body=meta, media_body=media, fields="id").execute()
+        service.files().create(
+            body=meta, media_body=media, fields="id", supportsAllDrives=True
+        ).execute()
         return True, f"Drive → {carpeta_cliente(cliente)}/01_{anio}/{MESES_CARPETA.get(mes,'')}/{carpeta_sede(sede)}/{nombre}"
     except Exception as e:
         return False, str(e)
