@@ -289,7 +289,7 @@ def get_sheet(tab_name):
     except gspread.exceptions.WorksheetNotFound:
         return sh.add_worksheet(title=tab_name, rows=1000, cols=30)
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=300)
 def gs_load(tab_name, cols_tuple):
     cols = list(cols_tuple)
     try:
@@ -884,15 +884,21 @@ if not st.session_state.get("logged_in", False):
     pagina_login()
     st.stop()
 
-# ── Usuario autenticado: cargar datos ────────────────────────────────────────
-df         = load_sol()
-cli        = load_cli()
-ots        = load_ots()
-contratos  = load_contratos()
-equipos    = load_equipos()
-cv         = load_cv()
-ventas     = load_ventas()
-costos     = load_costos()
+# ── Usuario autenticado: carga lazy por página ───────────────────────────────
+pagina = st.session_state.get("pagina", "resumen")
+
+# Solo carga lo mínimo para el sidebar
+_df_sidebar  = load_sol()
+_ots_sidebar = load_ots()
+
+def get_df():        return load_sol()
+def get_cli():       return load_cli()
+def get_ots():       return load_ots()
+def get_contratos(): return load_contratos()
+def get_equipos():   return load_equipos()
+def get_cv():        return load_cv()
+def get_ventas():    return load_ventas()
+def get_costos():    return load_costos()
 
 # ── Menú lateral ─────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -949,8 +955,8 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-    pendientes  = (df["Estado"] == "Pendiente").sum() if not df.empty else 0
-    ots_activas = int((ots["Estado"].isin(["Programada","En ejecución"])).sum()) if not ots.empty else 0
+    pendientes  = int((_df_sidebar["Estado"] == "Pendiente").sum()) if not _df_sidebar.empty else 0
+    ots_activas = int((_ots_sidebar["Estado"].isin(["Programada","En ejecución"])).sum()) if not _ots_sidebar.empty else 0
     st.metric("🟡 Sol. Pendientes", pendientes)
     st.metric("🛠️ OTs Activas",    ots_activas)
     st.divider()
@@ -984,8 +990,6 @@ with st.sidebar:
                 st.success("Logo guardado. Reinicia la app.")
 
 
-pagina = st.session_state.get("pagina", "nueva")
-
 st.markdown("""
 <div style='background:#ffffff; border-radius:12px; padding:16px 24px;
      margin-bottom:8px; border-left:5px solid #dc2626;
@@ -1001,6 +1005,7 @@ st.markdown("""
 # PÁGINA: NUEVA SOLICITUD
 # ══════════════════════════════════════════════════════════════════════════════
 if pagina == "nueva":
+    df = get_df(); cli = get_cli(); ots = get_ots()
     st.subheader("Registrar nueva solicitud")
 
     # ── SECCIÓN 1: INFORMACIÓN DE LA EMPRESA ─────────────────────────────────
@@ -1164,6 +1169,7 @@ if pagina == "nueva":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "ver":
     import io
+    df = get_df(); ots = get_ots()
     st.subheader("📋 Solicitudes registradas")
 
     if df.empty:
@@ -1334,6 +1340,7 @@ elif pagina == "ver":
 # PÁGINA: DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "resumen":
+    df = get_df(); ots = get_ots(); cv = get_cv(); contratos = get_contratos()
     hoy_dash = datetime.now()
     mes_dash = hoy_dash.strftime("%Y-%m")
 
@@ -1543,6 +1550,7 @@ elif pagina == "resumen":
 # PÁGINA: CLIENTES
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "clientes":
+    cli = get_cli()
     st.subheader("Registro de Empresas y Sedes")
     st.caption("Agrega aquí las empresas. Al crear solicitudes, sus datos se llenarán solos.")
 
@@ -1725,6 +1733,7 @@ elif pagina == "clientes":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "ots":
     import io
+    df = get_df(); ots = get_ots()
     st.subheader("🛠️ Órdenes de Trabajo")
 
     accion_ot = st.radio("", ["➕ Nueva OT", "📋 Ver OTs"], horizontal=True, label_visibility="collapsed")
@@ -2061,6 +2070,7 @@ elif pagina == "ots":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "contratos_mto":
     import io
+    ots = get_ots(); contratos = get_contratos(); equipos = get_equipos(); cli = get_cli()
     st.subheader("📄 Contratos de Mantenimiento")
 
     tab_con, tab_equ, tab_gen = st.tabs([
@@ -2327,6 +2337,7 @@ elif pagina == "contratos_mto":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "compras_ventas":
     import io
+    ots = get_ots(); ventas = get_ventas(); costos = get_costos(); cv = get_cv()
     st.subheader("💰 Compras y Ventas")
 
     tab_ven, tab_cos, tab_res = st.tabs(["📤 Ventas / Facturación", "📥 Costos / Compras", "📊 Rentabilidad"])
@@ -2742,6 +2753,7 @@ elif pagina == "compras_ventas":
 # PÁGINA: GESTIÓN DE USUARIOS (solo admin)
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "usuarios":
+    usuarios = load_usuarios()
     if st.session_state.get("user_rol") != "admin":
         st.error("Acceso restringido.")
         st.stop()
