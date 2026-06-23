@@ -289,7 +289,9 @@ def get_sheet(tab_name):
     except gspread.exceptions.WorksheetNotFound:
         return sh.add_worksheet(title=tab_name, rows=1000, cols=30)
 
-def gs_load(tab_name, cols):
+@st.cache_data(ttl=60)
+def gs_load(tab_name, cols_tuple):
+    cols = list(cols_tuple)
     try:
         ws   = get_sheet(tab_name)
         data = ws.get_all_records()
@@ -301,7 +303,6 @@ def gs_load(tab_name, cols):
             return df[cols]
         return pd.DataFrame(columns=cols)
     except Exception as e:
-        st.warning(f"⚠️ No se pudo cargar '{tab_name}': {e}")
         return pd.DataFrame(columns=cols)
 
 def gs_save(tab_name, df):
@@ -311,6 +312,7 @@ def gs_save(tab_name, df):
         if not df.empty:
             data = [df.columns.tolist()] + df.fillna("").astype(str).values.tolist()
             ws.update("A1", data)
+        st.cache_data.clear()  # Limpiar caché después de guardar
         return True
     except Exception as e:
         st.error(f"❌ Error guardando '{tab_name}': {e}")
@@ -320,13 +322,13 @@ def gs_save(tab_name, df):
 # ── Carga / guardado ──────────────────────────────────────────────────────────
 
 def load_sol():
-    return gs_load("solicitudes", COLS_SOL)
+    return gs_load("solicitudes", tuple(COLS_SOL))
 
 def save_sol(df):
     gs_save("solicitudes", df)
 
 def load_cli():
-    df = gs_load("clientes", COLS_CLI)
+    df = gs_load("clientes", tuple(COLS_CLI))
     for col in df.columns:
         df[col] = df[col].str.strip()
     return df[df["Empresa"] != ""].reset_index(drop=True)
@@ -335,14 +337,14 @@ def save_cli(df):
     gs_save("clientes", df)
 
 def load_ots():
-    return gs_load("ordenes_trabajo", COLS_OT)
+    return gs_load("ordenes_trabajo", tuple(COLS_OT))
 
 def save_ots(df):
     gs_save("ordenes_trabajo", df)
 
 
 def load_cv():
-    return gs_load("compras_ventas", COLS_CV)
+    return gs_load("compras_ventas", tuple(COLS_CV))
 
 def save_cv(df):
     gs_save("compras_ventas", df)
@@ -354,7 +356,7 @@ def gen_cv_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CV-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_ventas():
-    return gs_load("ventas", COLS_VENTA)
+    return gs_load("ventas", tuple(COLS_VENTA))
 
 def save_ventas(df):
     gs_save("ventas", df)
@@ -366,7 +368,7 @@ def gen_fac_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'FAC-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_costos():
-    return gs_load("costos", COLS_COSTO)
+    return gs_load("costos", tuple(COLS_COSTO))
 
 def save_costos(df):
     gs_save("costos", df)
@@ -386,13 +388,13 @@ def to_num(val):
 
 
 def load_contratos():
-    return gs_load("contratos", COLS_CONTRATO)
+    return gs_load("contratos", tuple(COLS_CONTRATO))
 
 def save_contratos(df):
     gs_save("contratos", df)
 
 def load_equipos():
-    return gs_load("equipos", COLS_EQUIPO)
+    return gs_load("equipos", tuple(COLS_EQUIPO))
 
 def save_equipos(df):
     gs_save("equipos", df)
@@ -568,7 +570,7 @@ def hash_pwd(pwd):
     return hashlib.sha256(pwd.encode()).hexdigest()
 
 def load_usuarios():
-    return gs_load("usuarios", ["nombre", "correo", "password_hash", "rol"])
+    return gs_load("usuarios", ("nombre", "correo", "password_hash", "rol"))
 
 def save_usuarios(df):
     gs_save("usuarios", df)
