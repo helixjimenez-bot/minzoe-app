@@ -12,9 +12,9 @@ USUARIOS_FILE     = r"D:\Escritorio\LA ASISTENTE MINZOE\usuarios.csv"
 BASE_REPORTES = r"H:\03_CLIENTES"
 
 CLIENTES_CARPETA = {
-    "ALTIPAL":   "01_Altipal",
-    "PAGAFACIL": "00_Pagafacil",
-    "CORRESPONSALES": "02_Corresponsales",
+    "ALTIPAL":        "01_Altipal",
+    "PAGAFACIL":      "00_Pagafacil",
+    "CORRESPONSALES": "00_Pagafacil",  # Pagafacil es el nombre comercial de Corresponsales
 }
 
 MESES_CARPETA = {
