@@ -444,7 +444,16 @@ def generate_ot_id(df):
     return f"{prefijo}{nums.max() + 1:03d}"
 
 
-def tabla_html(df_vista, color_col=None, colores_estado=None):
+def fmt_cop(val):
+    """Formatea un valor numérico como pesos colombianos: $1.200.000"""
+    try:
+        n = float(str(val).replace(",", "").replace(".", "").strip())
+        return f"${n:,.0f}".replace(",", ".")
+    except Exception:
+        return val if val else "—"
+
+
+def tabla_html(df_vista, color_col=None, colores_estado=None, fmt_cols=None):
     """Renderiza un DataFrame como tabla HTML con encabezados rojos."""
     thead = "".join(
         f"<th style='background:#dc2626;color:#fff;padding:8px 10px;"
@@ -460,10 +469,12 @@ def tabla_html(df_vista, color_col=None, colores_estado=None):
             cell_color = "#111111"
             if col == color_col and colores_estado and val in colores_estado:
                 cell_bg, cell_color = colores_estado[val]
+            # Aplicar formato de pesos colombianos si corresponde
+            display_val = fmt_cop(val) if fmt_cols and col in fmt_cols else val
             cells += (
                 f"<td style='background:{cell_bg};color:{cell_color};"
                 f"padding:7px 10px;font-size:0.83rem;border-bottom:1px solid #f0f0f0;"
-                f"white-space:nowrap;'>{val}</td>"
+                f"white-space:nowrap;'>{display_val}</td>"
             )
         rows += f"<tr>{cells}</tr>"
     html = (
@@ -1913,7 +1924,8 @@ elif pagina == "ots":
                 "Cancelada":    ("#fee2e2", "#7f1d1d"),
             }
             tabla_html(vista_ot_ord[cols_vis_ot].reset_index(drop=True),
-                       color_col="Estado", colores_estado=COLORES_OT)
+                       color_col="Estado", colores_estado=COLORES_OT,
+                       fmt_cols=["Valor_COP"])
 
             c1, c2 = st.columns([3, 1])
             with c1:
