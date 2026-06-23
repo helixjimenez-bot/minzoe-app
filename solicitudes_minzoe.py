@@ -1353,7 +1353,7 @@ elif pagina == "ver":
 elif pagina == "resumen":
     import plotly.express as px
     import plotly.graph_objects as go
-    df = get_df(); ots = get_ots(); ventas = get_ventas(); costos = get_costos(); contratos = get_contratos()
+    df = get_df(); ots = get_ots(); cv = get_cv(); ventas = get_ventas(); costos = get_costos(); contratos = get_contratos()
     hoy_dash = datetime.now()
     mes_dash = hoy_dash.strftime("%Y-%m")
 
