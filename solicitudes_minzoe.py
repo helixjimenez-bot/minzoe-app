@@ -914,6 +914,13 @@ h4, h5, h6 { color: #111111 !important; }
 
 /* ── Info / Warning / Success boxes ── */
 [data-testid="stAlert"] { border-radius: 8px !important; }
+[data-testid="stAlert"] p,
+[data-testid="stAlert"] span,
+[data-testid="stAlert"] div { color: #111111 !important; }
+div[data-testid="stWarning"] { background-color: #fffbeb !important; border-color: #d97706 !important; }
+div[data-testid="stSuccess"] { background-color: #f0fdf4 !important; border-color: #16a34a !important; }
+div[data-testid="stInfo"]    { background-color: #eff6ff !important; border-color: #2563eb !important; }
+div[data-testid="stError"]   { background-color: #fef2f2 !important; border-color: #dc2626 !important; }
 
 /* ── Radio ── */
 [data-testid="stRadio"] label { color: #111111 !important; }
