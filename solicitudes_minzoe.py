@@ -324,13 +324,8 @@ def gs_save(tab_name, df):
     try:
         ws   = get_sheet(tab_name)
         data = [df.columns.tolist()] + df.fillna("").astype(str).values.tolist()
-        # Escribir primero, luego limpiar filas sobrantes
-        ws.update("A1", data)
-        # Borrar filas extra si el nuevo df es más corto
-        total_filas = ws.row_count
-        nuevas_filas = len(data)
-        if total_filas > nuevas_filas + 1:
-            ws.delete_rows(nuevas_filas + 1, total_filas)
+        ws.clear()          # Limpia toda la hoja primero
+        ws.update("A1", data)  # Escribe los datos actualizados
         st.cache_data.clear()
         return True
     except Exception as e:
