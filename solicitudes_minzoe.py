@@ -519,15 +519,13 @@ def save_equipos(df):
 def gen_contrato_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
     pre = f"CON-{hoy}-"
-    ids = df[df["ID_Contrato"].str.startswith(pre, na=False)]["ID_Contrato"] if not df.empty else pd.Series(dtype=str)
-    return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CON-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
+    return siguiente_id("CON", pre, df)
 
 
 def gen_item_id(df):
-    if df.empty:
-        return "ITEM-001"
-    nums = df["ID_Item"].str.extract(r"ITEM-(\d+)")[0].dropna().astype(int)
-    return f"ITEM-{nums.max()+1:03d}" if not nums.empty else "ITEM-001"
+    # Renombrar columna para que siguiente_id la encuentre como "ID"
+    df_tmp = df.rename(columns={"ID_Item": "ID"}) if not df.empty and "ID_Item" in df.columns else df
+    return siguiente_id("ITEM", "ITEM-", df_tmp)
 
 
 def proxima_fecha(desde_str, frecuencia):
