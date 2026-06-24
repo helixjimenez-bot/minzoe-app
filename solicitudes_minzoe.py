@@ -471,32 +471,53 @@ def carpeta_sede(sede_nombre):
 
 def _guardar_en_enviados(imap, msg_bytes):
     """Detecta y guarda en la carpeta de Enviados del servidor IMAP."""
-    import time as _time
-    # Listar todas las carpetas y buscar la de enviados
-    _, carpetas = imap.list()
+    import time as _time, imaplib as _imap
     sent_folder = None
-    for c in carpetas:
-        nombre = c.decode(errors="ignore").split('"/"')[-1].strip().strip('"').strip()
-        if any(kw in nombre.lower() for kw in ["sent", "enviado", "enviad"]):
-            sent_folder = nombre
-            break
-    # Si no encontró por nombre, prueba candidatos comunes
-    if not sent_folder:
-        for candidato in ["Sent", "INBOX.Sent", "Sent Items", "Enviados", "INBOX.Enviados"]:
+
+    # 1. Listar carpetas y buscar la que contenga 'sent' o 'enviado'
+    try:
+        _, carpetas = imap.list()
+        for c in carpetas:
             try:
-                res = imap.select(candidato)
-                if res[0] == "OK":
-                    sent_folder = candidato
+                raw = c.decode(errors="ignore")
+                # El nombre de carpeta es lo último después del separador
+                partes = raw.split(' "/" ')
+                if len(partes) < 2:
+                    partes = raw.split(" / ")
+                nombre = partes[-1].strip().strip('"').strip()
+                if any(kw in nombre.lower() for kw in ["sent", "enviado"]):
+                    sent_folder = nombre
                     break
             except Exception:
                 continue
+    except Exception:
+        pass
+
+    # 2. Si no encontró, probar candidatos comunes uno a uno
+    if not sent_folder:
+        for candidato in ["Sent", "INBOX.Sent", "Sent Items", "Enviados",
+                          "INBOX/Sent", "sent", "enviados"]:
+            try:
+                ok, _ = imap.select(f'"{candidato}"')
+                if ok == "OK":
+                    sent_folder = candidato
+                    imap.select("INBOX")  # volver a INBOX
+                    break
+            except Exception:
+                continue
+
+    # 3. Guardar en la carpeta encontrada
     if sent_folder:
         try:
-            imap.append(sent_folder, "\\Seen",
-                        __import__("imaplib").Time2Internaldate(_time.time()),
-                        msg_bytes)
+            ts = _imap.Time2Internaldate(_time.time())
+            imap.append(f'"{sent_folder}"', "\\Seen", ts, msg_bytes)
         except Exception:
-            pass
+            # Intentar sin comillas
+            try:
+                ts = _imap.Time2Internaldate(_time.time())
+                imap.append(sent_folder, "\\Seen", ts, msg_bytes)
+            except Exception:
+                pass
 
 
 def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, contacto_nombre, correo_destino, fecha):
