@@ -2871,23 +2871,36 @@ elif pagina == "ots":
                             _cli  = st.session_state.get(f"hvac_cli_{id_ot_sel}","")
                             _sede = st.session_state.get(f"hvac_sede_{id_ot_sel}","")
                             _fec  = st.session_state.get(f"hvac_fec_{id_ot_sel}","")
+                            def _finalizar_ot_y_sol(ot_id):
+                                """Marca OT como Finalizada y cierra la SOL asociada."""
+                                ots.loc[ots["ID"] == ot_id, "Estado"] = "Finalizada"
+                                save_ots(ots)
+                                ot_row = ots[ots["ID"] == ot_id].iloc[0]
+                                df_upd, cerrada = cerrar_sol_si_aplica(ot_row, df)
+                                if cerrada:
+                                    save_sol(df_upd)
+                                    return f"OT **{ot_id}** finalizada y solicitud **{ot_row['SOL_Ref']}** cerrada."
+                                return f"OT **{ot_id}** finalizada."
+
                             ok_h, res_h = guardar_reporte_local(_html, _cli, _sede, id_ot_sel, _fec)
+                            msg_fin = _finalizar_ot_y_sol(id_ot_sel)
+                            del st.session_state[_html_key]
                             if ok_h:
-                                del st.session_state[_html_key]
-                                st.success(f"✅ Reporte guardado en: `{res_h}`")
-                                st.rerun()
+                                st.success(f"✅ Guardado en: `{res_h}`\n\n{msg_fin}")
                             else:
                                 st.download_button(
-                                    "⬇️ Guardar y Descargar Reporte",
+                                    "⬇️ Descargar Reporte",
                                     data=_html,
                                     file_name=f"Reporte_HVAC_{id_ot_sel}.html",
                                     mime="text/html",
                                     use_container_width=True,
                                     type="primary"
                                 )
-                                if st.button("✅ Listo, cerrar reporte", key="cerrar_hvac"):
-                                    del st.session_state[_html_key]
+                                st.info(msg_fin)
+                                if st.button("✅ Listo, cerrar", key="cerrar_hvac"):
                                     st.rerun()
+                            if ok_h:
+                                st.rerun()
 
                     else:
                         # ── FORMATO LOCATIVOS ─────────────────────────────
@@ -3113,22 +3126,29 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             _sede_l = st.session_state.get(f"loc_sede_{id_ot_sel}","")
                             _fec_l  = st.session_state.get(f"loc_fec_{id_ot_sel}","")
                             ok_h, res_h = guardar_reporte_local(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
+                            ots.loc[ots["ID"] == id_ot_sel, "Estado"] = "Finalizada"
+                            save_ots(ots)
+                            ot_row_l = ots[ots["ID"] == id_ot_sel].iloc[0]
+                            df_upd_l, cerrada_l = cerrar_sol_si_aplica(ot_row_l, df)
+                            if cerrada_l:
+                                save_sol(df_upd_l)
+                            del st.session_state[_loc_key]
                             if ok_h:
-                                del st.session_state[_loc_key]
-                                st.success(f"✅ Reporte guardado en: `{res_h}`")
-                                st.rerun()
+                                st.success(f"✅ Guardado en: `{res_h}`\n\nOT **{id_ot_sel}** finalizada." + (f" SOL **{ot_row_l['SOL_Ref']}** cerrada." if cerrada_l else ""))
                             else:
                                 st.download_button(
-                                    "⬇️ Guardar y Descargar Reporte",
+                                    "⬇️ Descargar Reporte",
                                     data=_html_l,
                                     file_name=f"Reporte_Locativos_{id_ot_sel}.html",
                                     mime="text/html",
                                     use_container_width=True,
                                     type="primary"
                                 )
-                                if st.button("✅ Listo, cerrar reporte", key="cerrar_loc"):
-                                    del st.session_state[_loc_key]
+                                st.info(f"OT **{id_ot_sel}** finalizada." + (f" SOL cerrada." if cerrada_l else ""))
+                                if st.button("✅ Listo, cerrar", key="cerrar_loc"):
                                     st.rerun()
+                            if ok_h:
+                                st.rerun()
 
                 with eli:
                     st.warning(f"¿Eliminar la OT **{id_ot_sel}** de **{fila_ot['Cliente']}**? No se puede deshacer.")
