@@ -53,7 +53,7 @@ TIPOS_SERVICIO = [
 ]
 
 COLS_SOL = [
-    "ID", "Fecha", "Cliente", "NIT", "Direccion_Empresa",
+    "ID", "Fecha", "Creado_Por", "Cliente", "NIT", "Direccion_Empresa",
     "Sede", "Direccion_Sede", "Nombre_Contacto", "Correo_Contacto", "Celular_Contacto",
     "Servicio", "Tipo_Servicio", "Descripcion", "SLA", "Ciudad", "Zona", "Canal", "Estado",
 ]
@@ -280,7 +280,7 @@ TEXTO_Z5 = {
 }
 
 COLS_OT = [
-    "ID", "Origen", "SOL_Ref", "Fecha_Creacion", "Fecha_Limite", "Cliente", "NIT", "Sede",
+    "ID", "Origen", "Creado_Por", "SOL_Ref", "Fecha_Creacion", "Fecha_Limite", "Cliente", "NIT", "Sede",
     "Nombre_Contacto", "Celular_Contacto",
     "Servicio", "Descripcion", "SLA", "Zona", "Tecnico", "Celular_Tecnico",
     "Fecha_Ejecucion", "Hora_Inicio", "Hora_Final", "Horas_Laboradas",
@@ -1055,6 +1055,7 @@ def crear_ot_desde_sol(sol, ots):
     nueva_ot = {
         "ID":               generate_ot_id(ots),
         "Origen":           "Solicitud",
+        "Creado_Por":       st.session_state.get("user_nombre",""),
         "SOL_Ref":          sol["ID"],
         "Fecha_Creacion":   ahora.strftime("%Y-%m-%d %H:%M"),
         "Fecha_Limite":     calcular_fecha_limite(sol.get("SLA", ""), sol.get("Zona", ""), ahora),
@@ -1695,6 +1696,7 @@ if pagina == "nueva":
                 nueva = {
                     "ID":               generate_id(df),
                     "Fecha":            datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "Creado_Por":       st.session_state.get("user_nombre",""),
                     "Cliente":          empresa_final,
                     "NIT":              nit_v,
                     "Direccion_Empresa": dir_emp_v,
@@ -1762,7 +1764,7 @@ elif pagina == "ver":
 
         vista_ord = vista.sort_values("ID", ascending=False, key=lambda x: x.str.replace("SOL-", ""))
 
-        COLS_TABLA = ["ID", "Fecha", "Cliente", "Sede", "Nombre_Contacto",
+        COLS_TABLA = ["ID", "Fecha", "Creado_Por", "Cliente", "Sede", "Nombre_Contacto",
                       "Celular_Contacto", "Servicio", "Descripcion", "SLA", "Canal", "Estado"]
         cols_visibles = [c for c in COLS_TABLA if c in vista_ord.columns]
 
@@ -2215,7 +2217,33 @@ elif pagina == "resumen":
 
     st.divider()
 
-    # ── SECCIÓN 6: ACTIVIDAD RECIENTE ─────────────────────────────────────────
+    # ── SECCIÓN 6: GESTIÓN POR USUARIO ───────────────────────────────────────
+    if not df.empty and "Creado_Por" in df.columns:
+        st.markdown('<p class="section-title">👤 GESTIÓN POR USUARIO</p>', unsafe_allow_html=True)
+        mes_act = datetime.now().strftime("%Y-%m")
+        df_mes  = df[df["Fecha"].str.startswith(mes_act, na=False)] if "Fecha" in df.columns else df
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Solicitudes creadas este mes por usuario**")
+            if not df_mes.empty and df_mes["Creado_Por"].str.strip().any():
+                graf_bar(
+                    df_mes[df_mes["Creado_Por"].str.strip() != ""]["Creado_Por"].value_counts().reset_index().rename(columns={"Creado_Por":"Usuario","count":"Solicitudes"}),
+                    "Solicitudes","Usuario","📋 Solicitudes por usuario",
+                    horizontal=True, colores=["#dc2626","#1e3a8a"]
+                )
+        with c2:
+            if not ots.empty and "Creado_Por" in ots.columns:
+                st.markdown("**OTs creadas este mes por usuario**")
+                ots_mes = ots[ots["Fecha_Creacion"].str.startswith(mes_act, na=False)] if "Fecha_Creacion" in ots.columns else ots
+                if not ots_mes.empty and ots_mes["Creado_Por"].str.strip().any():
+                    graf_bar(
+                        ots_mes[ots_mes["Creado_Por"].str.strip() != ""]["Creado_Por"].value_counts().reset_index().rename(columns={"Creado_Por":"Usuario","count":"OTs"}),
+                        "OTs","Usuario","🛠️ OTs por usuario",
+                        horizontal=True, colores=["#7c3aed","#064e3b"]
+                    )
+        st.divider()
+
+    # ── SECCIÓN 7: ACTIVIDAD RECIENTE ─────────────────────────────────────────
     st.markdown('<p class="section-title">🕐 ACTIVIDAD RECIENTE</p>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
@@ -2537,6 +2565,7 @@ elif pagina == "ots":
                     nueva_ot = {
                         "ID":              generate_ot_id(ots),
                         "Origen":          "Manual",
+                        "Creado_Por":      st.session_state.get("user_nombre",""),
                         "SOL_Ref":         "",
                         "Fecha_Creacion":  datetime.now().strftime("%Y-%m-%d %H:%M"),
                         "Cliente":         empresa_final_ot,
@@ -2589,7 +2618,7 @@ elif pagina == "ots":
 
             vista_ot_ord = vista_ot.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))
 
-            COLS_TABLA_OT = ["ID", "Origen", "Fecha_Creacion", "Fecha_Limite", "Cliente", "Sede",
+            COLS_TABLA_OT = ["ID", "Origen", "Creado_Por", "Fecha_Creacion", "Fecha_Limite", "Cliente", "Sede",
                              "Servicio", "SLA", "Zona", "Tecnico", "Fecha_Ejecucion", "Valor_COP", "Estado"]
             cols_vis_ot = [c for c in COLS_TABLA_OT if c in vista_ot_ord.columns]
 
