@@ -481,10 +481,14 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
     from email.mime.text import MIMEText
 
     try:
-        email_user = st.secrets.get("email_user","")
-        email_pwd  = st.secrets.get("email_password","")
+        # Usar el correo del usuario logueado
+        usuario_correo = st.session_state.get("user_correo", "")
+        email_user     = usuario_correo
+        # Buscar contraseña según el usuario activo
+        passwords      = st.secrets.get("email_passwords", {})
+        email_pwd      = passwords.get(usuario_correo, "")
         if not email_user or not email_pwd:
-            return False, "Credenciales de correo no configuradas en Secrets."
+            return False, f"Credenciales de correo no configuradas para {email_user}."
 
         asunto = f"✅ Solicitud {sol_id} recibida — Construcciones Minzoe SAS"
 
