@@ -2832,7 +2832,7 @@ elif pagina == "ots":
                                 st.session_state[f"hvac_sede_{id_ot_sel}"] = fila_ot.get("Sede","")
                                 st.session_state[f"hvac_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
 
-                        # ── FUERA del form: guardar y mostrar resultados ──
+                        # ── FUERA del form: guardar ──────────────────────
                         _html_key = f"hvac_html_{id_ot_sel}"
                         if _html_key in st.session_state:
                             st.session_state["_ot_volver_ver"] = True
@@ -2841,19 +2841,17 @@ elif pagina == "ots":
                             _sede = st.session_state.get(f"hvac_sede_{id_ot_sel}","")
                             _fec  = st.session_state.get(f"hvac_fec_{id_ot_sel}","")
                             ok_h, res_h = guardar_reporte_local(_html, _cli, _sede, id_ot_sel, _fec)
-                            ok_d, res_d = guardar_en_drive(_html, _cli, _sede, id_ot_sel, _fec)
                             if ok_h:
-                                st.success(f"✅ **Disco H:\\** → `{res_h}`")
+                                st.success(f"✅ Reporte guardado en: `{res_h}`")
                             else:
-                                st.warning(f"⚠️ Disco H:\\ no disponible: {res_h}")
-                            if ok_d:
-                                st.success(f"✅ **Google Drive** → {res_d}")
-                            else:
-                                st.warning(f"⚠️ Google Drive: {res_d}")
-                            if not ok_h and not ok_d:
-                                st.download_button("⬇️ Descargar Reporte HVAC", data=_html,
+                                st.download_button(
+                                    "⬇️ Guardar y Descargar Reporte",
+                                    data=_html,
                                     file_name=f"Reporte_HVAC_{id_ot_sel}.html",
-                                    mime="text/html", use_container_width=True)
+                                    mime="text/html",
+                                    use_container_width=True,
+                                    type="primary"
+                                )
                             del st.session_state[_html_key]
 
                     else:
@@ -3076,19 +3074,17 @@ HA SIDO ENTREGADO POR EL CONTRATISTA Y QUE EL TRABAJO HA SIDO EJECUTADO A SATISF
                             _sede_l = st.session_state.get(f"loc_sede_{id_ot_sel}","")
                             _fec_l  = st.session_state.get(f"loc_fec_{id_ot_sel}","")
                             ok_h, res_h = guardar_reporte_local(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
-                            ok_d, res_d = guardar_en_drive(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
                             if ok_h:
-                                st.success(f"✅ **Disco H:\\** → `{res_h}`")
+                                st.success(f"✅ Reporte guardado en: `{res_h}`")
                             else:
-                                st.warning(f"⚠️ Disco H:\\ no disponible: {res_h}")
-                            if ok_d:
-                                st.success(f"✅ **Google Drive** → {res_d}")
-                            else:
-                                st.warning(f"⚠️ Google Drive: {res_d}")
-                            if not ok_h and not ok_d:
-                                st.download_button("⬇️ Descargar Reporte Locativos", data=_html_l,
+                                st.download_button(
+                                    "⬇️ Guardar y Descargar Reporte",
+                                    data=_html_l,
                                     file_name=f"Reporte_Locativos_{id_ot_sel}.html",
-                                    mime="text/html", use_container_width=True)
+                                    mime="text/html",
+                                    use_container_width=True,
+                                    type="primary"
+                                )
                             del st.session_state[_loc_key]
 
                 with eli:
