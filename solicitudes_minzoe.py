@@ -2873,7 +2873,9 @@ elif pagina == "ots":
                             _fec  = st.session_state.get(f"hvac_fec_{id_ot_sel}","")
                             ok_h, res_h = guardar_reporte_local(_html, _cli, _sede, id_ot_sel, _fec)
                             if ok_h:
+                                del st.session_state[_html_key]
                                 st.success(f"✅ Reporte guardado en: `{res_h}`")
+                                st.rerun()
                             else:
                                 st.download_button(
                                     "⬇️ Guardar y Descargar Reporte",
@@ -2883,7 +2885,9 @@ elif pagina == "ots":
                                     use_container_width=True,
                                     type="primary"
                                 )
-                            del st.session_state[_html_key]
+                                if st.button("✅ Listo, cerrar reporte", key="cerrar_hvac"):
+                                    del st.session_state[_html_key]
+                                    st.rerun()
 
                     else:
                         # ── FORMATO LOCATIVOS ─────────────────────────────
@@ -3110,7 +3114,9 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             _fec_l  = st.session_state.get(f"loc_fec_{id_ot_sel}","")
                             ok_h, res_h = guardar_reporte_local(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
                             if ok_h:
+                                del st.session_state[_loc_key]
                                 st.success(f"✅ Reporte guardado en: `{res_h}`")
+                                st.rerun()
                             else:
                                 st.download_button(
                                     "⬇️ Guardar y Descargar Reporte",
@@ -3120,7 +3126,9 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                                     use_container_width=True,
                                     type="primary"
                                 )
-                            del st.session_state[_loc_key]
+                                if st.button("✅ Listo, cerrar reporte", key="cerrar_loc"):
+                                    del st.session_state[_loc_key]
+                                    st.rerun()
 
                 with eli:
                     st.warning(f"¿Eliminar la OT **{id_ot_sel}** de **{fila_ot['Cliente']}**? No se puede deshacer.")
