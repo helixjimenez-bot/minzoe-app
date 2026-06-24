@@ -4330,10 +4330,13 @@ elif pagina == "calendario":
             mes_cal = st.selectbox("Mes", list(MESES_CARPETA.values()),
                                    index=ahora_colombia().month - 1, key="cal_mes")
         with c2:
-            anio_cal = st.number_input("Año", value=ahora_colombia().year,
-                                        min_value=2024, max_value=2030, key="cal_anio")
+            anio_cal = st.selectbox("Año", [2024, 2025, 2026, 2027, 2028, 2029, 2030],
+                                    index=[2024,2025,2026,2027,2028,2029,2030].index(ahora_colombia().year),
+                                    key="cal_anio")
         with c3:
-            f_tec_cal = st.multiselect("Técnico", ots["Tecnico"].dropna().unique().tolist(), key="cal_tec")
+            tecnicos_lista = ["Todos"] + sorted([t for t in ots["Tecnico"].dropna().unique().tolist() if t.strip()])
+            tec_sel = st.selectbox("Técnico", tecnicos_lista, key="cal_tec")
+            f_tec_cal = [] if tec_sel == "Todos" else [tec_sel]
 
         # Filtrar OTs con fecha de ejecución
         ots_cal = ots[ots["Fecha_Ejecucion"].str.strip() != ""].copy() if "Fecha_Ejecucion" in ots.columns else pd.DataFrame()
@@ -4370,10 +4373,15 @@ elif pagina == "calendario":
             )
             fig.update_layout(
                 plot_bgcolor="white", paper_bgcolor="white",
-                font_color="#111", title_font_color="#dc2626",
-                height=max(300, len(ots_cal) * 40 + 100),
+                font=dict(color="#111111", size=12),
+                title_font=dict(color="#dc2626", size=16),
+                height=max(350, len(ots_cal) * 50 + 120),
                 xaxis_title="Fecha", yaxis_title="",
+                yaxis=dict(tickfont=dict(color="#111111", size=11)),
+                xaxis=dict(tickfont=dict(color="#111111", size=11)),
+                legend=dict(font=dict(color="#111111")),
             )
+            fig.update_traces(textfont_color="#111111")
             st.plotly_chart(fig, use_container_width=True)
 
             st.divider()
