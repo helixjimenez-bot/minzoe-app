@@ -2657,17 +2657,65 @@ elif pagina == "ots":
 <html lang="es"><head><meta charset="UTF-8">
 <title>Reporte HVAC {id_ot_sel}</title>
 <style>
-  body{{font-family:Arial,sans-serif;font-size:10px;margin:15px;color:#111}}
-  h1{{color:#dc2626;font-size:16px;margin:0}} h2{{font-size:11px;color:#dc2626;margin:4px 0}}
-  .header{{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #dc2626;padding-bottom:6px;margin-bottom:8px}}
-  .logo{{font-size:18px;font-weight:900;color:#dc2626}}
-  table{{width:100%;border-collapse:collapse;margin-bottom:6px}}
-  td,th{{border:1px solid #ccc;padding:3px 5px;font-size:9px}}
-  th{{background:#dc2626;color:white;font-weight:bold;text-align:left}}
-  .section{{background:#dc2626;color:white;font-weight:bold;padding:3px 5px;font-size:9px;margin:4px 0 2px 0}}
-  .ck{{width:14px;text-align:center;font-weight:bold}}
-  .firma-box{{border-top:1px solid #111;margin-top:20px;min-width:120px;font-size:8px;text-align:center}}
-  @media print{{body{{margin:5px}} .no-print{{display:none}}}}
+  /* Tamaño carta con márgenes ICONTEC */
+  @page {{
+    size: letter;
+    margin: 3cm 2cm 3cm 4cm;
+  }}
+  * {{ box-sizing: border-box; }}
+  body {{
+    font-family: Arial, sans-serif;
+    font-size: 7.5pt;
+    color: #000;
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
+  }}
+  .header {{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #dc2626;
+    padding-bottom: 4pt;
+    margin-bottom: 6pt;
+  }}
+  .logo {{ font-size: 11pt; font-weight: 900; color: #dc2626; }}
+  .logo-sub {{ font-size: 7pt; color: #333; }}
+  table {{
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 4pt;
+    font-size: 7pt;
+  }}
+  td, th {{
+    border: 0.5pt solid #999;
+    padding: 2pt 3pt;
+    vertical-align: middle;
+  }}
+  th {{
+    background: #dc2626;
+    color: white;
+    font-weight: bold;
+    text-align: left;
+    font-size: 7pt;
+  }}
+  .section {{
+    background: #dc2626;
+    color: white;
+    font-weight: bold;
+    padding: 2pt 4pt;
+    font-size: 7pt;
+    margin: 3pt 0 2pt 0;
+  }}
+  .ck {{ width: 12pt; text-align: center; font-weight: bold; }}
+  .firma-box {{
+    border-top: 0.5pt solid #000;
+    margin-top: 12pt;
+    font-size: 7pt;
+    text-align: center;
+    padding-top: 2pt;
+  }}
+  @media print {{ .no-print {{ display: none !important; }} }}
 </style></head><body>
 <div class="header">
   <div>
@@ -2966,18 +3014,63 @@ elif pagina == "ots":
 <html lang="es"><head><meta charset="UTF-8">
 <title>Reporte Locativos {id_ot_sel}</title>
 <style>
-  body{{font-family:Arial,sans-serif;font-size:10px;margin:15px;color:#111}}
-  .logo{{font-size:18px;font-weight:900;color:#dc2626}}
-  .header{{display:flex;justify-content:space-between;align-items:center;
-           border-bottom:2px solid #dc2626;padding-bottom:6px;margin-bottom:8px}}
-  table{{width:100%;border-collapse:collapse;margin-bottom:6px}}
-  td,th{{border:1px solid #ccc;padding:3px 5px;font-size:9px}}
-  th{{background:#dc2626;color:white;font-weight:bold;text-align:left}}
-  .section{{background:#dc2626;color:white;font-weight:bold;
-            padding:3px 5px;font-size:9px;margin:4px 0 2px 0}}
-  .firma-box{{border-top:1px solid #111;margin-top:20px;min-width:120px;
-              font-size:8px;text-align:center;padding-top:4px}}
-  @media print{{.no-print{{display:none}}}}
+  /* Tamaño carta con márgenes ICONTEC */
+  @page {{
+    size: letter;
+    margin: 3cm 2cm 3cm 4cm;
+  }}
+  * {{ box-sizing: border-box; }}
+  body {{
+    font-family: Arial, sans-serif;
+    font-size: 8pt;
+    color: #000;
+    margin: 0;
+    padding: 0;
+    line-height: 1.3;
+  }}
+  .logo {{ font-size: 12pt; font-weight: 900; color: #dc2626; }}
+  .header {{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2pt solid #dc2626;
+    padding-bottom: 4pt;
+    margin-bottom: 6pt;
+  }}
+  table {{
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 5pt;
+    font-size: 7.5pt;
+  }}
+  td, th {{
+    border: 0.5pt solid #999;
+    padding: 2pt 4pt;
+    vertical-align: middle;
+  }}
+  th {{
+    background: #dc2626;
+    color: white;
+    font-weight: bold;
+    text-align: left;
+    font-size: 7.5pt;
+  }}
+  .section {{
+    background: #dc2626;
+    color: white;
+    font-weight: bold;
+    padding: 2pt 4pt;
+    font-size: 7.5pt;
+    margin: 3pt 0 2pt 0;
+  }}
+  .firma-box {{
+    border-top: 0.5pt solid #000;
+    margin-top: 14pt;
+    font-size: 7pt;
+    text-align: center;
+    padding-top: 2pt;
+  }}
+  @media print {{ .no-print {{ display: none !important; }} }}
 </style></head><body>
 
 <div class="header">
