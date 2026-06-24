@@ -488,7 +488,10 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
 
         asunto = f"✅ Solicitud {sol_id} recibida — Construcciones Minzoe SAS"
 
-        cuerpo = f"""
+        hora = datetime.now().hour
+    saludo = "Buenos días" if hora < 12 else ("Buenas tardes" if hora < 18 else "Buenas noches")
+
+    cuerpo = f"""
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"></head>
@@ -506,57 +509,53 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
 
   <!-- Body -->
   <div style="padding:32px">
-    <p style="color:#111;font-size:15px">Estimado(a) <b>{contacto_nombre}</b>,</p>
-    <p style="color:#333;font-size:14px">
-      Hemos recibido su solicitud de servicio. A continuación el resumen:
+    <p style="color:#111;font-size:15px">{saludo}.</p>
+
+    <p style="color:#333;font-size:14px;line-height:1.6">
+      Hemos recibido su solicitud satisfactoriamente.
+    </p>
+
+    <p style="color:#333;font-size:14px;line-height:1.6">
+      La novedad ha sido registrada y asignada bajo el código:
     </p>
 
     <div style="background:#fff5f5;border-left:4px solid #dc2626;
-         border-radius:8px;padding:16px 20px;margin:20px 0">
-      <p style="margin:0 0 8px 0;font-size:13px;color:#777">CÓDIGO DE SOLICITUD</p>
-      <p style="margin:0;font-size:28px;font-weight:900;color:#dc2626;letter-spacing:2px">
+         border-radius:8px;padding:16px 24px;margin:20px 0;text-align:center">
+      <p style="margin:0 0 4px 0;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px">
+        Código de solicitud
+      </p>
+      <p style="margin:0;font-size:32px;font-weight:900;color:#dc2626;letter-spacing:3px">
         {sol_id}
       </p>
     </div>
 
-    <table style="width:100%;border-collapse:collapse;font-size:13px;margin:16px 0">
-      <tr style="border-bottom:1px solid #f0f0f0">
-        <td style="padding:8px 0;color:#777;width:40%">Empresa</td>
-        <td style="padding:8px 0;color:#111;font-weight:bold">{cliente}</td>
-      </tr>
-      <tr style="border-bottom:1px solid #f0f0f0">
-        <td style="padding:8px 0;color:#777">Servicio solicitado</td>
-        <td style="padding:8px 0;color:#111;font-weight:bold">{servicio}</td>
-      </tr>
-      <tr style="border-bottom:1px solid #f0f0f0">
-        <td style="padding:8px 0;color:#777">Tipo de servicio</td>
-        <td style="padding:8px 0;color:#111">{tipo_servicio}</td>
-      </tr>
-      <tr style="border-bottom:1px solid #f0f0f0">
-        <td style="padding:8px 0;color:#777">Prioridad SLA</td>
-        <td style="padding:8px 0;color:#111">{sla}</td>
-      </tr>
-      <tr>
-        <td style="padding:8px 0;color:#777">Fecha de registro</td>
-        <td style="padding:8px 0;color:#111">{fecha}</td>
-      </tr>
-    </table>
-
-    <p style="color:#333;font-size:13px">
-      Nuestro equipo revisará su solicitud y se pondrá en contacto a la brevedad.
-      Puede hacer seguimiento de su solicitud usando el código <b>{sol_id}</b>.
+    <p style="color:#333;font-size:14px;line-height:1.8">
+      para su respectivo seguimiento y gestión.
     </p>
 
-    <div style="background:#f8f8f8;border-radius:8px;padding:12px 16px;margin-top:20px;font-size:12px;color:#555">
-      📍 Cra 5 # 8a-18 &nbsp;|&nbsp; 📞 3175102668 – 3173748665<br>
-      ✉️ construminzoe@gmail.com | minzoerefrigeracion@gmail.com
+    <p style="color:#333;font-size:14px;line-height:1.8">
+      Cualquier actualización será informada oportunamente a través de los canales establecidos.
+    </p>
+
+    <p style="color:#111;font-size:14px;margin-top:24px">
+      Cordialmente,
+    </p>
+
+    <div style="border-top:2px solid #dc2626;padding-top:16px;margin-top:8px">
+      <p style="margin:0;font-weight:bold;color:#111;font-size:14px">CONSTRUCCIONES MINZOE SAS</p>
+      <p style="margin:4px 0 0 0;font-size:12px;color:#555">
+        📍 Cra 5 # 8a-18 &nbsp;|&nbsp; 📞 3175102668 – 3173748665
+      </p>
+      <p style="margin:4px 0 0 0;font-size:12px;color:#555">
+        ✉️ jeyson.jimenez@construminzoe.com
+      </p>
     </div>
   </div>
 
   <!-- Footer -->
-  <div style="background:#1a1a1a;padding:16px 32px;text-align:center">
+  <div style="background:#1a1a1a;padding:14px 32px;text-align:center">
     <p style="color:#777;font-size:11px;margin:0">
-      Este es un correo automático. Por favor no responda a este mensaje.
+      Este es un mensaje automático, por favor no responda a este correo.
     </p>
   </div>
 </div>
