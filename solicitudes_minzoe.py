@@ -1551,6 +1551,7 @@ with st.sidebar:
 
     if st.button("🛠️ Órdenes de Trabajo", use_container_width=True):
         st.session_state["pagina"] = "ots"
+        st.session_state["accion_ot_radio"] = "📋 Ver OTs"
         st.rerun()
 
     if st.button("📅 Calendario de Visitas", use_container_width=True):
