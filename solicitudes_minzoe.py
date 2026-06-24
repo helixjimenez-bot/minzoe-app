@@ -474,6 +474,110 @@ def carpeta_sede(sede_nombre):
     limpio = "".join(c for c in sede_nombre if c.isalnum() or c in " _-").strip()
     return "00_" + "_".join(w.capitalize() for w in limpio.split())
 
+def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, contacto_nombre, correo_destino, fecha):
+    """Envía correo de confirmación al cliente con el código de la solicitud."""
+    import smtplib, ssl
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    try:
+        email_user = st.secrets.get("email_user","")
+        email_pwd  = st.secrets.get("email_password","")
+        if not email_user or not email_pwd:
+            return False, "Credenciales de correo no configuradas en Secrets."
+
+        asunto = f"✅ Solicitud {sol_id} recibida — Construcciones Minzoe SAS"
+
+        cuerpo = f"""
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:20px;margin:0">
+<div style="max-width:600px;margin:0 auto;background:white;border-radius:12px;
+     overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.1)">
+
+  <!-- Header -->
+  <div style="background:#dc2626;padding:24px 32px">
+    <h1 style="color:white;margin:0;font-size:20px">🏗️ CONSTRUCCIONES MINZOE SAS</h1>
+    <p style="color:#fca5a5;margin:4px 0 0 0;font-size:13px">
+      Soluciones integrales en construcción, mantenimiento y climatización
+    </p>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:32px">
+    <p style="color:#111;font-size:15px">Estimado(a) <b>{contacto_nombre}</b>,</p>
+    <p style="color:#333;font-size:14px">
+      Hemos recibido su solicitud de servicio. A continuación el resumen:
+    </p>
+
+    <div style="background:#fff5f5;border-left:4px solid #dc2626;
+         border-radius:8px;padding:16px 20px;margin:20px 0">
+      <p style="margin:0 0 8px 0;font-size:13px;color:#777">CÓDIGO DE SOLICITUD</p>
+      <p style="margin:0;font-size:28px;font-weight:900;color:#dc2626;letter-spacing:2px">
+        {sol_id}
+      </p>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin:16px 0">
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:8px 0;color:#777;width:40%">Empresa</td>
+        <td style="padding:8px 0;color:#111;font-weight:bold">{cliente}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:8px 0;color:#777">Servicio solicitado</td>
+        <td style="padding:8px 0;color:#111;font-weight:bold">{servicio}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:8px 0;color:#777">Tipo de servicio</td>
+        <td style="padding:8px 0;color:#111">{tipo_servicio}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:8px 0;color:#777">Prioridad SLA</td>
+        <td style="padding:8px 0;color:#111">{sla}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:#777">Fecha de registro</td>
+        <td style="padding:8px 0;color:#111">{fecha}</td>
+      </tr>
+    </table>
+
+    <p style="color:#333;font-size:13px">
+      Nuestro equipo revisará su solicitud y se pondrá en contacto a la brevedad.
+      Puede hacer seguimiento de su solicitud usando el código <b>{sol_id}</b>.
+    </p>
+
+    <div style="background:#f8f8f8;border-radius:8px;padding:12px 16px;margin-top:20px;font-size:12px;color:#555">
+      📍 Cra 5 # 8a-18 &nbsp;|&nbsp; 📞 3175102668 – 3173748665<br>
+      ✉️ construminzoe@gmail.com | minzoerefrigeracion@gmail.com
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="background:#1a1a1a;padding:16px 32px;text-align:center">
+    <p style="color:#777;font-size:11px;margin:0">
+      Este es un correo automático. Por favor no responda a este mensaje.
+    </p>
+  </div>
+</div>
+</body></html>
+"""
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = asunto
+        msg["From"]    = f"Construcciones Minzoe SAS <{email_user}>"
+        msg["To"]      = correo_destino
+        msg.attach(MIMEText(cuerpo, "html", "utf-8"))
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.hostinger.com", 465, context=context) as server:
+            server.login(email_user, email_pwd)
+            server.sendmail(email_user, correo_destino, msg.as_string())
+
+        return True, f"Confirmación enviada a {correo_destino}"
+    except Exception as e:
+        return False, str(e)
+
+
 def css_formato_carta():
     """CSS estándar para formatos en tamaño carta con márgenes ICONTEC."""
     return """
@@ -1442,7 +1546,22 @@ if pagina == "nueva":
                 }
                 df = pd.concat([df, pd.DataFrame([nueva])], ignore_index=True)
                 save_sol(df)
-                st.success(f"✅ Solicitud **{nueva['ID']}** guardada para {empresa_final}.")
+                msg_sol = f"✅ Solicitud **{nueva['ID']}** guardada para {empresa_final}."
+                # Enviar confirmación por correo al contacto
+                correo_cli = cor_c_v.strip() if cor_c_v.strip() else ""
+                if correo_cli:
+                    ok_mail, res_mail = enviar_confirmacion_sol(
+                        sol_id          = nueva["ID"],
+                        cliente         = empresa_final,
+                        servicio        = servicio,
+                        tipo_servicio   = tipo_servicio,
+                        sla             = sla,
+                        contacto_nombre = nom_c_v or empresa_final,
+                        correo_destino  = correo_cli,
+                        fecha           = nueva["Fecha"],
+                    )
+                    msg_sol += f" 📧 {res_mail}" if ok_mail else f" ⚠️ Correo no enviado: {res_mail}"
+                st.success(msg_sol)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
