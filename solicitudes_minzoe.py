@@ -492,10 +492,10 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
 
         asunto = f"✅ Solicitud {sol_id} recibida — Construcciones Minzoe SAS"
 
-        hora = datetime.now().hour
-    saludo = "Buenos días" if hora < 12 else ("Buenas tardes" if hora < 18 else "Buenas noches")
+        hora   = datetime.now().hour
+        saludo = "Buenos días" if hora < 12 else ("Buenas tardes" if hora < 18 else "Buenas noches")
 
-    cuerpo = f"""
+        cuerpo = f"""
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"></head>
