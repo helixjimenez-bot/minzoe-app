@@ -101,19 +101,19 @@ COLS_HISTORIAL   = ["ID_Log","Fecha","Usuario","Entidad","Entidad_ID","Campo","V
 COLS_COMENTARIOS = ["ID_Com","Fecha","Usuario","Entidad","Entidad_ID","Comentario"]
 
 def load_counters():
-    return gs_load("contadores", tuple(COLS_COUNTERS))
+    return gs_load("contadores", tuple(COLS_COUNTERS), _v=_ver_cache("contadores"))
 
 def save_counters(df):
     gs_save("contadores", df)
 
 def load_historial():
-    return gs_load("historial", tuple(COLS_HISTORIAL))
+    return gs_load("historial", tuple(COLS_HISTORIAL), _v=_ver_cache("historial"))
 
 def save_historial(df):
     gs_save("historial", df)
 
 def load_comentarios():
-    return gs_load("comentarios", tuple(COLS_COMENTARIOS))
+    return gs_load("comentarios", tuple(COLS_COMENTARIOS), _v=_ver_cache("comentarios"))
 
 def save_comentarios(df):
     gs_save("comentarios", df)
@@ -397,8 +397,9 @@ def get_sheet(tab_name):
     except gspread.exceptions.WorksheetNotFound:
         return sh.add_worksheet(title=tab_name, rows=1000, cols=30)
 
-@st.cache_data(ttl=300)
-def gs_load(tab_name, cols_tuple):
+@st.cache_data(ttl=600)
+def gs_load(tab_name, cols_tuple, _v=0):
+    """Carga datos de Google Sheets con caché de 10 min por tabla."""
     cols = list(cols_tuple)
     try:
         ws   = get_sheet(tab_name)
@@ -410,16 +411,24 @@ def gs_load(tab_name, cols_tuple):
                     df[c] = ""
             return df[cols]
         return pd.DataFrame(columns=cols)
-    except Exception as e:
+    except Exception:
         return pd.DataFrame(columns=cols)
+
+def _ver_cache(tab_name):
+    """Retorna la versión actual del caché de una tabla."""
+    return st.session_state.get(f"_cv_{tab_name}", 0)
+
+def _invalidar_cache(tab_name):
+    """Incrementa la versión del caché solo de la tabla afectada."""
+    st.session_state[f"_cv_{tab_name}"] = _ver_cache(tab_name) + 1
 
 def gs_save(tab_name, df):
     try:
         ws   = get_sheet(tab_name)
         data = [df.columns.tolist()] + df.fillna("").astype(str).values.tolist()
-        ws.clear()          # Limpia toda la hoja primero
-        ws.update("A1", data)  # Escribe los datos actualizados
-        st.cache_data.clear()
+        ws.clear()
+        ws.update("A1", data)
+        _invalidar_cache(tab_name)  # Solo invalida esta tabla
         return True
     except Exception as e:
         st.error(f"❌ Error guardando '{tab_name}': {e}")
@@ -429,13 +438,13 @@ def gs_save(tab_name, df):
 # ── Carga / guardado ──────────────────────────────────────────────────────────
 
 def load_sol():
-    return gs_load("solicitudes", tuple(COLS_SOL))
+    return gs_load("solicitudes", tuple(COLS_SOL), _v=_ver_cache("solicitudes"))
 
 def save_sol(df):
     gs_save("solicitudes", df)
 
 def load_cli():
-    df = gs_load("clientes", tuple(COLS_CLI))
+    df = gs_load("clientes", tuple(COLS_CLI), _v=_ver_cache("clientes"))
     for col in df.columns:
         df[col] = df[col].str.strip()
     return df[df["Empresa"] != ""].reset_index(drop=True)
@@ -444,14 +453,14 @@ def save_cli(df):
     gs_save("clientes", df)
 
 def load_ots():
-    return gs_load("ordenes_trabajo", tuple(COLS_OT))
+    return gs_load("ordenes_trabajo", tuple(COLS_OT), _v=_ver_cache("ordenes_trabajo"))
 
 def save_ots(df):
     gs_save("ordenes_trabajo", df)
 
 
 def load_cv():
-    return gs_load("compras_ventas", tuple(COLS_CV))
+    return gs_load("compras_ventas", tuple(COLS_CV), _v=_ver_cache("compras_ventas"))
 
 def save_cv(df):
     gs_save("compras_ventas", df)
@@ -463,7 +472,7 @@ def gen_cv_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CV-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_ventas():
-    return gs_load("ventas", tuple(COLS_VENTA))
+    return gs_load("ventas", tuple(COLS_VENTA), _v=_ver_cache("ventas"))
 
 def save_ventas(df):
     gs_save("ventas", df)
@@ -475,7 +484,7 @@ def gen_fac_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'FAC-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_costos():
-    return gs_load("costos", tuple(COLS_COSTO))
+    return gs_load("costos", tuple(COLS_COSTO), _v=_ver_cache("costos"))
 
 def save_costos(df):
     gs_save("costos", df)
@@ -495,13 +504,13 @@ def to_num(val):
 
 
 def load_contratos():
-    return gs_load("contratos", tuple(COLS_CONTRATO))
+    return gs_load("contratos", tuple(COLS_CONTRATO), _v=_ver_cache("contratos"))
 
 def save_contratos(df):
     gs_save("contratos", df)
 
 def load_equipos():
-    return gs_load("equipos", tuple(COLS_EQUIPO))
+    return gs_load("equipos", tuple(COLS_EQUIPO), _v=_ver_cache("equipos"))
 
 def save_equipos(df):
     gs_save("equipos", df)
@@ -1176,7 +1185,7 @@ def hash_pwd(pwd):
     return hashlib.sha256(pwd.encode()).hexdigest()
 
 def load_usuarios():
-    return gs_load("usuarios", ("nombre", "correo", "password_hash", "rol"))
+    return gs_load("usuarios", ("nombre", "correo", "password_hash", "rol"), _v=_ver_cache("usuarios"))
 
 def save_usuarios(df):
     gs_save("usuarios", df)
@@ -2024,8 +2033,12 @@ elif pagina == "ver":
             # ── ELIMINAR ──────────────────────────────────────────────────────
             with acc_com:
                 st.markdown(f"**💬 Comentarios internos — {id_sel}**")
-                coms_all = load_comentarios()
-                coms_sol = coms_all[(coms_all["Entidad"]=="SOL") & (coms_all["Entidad_ID"]==id_sel)] if not coms_all.empty else pd.DataFrame()
+                if st.button("🔄 Cargar comentarios", key=f"load_com_sol_{id_sel}"):
+                    st.session_state[f"show_com_sol_{id_sel}"] = True
+                coms_sol = pd.DataFrame()
+                if st.session_state.get(f"show_com_sol_{id_sel}"):
+                    coms_all = load_comentarios()
+                    coms_sol = coms_all[(coms_all["Entidad"]=="SOL") & (coms_all["Entidad_ID"]==id_sel)] if not coms_all.empty else pd.DataFrame()
                 if coms_sol.empty:
                     st.info("Sin comentarios aún.")
                 else:
@@ -2044,8 +2057,12 @@ elif pagina == "ver":
 
             with acc_hist:
                 st.markdown(f"**📜 Historial de cambios — {id_sel}**")
-                hist_all = load_historial()
-                hist_sol = hist_all[(hist_all["Entidad"]=="SOL") & (hist_all["Entidad_ID"]==id_sel)] if not hist_all.empty else pd.DataFrame()
+                if st.button("🔄 Cargar historial", key=f"load_hist_sol_{id_sel}"):
+                    st.session_state[f"show_hist_sol_{id_sel}"] = True
+                hist_sol = pd.DataFrame()
+                if st.session_state.get(f"show_hist_sol_{id_sel}"):
+                    hist_all = load_historial()
+                    hist_sol = hist_all[(hist_all["Entidad"]=="SOL") & (hist_all["Entidad_ID"]==id_sel)] if not hist_all.empty else pd.DataFrame()
                 if hist_sol.empty:
                     st.info("Sin cambios registrados.")
                 else:
@@ -3631,8 +3648,12 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 
                 with ot_com:
                     st.markdown(f"**💬 Comentarios internos — {id_ot_sel}**")
-                    coms_all = load_comentarios()
-                    coms_ot  = coms_all[(coms_all["Entidad"]=="OT") & (coms_all["Entidad_ID"]==id_ot_sel)] if not coms_all.empty else pd.DataFrame()
+                    if st.button("🔄 Cargar comentarios", key=f"load_com_ot_{id_ot_sel}"):
+                        st.session_state[f"show_com_ot_{id_ot_sel}"] = True
+                    coms_ot = pd.DataFrame()
+                    if st.session_state.get(f"show_com_ot_{id_ot_sel}"):
+                        coms_all = load_comentarios()
+                        coms_ot  = coms_all[(coms_all["Entidad"]=="OT") & (coms_all["Entidad_ID"]==id_ot_sel)] if not coms_all.empty else pd.DataFrame()
                     if coms_ot.empty:
                         st.info("Sin comentarios aún.")
                     else:
@@ -3651,8 +3672,12 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 
                 with ot_hist:
                     st.markdown(f"**📜 Historial de cambios — {id_ot_sel}**")
-                    hist_all = load_historial()
-                    hist_ot  = hist_all[(hist_all["Entidad"]=="OT") & (hist_all["Entidad_ID"]==id_ot_sel)] if not hist_all.empty else pd.DataFrame()
+                    if st.button("🔄 Cargar historial", key=f"load_hist_ot_{id_ot_sel}"):
+                        st.session_state[f"show_hist_ot_{id_ot_sel}"] = True
+                    hist_ot = pd.DataFrame()
+                    if st.session_state.get(f"show_hist_ot_{id_ot_sel}"):
+                        hist_all = load_historial()
+                        hist_ot  = hist_all[(hist_all["Entidad"]=="OT") & (hist_all["Entidad_ID"]==id_ot_sel)] if not hist_all.empty else pd.DataFrame()
                     if hist_ot.empty:
                         st.info("Sin cambios registrados.")
                     else:
