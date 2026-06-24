@@ -3732,15 +3732,34 @@ elif pagina == "contratos_mto":
     # ── TAB 1: CONTRATOS ─────────────────────────────────────────────────────
     with tab_con:
         st.subheader("Registrar contrato de mantenimiento")
+
+        # Selector empresa fuera del form para auto-relleno reactivo
+        empresas_con = sorted(cli["Empresa"].unique().tolist()) if not cli.empty else []
+        emp_ant_con  = st.session_state.get("_emp_ant_con")
+        con_cliente  = st.selectbox("Empresa *", empresas_con + ["✏️ Ingresar manualmente"],
+                                    index=None, placeholder="Escribe el nombre de la empresa...",
+                                    key="con_cli_sel")
+        if con_cliente != emp_ant_con:
+            st.session_state["_emp_ant_con"] = con_cliente
+
+        # Auto-relleno desde clientes
+        con_nit_v = con_contacto_v = con_celular_v = ""
+        if con_cliente and con_cliente != "✏️ Ingresar manualmente" and not cli.empty:
+            filas_c = cli[cli["Empresa"].str.strip().str.lower() == con_cliente.strip().lower()]
+            if not filas_c.empty:
+                primera_c = filas_c.iloc[0]
+                con_nit_v       = primera_c.get("NIT","")
+                con_contacto_v  = primera_c.get("Nombre_Contacto","")
+                con_celular_v   = primera_c.get("Celular_Contacto","")
+                c1d, c2d, c3d = st.columns(3)
+                c1d.text_input("NIT",             value=con_nit_v,      disabled=True, key="con_nit_dis")
+                c2d.text_input("Nombre contacto", value=con_contacto_v, disabled=True, key="con_nom_dis")
+                c3d.text_input("Celular contacto",value=con_celular_v,  disabled=True, key="con_cel_dis")
+
         with st.form("form_contrato", clear_on_submit=True):
             c1, c2 = st.columns(2)
             with c1:
-                empresas_con = sorted(cli["Empresa"].unique().tolist()) if not cli.empty else []
-                con_cliente  = st.selectbox("Empresa *", empresas_con + ["✏️ Ingresar manualmente"], key="con_cli")
-                con_nit      = st.text_input("NIT")
                 con_sede     = st.text_input("Sede / Sucursal")
-                con_contacto = st.text_input("Nombre contacto")
-                con_celular  = st.text_input("Celular contacto")
             with c2:
                 con_servicio = st.selectbox("Servicio *", SERVICIOS)
                 con_freq     = st.selectbox("Frecuencia", FRECUENCIAS)
@@ -3759,10 +3778,10 @@ elif pagina == "contratos_mto":
                         "Fecha_Inicio":     con_inicio.strftime("%Y-%m-%d"),
                         "Fecha_Fin":        con_fin.strftime("%Y-%m-%d"),
                         "Cliente":          con_cliente,
-                        "NIT":              con_nit,
+                        "NIT":              con_nit_v,
                         "Sede":             con_sede,
-                        "Nombre_Contacto":  con_contacto,
-                        "Celular_Contacto": con_celular,
+                        "Nombre_Contacto":  con_contacto_v,
+                        "Celular_Contacto": con_celular_v,
                         "Servicio":         con_servicio,
                         "Frecuencia":       con_freq,
                         "Tecnico":          con_tecnico,
