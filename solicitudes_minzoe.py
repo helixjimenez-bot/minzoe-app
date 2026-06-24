@@ -1903,27 +1903,33 @@ elif pagina == "ver":
                         save_sol(df)
                         msg = f"✅ Solicitud {id_sel} actualizada."
                         if e_estado == "Aprobado":
-                            sol_row = df[df["ID"] == id_sel].iloc[0]
-                            ots, creada = crear_ot_desde_sol(sol_row, ots)
-                            if creada:
-                                save_ots(ots)
-                                nueva_ot_id = ots.iloc[-1]["ID"]
-                                msg += f" OT **{nueva_ot_id}** creada automáticamente."
-                                # Enviar correo de actualización al contacto
-                                correo_cli = sol_row.get("Correo_Contacto","").strip()
-                                if correo_cli:
-                                    # Recuperar Message-ID del correo original para encadenar
-                                    msg_id_orig = sol_row.get("Email_Message_ID","").strip()
-                                    ok_m, res_m = enviar_actualizacion_ot(
-                                        sol_id          = id_sel,
-                                        ot_id           = nueva_ot_id,
-                                        cliente         = sol_row.get("Cliente",""),
-                                        contacto_nombre = sol_row.get("Nombre_Contacto",""),
-                                        correo_destino  = correo_cli,
-                                        fecha           = ahora_colombia().strftime("%Y-%m-%d %H:%M"),
-                                        reply_to_id     = msg_id_orig or None,
-                                    )
-                                    msg += f" 📧 {res_m}" if ok_m else f" ⚠️ Correo: {res_m}"
+                            try:
+                                sol_row = df[df["ID"] == id_sel].iloc[0]
+                                ots_fresh = load_ots()
+                                ots_fresh, creada = crear_ot_desde_sol(sol_row, ots_fresh)
+                                if creada:
+                                    save_ots(ots_fresh)
+                                    ots = ots_fresh
+                                    nueva_ot_id = ots.iloc[-1]["ID"]
+                                    msg += f" OT **{nueva_ot_id}** creada automáticamente."
+                                    # Enviar correo de actualización al contacto
+                                    correo_cli = sol_row.get("Correo_Contacto","").strip()
+                                    if correo_cli:
+                                        msg_id_orig = sol_row.get("Email_Message_ID","").strip()
+                                        ok_m, res_m = enviar_actualizacion_ot(
+                                            sol_id          = id_sel,
+                                            ot_id           = nueva_ot_id,
+                                            cliente         = sol_row.get("Cliente",""),
+                                            contacto_nombre = sol_row.get("Nombre_Contacto",""),
+                                            correo_destino  = correo_cli,
+                                            fecha           = ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+                                            reply_to_id     = msg_id_orig or None,
+                                        )
+                                        msg += f" 📧 {res_m}" if ok_m else f" ⚠️ Correo: {res_m}"
+                                else:
+                                    msg += " ⚠️ Ya existe una OT para esta solicitud."
+                            except Exception as ex_ot:
+                                msg += f" ❌ Error creando OT: {ex_ot}"
                         st.success(msg)
                         st.rerun()
 
