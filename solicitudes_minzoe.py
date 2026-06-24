@@ -1760,6 +1760,15 @@ if pagina == "nueva":
 elif pagina == "ver":
     import io
     df = get_df(); ots = get_ots()
+
+    # Mostrar notificaciones guardadas del rerun anterior
+    if "notif_sol" in st.session_state:
+        for tipo, texto in st.session_state.pop("notif_sol"):
+            if tipo == "success": st.success(texto)
+            elif tipo == "warning": st.warning(texto)
+            elif tipo == "error":  st.error(texto)
+            else: st.info(texto)
+
     st.subheader("📋 Solicitudes registradas")
 
     if df.empty:
@@ -1902,7 +1911,7 @@ elif pagina == "ver":
                         df.loc[idx, "Estado"]           = e_estado
                         save_sol(df)
                         msg = f"✅ Solicitud {id_sel} actualizada."
-                        st.success(msg)
+                        notif = [("success", msg)]
 
                         if e_estado == "Aprobado":
                             try:
@@ -1913,16 +1922,10 @@ elif pagina == "ver":
                                     save_ots(ots_fresh)
                                     ots = ots_fresh
                                     nueva_ot_id = ots.iloc[-1]["ID"]
+                                    notif.append(("success",
+                                        f"🛠️ Orden de Trabajo **{nueva_ot_id}** creada para "
+                                        f"**{sol_row.get('Cliente','')}** — {sol_row.get('Servicio','')}"))
 
-                                    # Mensaje prominente de OT creada
-                                    st.success(
-                                        f"🛠️ **Orden de Trabajo creada exitosamente**\n\n"
-                                        f"**OT:** {nueva_ot_id}  |  **SOL:** {id_sel}  |  "
-                                        f"**Cliente:** {sol_row.get('Cliente','')}  |  "
-                                        f"**Servicio:** {sol_row.get('Servicio','')}"
-                                    )
-
-                                    # Enviar correo de actualización
                                     correo_cli = sol_row.get("Correo_Contacto","").strip()
                                     if correo_cli:
                                         msg_id_orig = sol_row.get("Email_Message_ID","").strip()
@@ -1936,16 +1939,18 @@ elif pagina == "ver":
                                             reply_to_id     = msg_id_orig or None,
                                         )
                                         if ok_m:
-                                            st.success(f"📧 Correo de actualización enviado a **{correo_cli}**")
+                                            notif.append(("success", f"📧 Correo enviado a **{correo_cli}**"))
                                         else:
-                                            st.warning(f"⚠️ Correo no enviado: {res_m}")
+                                            notif.append(("warning", f"⚠️ Correo no enviado: {res_m}"))
                                     else:
-                                        st.info("ℹ️ No hay correo de contacto registrado para notificar.")
+                                        notif.append(("info", "ℹ️ Sin correo de contacto registrado."))
                                 else:
-                                    st.warning("⚠️ Ya existe una OT para esta solicitud.")
+                                    notif.append(("warning", "⚠️ Ya existe una OT para esta solicitud."))
                             except Exception as ex_ot:
-                                st.error(f"❌ Error creando OT: {ex_ot}")
+                                notif.append(("error", f"❌ Error creando OT: {ex_ot}"))
 
+                        # Guardar notificaciones en sesión para mostrar después del rerun
+                        st.session_state["notif_sol"] = notif
                         st.rerun()
 
             # ── ELIMINAR ──────────────────────────────────────────────────────
