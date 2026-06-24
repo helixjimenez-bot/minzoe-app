@@ -90,6 +90,31 @@ COLS_COSTO = [
 
 ESTADOS_PAGO = ["Pendiente", "Pagada", "Vencida", "Anulada"]
 
+COLS_COUNTERS = ["tipo", "prefijo", "ultimo_num"]
+
+def load_counters():
+    return gs_load("contadores", tuple(COLS_COUNTERS))
+
+def save_counters(df):
+    gs_save("contadores", df)
+
+def siguiente_id(tipo, prefijo):
+    """Genera el siguiente ID único e irrepetible para SOL u OT."""
+    contadores = load_counters()
+    mask = (contadores["tipo"] == tipo) & (contadores["prefijo"] == prefijo) if not contadores.empty else None
+
+    if contadores.empty or not mask.any():
+        num = 1
+        nuevo = pd.DataFrame([{"tipo": tipo, "prefijo": prefijo, "ultimo_num": "1"}])
+        contadores = pd.concat([contadores, nuevo], ignore_index=True)
+    else:
+        num = int(contadores.loc[mask, "ultimo_num"].values[0]) + 1
+        contadores.loc[mask, "ultimo_num"] = str(num)
+
+    save_counters(contadores)
+    return f"{prefijo}{num:03d}"
+
+
 COLS_CONTRATO = [
     "ID_Contrato", "Fecha_Inicio", "Fecha_Fin", "Cliente", "NIT", "Sede",
     "Nombre_Contacto", "Celular_Contacto", "Servicio", "Frecuencia",
@@ -444,14 +469,7 @@ def proxima_fecha(desde_str, frecuencia):
 def generate_ot_id(df):
     hoy     = datetime.now().strftime("%y%m%d")
     prefijo = f"OT-{hoy}-"
-    ids_hoy = (
-        df[df["ID"].str.startswith(prefijo, na=False)]["ID"]
-        if not df.empty else pd.Series(dtype=str)
-    )
-    if ids_hoy.empty:
-        return f"{prefijo}001"
-    nums = ids_hoy.str.extract(r"OT-\d{6}-(\d{3})")[0].astype(int)
-    return f"{prefijo}{nums.max() + 1:03d}"
+    return siguiente_id("OT", prefijo)
 
 
 def carpeta_cliente(cliente_nombre):
@@ -1069,14 +1087,7 @@ def crear_ot_desde_sol(sol, ots):
 def generate_id(df):
     hoy     = datetime.now().strftime("%y%m%d")
     prefijo = f"SOL-{hoy}-"
-    ids_hoy = (
-        df[df["ID"].str.startswith(prefijo, na=False)]["ID"]
-        if not df.empty else pd.Series(dtype=str)
-    )
-    if ids_hoy.empty:
-        return f"{prefijo}001"
-    nums = ids_hoy.str.extract(r"SOL-\d{6}-(\d{3})")[0].astype(int)
-    return f"{prefijo}{nums.max() + 1:03d}"
+    return siguiente_id("SOL", prefijo)
 
 
 def color_estado(val):
