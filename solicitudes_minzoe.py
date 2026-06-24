@@ -2457,10 +2457,12 @@ elif pagina == "ots":
                                 else:
                                     datos_ocr, conf_campos = parsear_locativos(texto_ocr)
 
-                                if conf_campos >= 0.6:
+                                if conf_campos >= 0.8:
                                     st.success(f"✅ Documento leído correctamente ({int(conf_campos*100)}% de campos detectados). Revisa y ajusta si es necesario.")
                                 else:
-                                    st.warning(f"⚠️ Solo se detectó el {int(conf_campos*100)}% de los campos. Completa los que faltan manualmente.")
+                                    st.error(f"❌ Solo se detectó el {int(conf_campos*100)}% de los campos (mínimo 80%). Llena el informe manualmente.")
+                                    datos_ocr = {}
+                                    modo = "✏️ Manual"
 
                     if servicio_ot == "Aires Acondicionados":
                         # Buscar datos del equipo si viene de contrato
