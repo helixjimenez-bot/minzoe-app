@@ -821,6 +821,18 @@ def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_dest
         return False, str(e)
 
 
+@st.cache_data
+def get_logo_base64():
+    """Carga el logo de Minzoe en base64 para embeber en HTML."""
+    import base64
+    logo_path = r"D:\Escritorio\LA ASISTENTE MINZOE\LOGO MINZOE.png"
+    try:
+        with open(logo_path, "rb") as f:
+            return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
+    except Exception:
+        return ""
+
+
 def css_formato_carta():
     """CSS estándar para formatos en tamaño carta con márgenes ICONTEC."""
     return """
@@ -3189,6 +3201,8 @@ elif pagina == "ots":
                                     "Emergencia" if r_emer else "",
                                     "Instalación" if r_inst else "",
                                 ]))
+                                _logo_b64 = get_logo_base64()
+                                _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
                                 html = f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
 <title>Reporte HVAC {id_ot_sel}</title>
@@ -3196,10 +3210,13 @@ elif pagina == "ots":
 </head><body>
 <div class="pagina">
 <div class="header">
-  <div>
-    <div class="logo">🏗️ CONSTRUCCIONES MINZOE SAS</div>
-    <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
-    <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    {_logo_tag}
+    <div>
+      <div class="logo">CONSTRUCCIONES MINZOE SAS</div>
+      <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
+      <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+    </div>
   </div>
   <div style="text-align:right">
     <b>FORMATO MANTENIMIENTO HVAC</b><br>
@@ -3516,10 +3533,13 @@ elif pagina == "ots":
 <div class="pagina">
 
 <div class="header">
-  <div>
-    <div class="logo">🏗️ CONSTRUCCIONES MINZOE SAS</div>
-    <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
-    <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    {_logo_tag}
+    <div>
+      <div class="logo">CONSTRUCCIONES MINZOE SAS</div>
+      <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
+      <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+    </div>
   </div>
   <div style="text-align:right">
     <b>FORMATO MANTENIMIENTO Y REPARACIONES LOCATIVAS</b><br>
