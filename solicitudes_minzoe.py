@@ -567,9 +567,30 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
         msg.attach(MIMEText(cuerpo, "html", "utf-8"))
 
         context = ssl.create_default_context()
+        msg_bytes = msg.as_bytes()
+
+        # Enviar el correo
         with smtplib.SMTP_SSL("smtp.hostinger.com", 465, context=context) as server:
             server.login(email_user, email_pwd)
-            server.sendmail(email_user, correo_destino, msg.as_string())
+            server.sendmail(email_user, correo_destino, msg_bytes)
+
+        # Guardar copia en carpeta Enviados via IMAP
+        try:
+            import imaplib, time
+            imap = imaplib.IMAP4_SSL("imap.hostinger.com", 993)
+            imap.login(email_user, email_pwd)
+            # Buscar la carpeta de enviados (puede variar según servidor)
+            for carpeta in ["Sent", "INBOX.Sent", "Sent Items", "Enviados"]:
+                try:
+                    imap.append(carpeta, "\\Seen",
+                                imaplib.Time2Internaldate(time.time()),
+                                msg_bytes)
+                    break
+                except Exception:
+                    continue
+            imap.logout()
+        except Exception:
+            pass  # Si falla el IMAP no interrumpe el flujo
 
         return True, f"Confirmación enviada a {correo_destino}"
     except Exception as e:
