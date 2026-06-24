@@ -475,7 +475,7 @@ def carpeta_sede(sede_nombre):
     return "00_" + "_".join(w.capitalize() for w in limpio.split())
 
 def ocr_documento(file_bytes, mime_type):
-    """Extrae texto de imagen o PDF usando Google Cloud Vision. Retorna (texto, confianza 0-1)."""
+    """Extrae texto de imagen o PDF usando Google Cloud Vision. Retorna (texto, confianza, error)."""
     try:
         from google.cloud import vision as gcv
         from google.oauth2.service_account import Credentials as SACredentials
@@ -487,32 +487,33 @@ def ocr_documento(file_bytes, mime_type):
         client = gcv.ImageAnnotatorClient(credentials=creds)
 
         if mime_type == "application/pdf":
-            # Convertir primera página del PDF a imagen con PyMuPDF
-            import fitz
-            doc = fitz.open(stream=file_bytes, filetype="pdf")
-            pag = doc[0]
-            mat = fitz.Matrix(2, 2)  # zoom 2x para mejor calidad
-            pix = pag.get_pixmap(matrix=mat)
-            img_bytes = pix.tobytes("png")
+            try:
+                import fitz
+                doc      = fitz.open(stream=file_bytes, filetype="pdf")
+                pag      = doc[0]
+                mat      = fitz.Matrix(2.5, 2.5)
+                pix      = pag.get_pixmap(matrix=mat)
+                img_bytes = pix.tobytes("png")
+            except Exception as e_pdf:
+                return "", 0.0, f"Error convirtiendo PDF: {e_pdf}"
         else:
             img_bytes = file_bytes
 
         imagen = gcv.Image(content=img_bytes)
-        resp   = client.text_detection(image=imagen)
+        # Usar document_text_detection — mejor para formularios
+        resp = client.document_text_detection(image=imagen)
 
         if resp.error.message:
-            return "", 0.0
+            return "", 0.0, f"Vision API error: {resp.error.message}"
 
-        anotaciones = resp.text_annotations
-        if not anotaciones:
-            return "", 0.0
+        if not resp.full_text_annotation or not resp.full_text_annotation.text:
+            return "", 0.0, "La API no detectó texto en el documento."
 
-        texto = anotaciones[0].description
-        # Confianza basada en cantidad de texto extraído
-        confianza = min(len(texto) / 500, 1.0)
-        return texto, confianza
+        texto     = resp.full_text_annotation.text
+        confianza = min(len(texto) / 300, 1.0)
+        return texto, confianza, ""
     except Exception as e:
-        return "", 0.0
+        return "", 0.0, str(e)
 
 
 def _buscar(texto, patrones):
@@ -2441,10 +2442,13 @@ elif pagina == "ots":
                         if archivo_ocr:
                             with st.spinner("Leyendo documento con Google Vision..."):
                                 mime = archivo_ocr.type
-                                texto_ocr, conf_ocr = ocr_documento(archivo_ocr.read(), mime)
+                                texto_ocr, conf_ocr, err_ocr = ocr_documento(archivo_ocr.read(), mime)
 
-                            if conf_ocr < 0.3 or not texto_ocr.strip():
-                                st.error("❌ No se pudo leer el documento. Llena el informe manualmente.")
+                            if err_ocr:
+                                st.error(f"❌ Error al leer: {err_ocr}")
+                                modo = "✏️ Manual"
+                            elif conf_ocr < 0.1 or not texto_ocr.strip():
+                                st.error("❌ No se detectó texto en el documento. Llena el informe manualmente.")
                                 modo = "✏️ Manual"
                             else:
                                 if servicio_ot == "Aires Acondicionados":
