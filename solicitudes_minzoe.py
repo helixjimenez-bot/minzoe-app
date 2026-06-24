@@ -597,6 +597,128 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
         return False, str(e)
 
 
+def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_destino, fecha):
+    """Envía correo de actualización al cliente cuando la SOL es aprobada y se crea la OT."""
+    import smtplib, ssl, imaplib, time
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    try:
+        usuario_correo = st.session_state.get("user_correo", "")
+        email_user     = usuario_correo
+        passwords      = st.secrets.get("email_passwords", {})
+        email_pwd      = passwords.get(usuario_correo, "")
+        if not email_user or not email_pwd:
+            return False, f"Credenciales no configuradas para {email_user}."
+
+        hora   = datetime.now().hour
+        saludo = "Buenos días" if hora < 12 else ("Buenas tardes" if hora < 18 else "Buenas noches")
+        asunto = f"📋 Actualización Solicitud {sol_id} — Construcciones Minzoe SAS"
+
+        cuerpo = f"""<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:20px;margin:0">
+<div style="max-width:600px;margin:0 auto;background:white;border-radius:12px;
+     overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.1)">
+
+  <div style="background:#dc2626;padding:24px 32px">
+    <h1 style="color:white;margin:0;font-size:20px">🏗️ CONSTRUCCIONES MINZOE SAS</h1>
+    <p style="color:#fca5a5;margin:4px 0 0 0;font-size:13px">
+      Soluciones integrales en construcción, mantenimiento y climatización
+    </p>
+  </div>
+
+  <div style="padding:32px">
+    <p style="color:#111;font-size:15px">{saludo}.</p>
+
+    <p style="color:#333;font-size:14px;line-height:1.6">
+      Le informamos que la solicitud registrada ha sido asignada bajo la OTS No.
+    </p>
+
+    <div style="background:#fff5f5;border-left:4px solid #dc2626;
+         border-radius:8px;padding:16px 24px;margin:20px 0;text-align:center">
+      <p style="margin:0 0 4px 0;font-size:12px;color:#999;text-transform:uppercase;letter-spacing:1px">
+        Número de OTS
+      </p>
+      <p style="margin:0;font-size:28px;font-weight:900;color:#dc2626;letter-spacing:2px">
+        {ot_id}
+      </p>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin:16px 0">
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:8px 0;color:#777;width:40%">Solicitud</td>
+        <td style="padding:8px 0;color:#111;font-weight:bold">{sol_id}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:8px 0;color:#777">Estado</td>
+        <td style="padding:8px 0;color:#16a34a;font-weight:bold">✅ Asignada para gestión</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:#777">Fecha de asignación</td>
+        <td style="padding:8px 0;color:#111">{fecha}</td>
+      </tr>
+    </table>
+
+    <p style="color:#333;font-size:14px;line-height:1.8">
+      Nuestro equipo se encuentra realizando las validaciones y coordinaciones
+      correspondientes para la atención del requerimiento.
+    </p>
+
+    <p style="color:#333;font-size:14px;line-height:1.8">
+      Agradecemos su atención y quedamos atentos a cualquier inquietud adicional.
+    </p>
+
+    <div style="border-top:2px solid #dc2626;padding-top:16px;margin-top:24px">
+      <p style="margin:0;font-weight:bold;color:#111;font-size:14px">CONSTRUCCIONES MINZOE SAS</p>
+      <p style="margin:4px 0 0 0;font-size:12px;color:#555">
+        📍 Cra 5 # 8a-18 &nbsp;|&nbsp; 📞 3175102668 – 3173748665
+      </p>
+      <p style="margin:4px 0 0 0;font-size:12px;color:#555">
+        ✉️ {email_user}
+      </p>
+    </div>
+  </div>
+
+  <div style="background:#1a1a1a;padding:14px 32px;text-align:center">
+    <p style="color:#777;font-size:11px;margin:0">
+      Este es un mensaje automático, por favor no responda a este correo.
+    </p>
+  </div>
+</div>
+</body></html>"""
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = asunto
+        msg["From"]    = f"Construcciones Minzoe SAS <{email_user}>"
+        msg["To"]      = correo_destino
+        msg.attach(MIMEText(cuerpo, "html", "utf-8"))
+        msg_bytes = msg.as_bytes()
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.hostinger.com", 465, context=context) as server:
+            server.login(email_user, email_pwd)
+            server.sendmail(email_user, correo_destino, msg_bytes)
+
+        # Copia en Enviados
+        try:
+            imap = imaplib.IMAP4_SSL("imap.hostinger.com", 993)
+            imap.login(email_user, email_pwd)
+            for carpeta in ["Sent", "INBOX.Sent", "Sent Items", "Enviados"]:
+                try:
+                    imap.append(carpeta, "\\Seen",
+                                imaplib.Time2Internaldate(time.time()), msg_bytes)
+                    break
+                except Exception:
+                    continue
+            imap.logout()
+        except Exception:
+            pass
+
+        return True, f"Actualización enviada a {correo_destino}"
+    except Exception as e:
+        return False, str(e)
+
+
 def css_formato_carta():
     """CSS estándar para formatos en tamaño carta con márgenes ICONTEC."""
     return """
@@ -1741,7 +1863,20 @@ elif pagina == "ver":
                             ots, creada = crear_ot_desde_sol(sol_row, ots)
                             if creada:
                                 save_ots(ots)
-                                msg += f" OT **{ots.iloc[-1]['ID']}** creada automáticamente."
+                                nueva_ot_id = ots.iloc[-1]["ID"]
+                                msg += f" OT **{nueva_ot_id}** creada automáticamente."
+                                # Enviar correo de actualización al contacto
+                                correo_cli = sol_row.get("Correo_Contacto","").strip()
+                                if correo_cli:
+                                    ok_m, res_m = enviar_actualizacion_ot(
+                                        sol_id          = id_sel,
+                                        ot_id           = nueva_ot_id,
+                                        cliente         = sol_row.get("Cliente",""),
+                                        contacto_nombre = sol_row.get("Nombre_Contacto",""),
+                                        correo_destino  = correo_cli,
+                                        fecha           = datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                    )
+                                    msg += f" 📧 {res_m}" if ok_m else f" ⚠️ Correo: {res_m}"
                         st.success(msg)
                         st.rerun()
 
