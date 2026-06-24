@@ -469,6 +469,36 @@ def carpeta_sede(sede_nombre):
     limpio = "".join(c for c in sede_nombre if c.isalnum() or c in " _-").strip()
     return "00_" + "_".join(w.capitalize() for w in limpio.split())
 
+def _guardar_en_enviados(imap, msg_bytes):
+    """Detecta y guarda en la carpeta de Enviados del servidor IMAP."""
+    import time as _time
+    # Listar todas las carpetas y buscar la de enviados
+    _, carpetas = imap.list()
+    sent_folder = None
+    for c in carpetas:
+        nombre = c.decode(errors="ignore").split('"/"')[-1].strip().strip('"').strip()
+        if any(kw in nombre.lower() for kw in ["sent", "enviado", "enviad"]):
+            sent_folder = nombre
+            break
+    # Si no encontró por nombre, prueba candidatos comunes
+    if not sent_folder:
+        for candidato in ["Sent", "INBOX.Sent", "Sent Items", "Enviados", "INBOX.Enviados"]:
+            try:
+                res = imap.select(candidato)
+                if res[0] == "OK":
+                    sent_folder = candidato
+                    break
+            except Exception:
+                continue
+    if sent_folder:
+        try:
+            imap.append(sent_folder, "\\Seen",
+                        __import__("imaplib").Time2Internaldate(_time.time()),
+                        msg_bytes)
+        except Exception:
+            pass
+
+
 def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, contacto_nombre, correo_destino, fecha):
     """Envía correo de confirmación al cliente con el código de la solicitud."""
     import smtplib, ssl
@@ -576,21 +606,13 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
 
         # Guardar copia en carpeta Enviados via IMAP
         try:
-            import imaplib, time
+            import imaplib
             imap = imaplib.IMAP4_SSL("imap.hostinger.com", 993)
             imap.login(email_user, email_pwd)
-            # Buscar la carpeta de enviados (puede variar según servidor)
-            for carpeta in ["Sent", "INBOX.Sent", "Sent Items", "Enviados"]:
-                try:
-                    imap.append(carpeta, "\\Seen",
-                                imaplib.Time2Internaldate(time.time()),
-                                msg_bytes)
-                    break
-                except Exception:
-                    continue
+            _guardar_en_enviados(imap, msg_bytes)
             imap.logout()
         except Exception:
-            pass  # Si falla el IMAP no interrumpe el flujo
+            pass
 
         return True, f"Confirmación enviada a {correo_destino}"
     except Exception as e:
