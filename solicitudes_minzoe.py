@@ -491,17 +491,18 @@ def ocr_documento(file_bytes, mime_type):
                 import fitz
                 doc      = fitz.open(stream=file_bytes, filetype="pdf")
                 pag      = doc[0]
-                mat      = fitz.Matrix(2.5, 2.5)
-                pix      = pag.get_pixmap(matrix=mat)
+                mat      = fitz.Matrix(3.0, 3.0)  # 3x zoom para mejor lectura manuscrita
+                pix      = pag.get_pixmap(matrix=mat, colorspace=fitz.csRGB)
                 img_bytes = pix.tobytes("png")
             except Exception as e_pdf:
                 return "", 0.0, f"Error convirtiendo PDF: {e_pdf}"
         else:
             img_bytes = file_bytes
 
-        imagen = gcv.Image(content=img_bytes)
-        # Usar document_text_detection — mejor para formularios
-        resp = client.document_text_detection(image=imagen)
+        imagen  = gcv.Image(content=img_bytes)
+        context = gcv.ImageContext(language_hints=["es", "es-419"])
+        # Usar document_text_detection — mejor para formularios con letra manuscrita
+        resp = client.document_text_detection(image=imagen, image_context=context)
 
         if resp.error.message:
             return "", 0.0, f"Vision API error: {resp.error.message}"
