@@ -96,13 +96,64 @@ def ahora_colombia():
     """Retorna datetime actual en hora Colombia (UTC-5)."""
     return datetime.utcnow() - timedelta(hours=5)
 
-COLS_COUNTERS = ["tipo", "prefijo", "ultimo_num"]
+COLS_COUNTERS    = ["tipo", "prefijo", "ultimo_num"]
+COLS_HISTORIAL   = ["ID_Log","Fecha","Usuario","Entidad","Entidad_ID","Campo","Valor_Anterior","Valor_Nuevo"]
+COLS_COMENTARIOS = ["ID_Com","Fecha","Usuario","Entidad","Entidad_ID","Comentario"]
 
 def load_counters():
     return gs_load("contadores", tuple(COLS_COUNTERS))
 
 def save_counters(df):
     gs_save("contadores", df)
+
+def load_historial():
+    return gs_load("historial", tuple(COLS_HISTORIAL))
+
+def save_historial(df):
+    gs_save("historial", df)
+
+def load_comentarios():
+    return gs_load("comentarios", tuple(COLS_COMENTARIOS))
+
+def save_comentarios(df):
+    gs_save("comentarios", df)
+
+def registrar_cambio(entidad, entidad_id, campo, val_ant, val_nuevo):
+    """Registra un cambio en el historial de auditoría."""
+    try:
+        hist = load_historial()
+        nuevo = {
+            "ID_Log":         f"LOG-{ahora_colombia().strftime('%y%m%d%H%M%S')}",
+            "Fecha":          ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+            "Usuario":        st.session_state.get("user_nombre",""),
+            "Entidad":        entidad,
+            "Entidad_ID":     entidad_id,
+            "Campo":          campo,
+            "Valor_Anterior": str(val_ant),
+            "Valor_Nuevo":    str(val_nuevo),
+        }
+        hist = pd.concat([hist, pd.DataFrame([nuevo])], ignore_index=True)
+        save_historial(hist)
+    except Exception:
+        pass  # No interrumpir el flujo principal
+
+def agregar_comentario(entidad, entidad_id, texto):
+    """Agrega un comentario interno a una SOL u OT."""
+    try:
+        coms = load_comentarios()
+        nuevo = {
+            "ID_Com":     f"COM-{ahora_colombia().strftime('%y%m%d%H%M%S')}",
+            "Fecha":      ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+            "Usuario":    st.session_state.get("user_nombre",""),
+            "Entidad":    entidad,
+            "Entidad_ID": entidad_id,
+            "Comentario": texto.strip(),
+        }
+        coms = pd.concat([coms, pd.DataFrame([nuevo])], ignore_index=True)
+        save_comentarios(coms)
+        return True
+    except Exception:
+        return False
 
 def siguiente_id(tipo, prefijo, df_existente=None):
     """Genera el siguiente ID único e irrepetible para SOL u OT."""
@@ -1502,6 +1553,10 @@ with st.sidebar:
         st.session_state["pagina"] = "ots"
         st.rerun()
 
+    if st.button("📅 Calendario de Visitas", use_container_width=True):
+        st.session_state["pagina"] = "calendario"
+        st.rerun()
+
     if st.button("📄 Contratos de Mantenimiento", use_container_width=True):
         st.session_state["pagina"] = "contratos_mto"
         st.rerun()
@@ -1775,13 +1830,17 @@ elif pagina == "ver":
         st.info("Aún no hay solicitudes registradas.")
     else:
         # ── FILTROS ───────────────────────────────────────────────────────────
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3, c4, c5 = st.columns(5)
         with c1:
             f_estado   = st.multiselect("Estado", ESTADOS, default=ESTADOS)
         with c2:
             f_servicio = st.multiselect("Servicio", SERVICIOS, default=SERVICIOS)
         with c3:
             buscar = st.text_input("Buscar empresa")
+        with c4:
+            f_fecha_ini = st.date_input("Desde", value=None, key="sol_fecha_ini")
+        with c5:
+            f_fecha_fin = st.date_input("Hasta", value=None, key="sol_fecha_fin")
 
         vista = df.copy()
         if f_estado:
@@ -1790,6 +1849,11 @@ elif pagina == "ver":
             vista = vista[vista["Servicio"].isin(f_servicio)]
         if buscar:
             vista = vista[vista["Cliente"].str.contains(buscar, case=False, na=False)]
+        # Filtro por rango de fechas
+        if f_fecha_ini:
+            vista = vista[vista["Fecha"].str[:10] >= f_fecha_ini.strftime("%Y-%m-%d")]
+        if f_fecha_fin:
+            vista = vista[vista["Fecha"].str[:10] <= f_fecha_fin.strftime("%Y-%m-%d")]
 
         vista_ord = vista.sort_values("ID", ascending=False, key=lambda x: x.str.replace("SOL-", ""))
 
@@ -1830,7 +1894,7 @@ elif pagina == "ver":
         if id_sel:
             fila = df[df["ID"] == id_sel].iloc[0]
 
-            acc1, acc2, acc3 = st.tabs(["🔍 Ver detalle", "✏️ Editar", "🗑️ Eliminar"])
+            acc1, acc2, acc_com, acc_hist, acc3 = st.tabs(["🔍 Ver detalle", "✏️ Editar", "💬 Comentarios", "📜 Historial", "🗑️ Eliminar"])
 
             # ── VER DETALLE ───────────────────────────────────────────────────
             with acc1:
@@ -1908,8 +1972,11 @@ elif pagina == "ver":
                         df.loc[idx, "Descripcion"]      = e_desc
                         df.loc[idx, "SLA"]              = e_sla
                         df.loc[idx, "Canal"]            = e_canal
-                        df.loc[idx, "Estado"]           = e_estado
+                        estado_ant = fila["Estado"]
+                        df.loc[idx, "Estado"] = e_estado
                         save_sol(df)
+                        if estado_ant != e_estado:
+                            registrar_cambio("SOL", id_sel, "Estado", estado_ant, e_estado)
                         msg = f"✅ Solicitud {id_sel} actualizada."
                         notif = [("success", msg)]
 
@@ -1954,12 +2021,42 @@ elif pagina == "ver":
                         st.rerun()
 
             # ── ELIMINAR ──────────────────────────────────────────────────────
+            with acc_com:
+                st.markdown(f"**💬 Comentarios internos — {id_sel}**")
+                coms_all = load_comentarios()
+                coms_sol = coms_all[(coms_all["Entidad"]=="SOL") & (coms_all["Entidad_ID"]==id_sel)] if not coms_all.empty else pd.DataFrame()
+                if coms_sol.empty:
+                    st.info("Sin comentarios aún.")
+                else:
+                    for _, c in coms_sol.sort_values("Fecha", ascending=False).iterrows():
+                        st.markdown(f"""<div style='background:#fff5f5;border-left:3px solid #dc2626;
+                            padding:8px 12px;border-radius:6px;margin:4px 0;font-size:13px'>
+                            <b>{c['Usuario']}</b> <span style='color:#999;font-size:11px'>{c['Fecha']}</span><br>{c['Comentario']}
+                            </div>""", unsafe_allow_html=True)
+                with st.form(f"form_com_sol_{id_sel}", clear_on_submit=True):
+                    nuevo_com = st.text_area("Agregar comentario", key=f"com_sol_{id_sel}")
+                    if st.form_submit_button("💬 Agregar", type="primary"):
+                        if nuevo_com.strip():
+                            agregar_comentario("SOL", id_sel, nuevo_com)
+                            st.success("Comentario agregado.")
+                            st.rerun()
+
+            with acc_hist:
+                st.markdown(f"**📜 Historial de cambios — {id_sel}**")
+                hist_all = load_historial()
+                hist_sol = hist_all[(hist_all["Entidad"]=="SOL") & (hist_all["Entidad_ID"]==id_sel)] if not hist_all.empty else pd.DataFrame()
+                if hist_sol.empty:
+                    st.info("Sin cambios registrados.")
+                else:
+                    tabla_html(hist_sol[["Fecha","Usuario","Campo","Valor_Anterior","Valor_Nuevo"]].sort_values("Fecha", ascending=False).reset_index(drop=True))
+
             with acc3:
                 st.markdown(f"### Eliminar {id_sel}")
                 st.warning(f"¿Seguro que deseas eliminar la solicitud **{id_sel}** de **{fila['Cliente']}**? Esta acción no se puede deshacer.")
                 c1, c2 = st.columns(2)
                 with c1:
                     if st.button("🗑️ Sí, eliminar", type="primary", use_container_width=True):
+                        registrar_cambio("SOL", id_sel, "Estado", fila["Estado"], "ELIMINADA")
                         df = df[df["ID"] != id_sel].reset_index(drop=True)
                         save_sol(df)
                         st.success(f"Solicitud {id_sel} eliminada.")
@@ -2721,7 +2818,7 @@ elif pagina == "ots":
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
                 # Si viene del dashboard abrir directamente en Editar
                 tab_ini = 1 if ot_pre else 0
-                det, edi, rep, eli = st.tabs(["🔍 Ver detalle", "✏️ Editar", "📄 Reportar", "🗑️ Eliminar"])
+                det, edi, rep, ot_com, ot_hist, eli = st.tabs(["🔍 Ver detalle", "✏️ Editar", "📄 Reportar", "💬 Comentarios", "📜 Historial", "🗑️ Eliminar"])
 
                 with det:
                     c1, c2 = st.columns(2)
@@ -2824,7 +2921,10 @@ elif pagina == "ots":
                             ots.loc[idx_ot, "Descripcion"]    = ee_desc
                             ots.loc[idx_ot, "Tecnico"]        = ee_tec
                             ots.loc[idx_ot, "Celular_Tecnico"] = ee_cel_tec
+                            estado_ot_ant = fila_ot.get("Estado","")
                             ots.loc[idx_ot, "Estado"]         = ee_estado
+                            if estado_ot_ant != ee_estado:
+                                registrar_cambio("OT", id_ot_sel, "Estado", estado_ot_ant, ee_estado)
                             ots.loc[idx_ot, "Valor_COP"]      = ee_valor
                             ots.loc[idx_ot, "Fecha_Ejecucion"]  = ee_fecha.strftime("%Y-%m-%d")
                             ots.loc[idx_ot, "Hora_Inicio"]      = ee_hora_ini
@@ -3528,11 +3628,41 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             if ok_h:
                                 st.rerun()
 
+                with ot_com:
+                    st.markdown(f"**💬 Comentarios internos — {id_ot_sel}**")
+                    coms_all = load_comentarios()
+                    coms_ot  = coms_all[(coms_all["Entidad"]=="OT") & (coms_all["Entidad_ID"]==id_ot_sel)] if not coms_all.empty else pd.DataFrame()
+                    if coms_ot.empty:
+                        st.info("Sin comentarios aún.")
+                    else:
+                        for _, c in coms_ot.sort_values("Fecha", ascending=False).iterrows():
+                            st.markdown(f"""<div style='background:#fff5f5;border-left:3px solid #dc2626;
+                                padding:8px 12px;border-radius:6px;margin:4px 0;font-size:13px'>
+                                <b>{c['Usuario']}</b> <span style='color:#999;font-size:11px'>{c['Fecha']}</span><br>{c['Comentario']}
+                                </div>""", unsafe_allow_html=True)
+                    with st.form(f"form_com_ot_{id_ot_sel}", clear_on_submit=True):
+                        nuevo_com_ot = st.text_area("Agregar comentario", key=f"com_ot_{id_ot_sel}")
+                        if st.form_submit_button("💬 Agregar", type="primary"):
+                            if nuevo_com_ot.strip():
+                                agregar_comentario("OT", id_ot_sel, nuevo_com_ot)
+                                st.success("Comentario agregado.")
+                                st.rerun()
+
+                with ot_hist:
+                    st.markdown(f"**📜 Historial de cambios — {id_ot_sel}**")
+                    hist_all = load_historial()
+                    hist_ot  = hist_all[(hist_all["Entidad"]=="OT") & (hist_all["Entidad_ID"]==id_ot_sel)] if not hist_all.empty else pd.DataFrame()
+                    if hist_ot.empty:
+                        st.info("Sin cambios registrados.")
+                    else:
+                        tabla_html(hist_ot[["Fecha","Usuario","Campo","Valor_Anterior","Valor_Nuevo"]].sort_values("Fecha", ascending=False).reset_index(drop=True))
+
                 with eli:
                     st.warning(f"¿Eliminar la OT **{id_ot_sel}** de **{fila_ot['Cliente']}**? No se puede deshacer.")
                     c1, c2 = st.columns(2)
                     with c1:
                         if st.button("🗑️ Sí, eliminar", type="primary", use_container_width=True, key="eli_ot"):
+                            registrar_cambio("OT", id_ot_sel, "Estado", fila_ot.get("Estado",""), "ELIMINADA")
                             ots = ots[ots["ID"] != id_ot_sel].reset_index(drop=True)
                             save_ots(ots)
                             st.success("OT eliminada.")
@@ -4181,6 +4311,83 @@ elif pagina == "hojas_vida":
                                         save_equipos(equipos)
                                         st.success(f"✅ Equipo {id_item} actualizado.")
                                         st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PÁGINA: CALENDARIO DE VISITAS
+# ══════════════════════════════════════════════════════════════════════════════
+elif pagina == "calendario":
+    import plotly.express as px
+    ots = get_ots()
+    st.subheader("📅 Calendario de Visitas")
+
+    if ots.empty:
+        st.info("No hay OTs registradas.")
+    else:
+        # Filtros
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            mes_cal = st.selectbox("Mes", list(MESES_CARPETA.values()),
+                                   index=ahora_colombia().month - 1, key="cal_mes")
+        with c2:
+            anio_cal = st.number_input("Año", value=ahora_colombia().year,
+                                        min_value=2024, max_value=2030, key="cal_anio")
+        with c3:
+            f_tec_cal = st.multiselect("Técnico", ots["Tecnico"].dropna().unique().tolist(), key="cal_tec")
+
+        # Filtrar OTs con fecha de ejecución
+        ots_cal = ots[ots["Fecha_Ejecucion"].str.strip() != ""].copy() if "Fecha_Ejecucion" in ots.columns else pd.DataFrame()
+
+        if not ots_cal.empty:
+            num_mes = list(MESES_CARPETA.keys())[list(MESES_CARPETA.values()).index(mes_cal)]
+            prefijo_mes = f"{anio_cal}-{num_mes}"
+            ots_cal = ots_cal[ots_cal["Fecha_Ejecucion"].str.startswith(prefijo_mes, na=False)]
+            if f_tec_cal:
+                ots_cal = ots_cal[ots_cal["Tecnico"].isin(f_tec_cal)]
+
+        if ots_cal.empty:
+            st.info(f"No hay visitas programadas en {mes_cal} {anio_cal}.")
+        else:
+            # Gantt / timeline de visitas
+            COLORES_CAL = {
+                "Programada":   "#7c3aed",
+                "En ejecución": "#ea580c",
+                "Finalizada":   "#16a34a",
+                "Cancelada":    "#dc2626",
+            }
+            ots_cal["Color"] = ots_cal["Estado"].map(COLORES_CAL).fillna("#666")
+            ots_cal["Inicio"] = pd.to_datetime(ots_cal["Fecha_Ejecucion"], errors="coerce")
+            ots_cal["Fin"]    = ots_cal["Inicio"] + pd.Timedelta(hours=4)
+            ots_cal["Label"]  = ots_cal["ID"] + " | " + ots_cal["Cliente"] + " | " + ots_cal["Tecnico"].fillna("Sin técnico")
+
+            fig = px.timeline(
+                ots_cal.dropna(subset=["Inicio"]),
+                x_start="Inicio", x_end="Fin",
+                y="Label", color="Estado",
+                color_discrete_map=COLORES_CAL,
+                title=f"📅 Visitas programadas — {mes_cal.split('_')[1].capitalize()} {anio_cal}",
+                hover_data=["Cliente","Sede","Servicio","Tecnico","Estado"],
+            )
+            fig.update_layout(
+                plot_bgcolor="white", paper_bgcolor="white",
+                font_color="#111", title_font_color="#dc2626",
+                height=max(300, len(ots_cal) * 40 + 100),
+                xaxis_title="Fecha", yaxis_title="",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.divider()
+            st.markdown(f"**{len(ots_cal)} visita(s) en {mes_cal.split('_')[1].capitalize()} {anio_cal}**")
+            tabla_html(
+                ots_cal[["ID","Fecha_Ejecucion","Hora_Inicio","Hora_Final","Cliente","Sede","Servicio","Tecnico","Estado"]].reset_index(drop=True),
+                color_col="Estado",
+                colores_estado={
+                    "Programada":   ("#e0e7ff","#1e3a8a"),
+                    "En ejecución": ("#fef3c7","#78350f"),
+                    "Finalizada":   ("#d1fae5","#064e3b"),
+                    "Cancelada":    ("#fee2e2","#7f1d1d"),
+                }
+            )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
