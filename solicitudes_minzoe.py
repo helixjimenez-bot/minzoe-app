@@ -56,6 +56,7 @@ COLS_SOL = [
     "ID", "Fecha", "Creado_Por", "Cliente", "NIT", "Direccion_Empresa",
     "Sede", "Direccion_Sede", "Nombre_Contacto", "Correo_Contacto", "Celular_Contacto",
     "Servicio", "Tipo_Servicio", "Descripcion", "SLA", "Ciudad", "Zona", "Canal", "Estado",
+    "Email_Message_ID",
 ]
 COLS_CLI = [
     "Empresa", "NIT", "Direccion_Empresa",
@@ -500,7 +501,7 @@ def _guardar_en_enviados(imap, msg_bytes):
             pass
 
 
-def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, contacto_nombre, correo_destino, fecha):
+def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, contacto_nombre, correo_destino, fecha, dominio="construminzoe.com"):
     """Envía correo de confirmación al cliente con el código de la solicitud."""
     import smtplib, ssl
     from email.mime.multipart import MIMEMultipart
@@ -591,21 +592,23 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
 </div>
 </body></html>
 """
+        import uuid
+        message_id = f"<{sol_id}.{uuid.uuid4().hex[:8]}@{dominio}>"
+
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = asunto
-        msg["From"]    = f"Construcciones Minzoe SAS <{email_user}>"
-        msg["To"]      = correo_destino
+        msg["Subject"]    = asunto
+        msg["From"]       = f"Construcciones Minzoe SAS <{email_user}>"
+        msg["To"]         = correo_destino
+        msg["Message-ID"] = message_id
         msg.attach(MIMEText(cuerpo, "html", "utf-8"))
 
         context = ssl.create_default_context()
         msg_bytes = msg.as_bytes()
 
-        # Enviar el correo
         with smtplib.SMTP_SSL("smtp.hostinger.com", 465, context=context) as server:
             server.login(email_user, email_pwd)
             server.sendmail(email_user, correo_destino, msg_bytes)
 
-        # Guardar copia en carpeta Enviados via IMAP
         try:
             import imaplib
             imap = imaplib.IMAP4_SSL("imap.hostinger.com", 993)
@@ -615,12 +618,12 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
         except Exception:
             pass
 
-        return True, f"Confirmación enviada a {correo_destino}"
+        return True, f"Confirmación enviada a {correo_destino}", message_id
     except Exception as e:
         return False, str(e)
 
 
-def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_destino, fecha):
+def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_destino, fecha, reply_to_id=None, dominio="construminzoe.com"):
     """Envía correo de actualización al cliente cuando la SOL es aprobada y se crea la OT."""
     import smtplib, ssl, imaplib, time
     from email.mime.multipart import MIMEMultipart
@@ -710,10 +713,17 @@ def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_dest
 </div>
 </body></html>"""
 
+        import uuid
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = asunto
-        msg["From"]    = f"Construcciones Minzoe SAS <{email_user}>"
-        msg["To"]      = correo_destino
+        # Re: para que sea hilo de respuesta
+        msg["Subject"]    = f"Re: ✅ Solicitud {sol_id} recibida — Construcciones Minzoe SAS"
+        msg["From"]       = f"Construcciones Minzoe SAS <{email_user}>"
+        msg["To"]         = correo_destino
+        msg["Message-ID"] = f"<{ot_id}.{uuid.uuid4().hex[:8]}@{dominio}>"
+        # Encadenar con el correo original de la solicitud
+        if reply_to_id:
+            msg["In-Reply-To"] = reply_to_id
+            msg["References"]  = reply_to_id
         msg.attach(MIMEText(cuerpo, "html", "utf-8"))
         msg_bytes = msg.as_bytes()
 
@@ -722,17 +732,10 @@ def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_dest
             server.login(email_user, email_pwd)
             server.sendmail(email_user, correo_destino, msg_bytes)
 
-        # Copia en Enviados
         try:
             imap = imaplib.IMAP4_SSL("imap.hostinger.com", 993)
             imap.login(email_user, email_pwd)
-            for carpeta in ["Sent", "INBOX.Sent", "Sent Items", "Enviados"]:
-                try:
-                    imap.append(carpeta, "\\Seen",
-                                imaplib.Time2Internaldate(time.time()), msg_bytes)
-                    break
-                except Exception:
-                    continue
+            _guardar_en_enviados(imap, msg_bytes)
             imap.logout()
         except Exception:
             pass
@@ -1714,7 +1717,7 @@ if pagina == "nueva":
                 # Enviar confirmación por correo al contacto
                 correo_cli = cor_c_v.strip() if cor_c_v.strip() else ""
                 if correo_cli:
-                    ok_mail, res_mail = enviar_confirmacion_sol(
+                    resultado_mail = enviar_confirmacion_sol(
                         sol_id          = nueva["ID"],
                         cliente         = empresa_final,
                         servicio        = servicio,
@@ -1724,6 +1727,13 @@ if pagina == "nueva":
                         correo_destino  = correo_cli,
                         fecha           = nueva["Fecha"],
                     )
+                    ok_mail  = resultado_mail[0]
+                    res_mail = resultado_mail[1]
+                    msg_id   = resultado_mail[2] if len(resultado_mail) > 2 else ""
+                    # Guardar Message-ID en la SOL para encadenar el correo de OT
+                    if ok_mail and msg_id:
+                        df.loc[df["ID"] == nueva["ID"], "Email_Message_ID"] = msg_id
+                        save_sol(df)
                     msg_sol += f" 📧 {res_mail}" if ok_mail else f" ⚠️ Correo no enviado: {res_mail}"
                 st.success(msg_sol)
 
@@ -1886,6 +1896,8 @@ elif pagina == "ver":
                                 # Enviar correo de actualización al contacto
                                 correo_cli = sol_row.get("Correo_Contacto","").strip()
                                 if correo_cli:
+                                    # Recuperar Message-ID del correo original para encadenar
+                                    msg_id_orig = sol_row.get("Email_Message_ID","").strip()
                                     ok_m, res_m = enviar_actualizacion_ot(
                                         sol_id          = id_sel,
                                         ot_id           = nueva_ot_id,
@@ -1893,6 +1905,7 @@ elif pagina == "ver":
                                         contacto_nombre = sol_row.get("Nombre_Contacto",""),
                                         correo_destino  = correo_cli,
                                         fecha           = datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                        reply_to_id     = msg_id_orig or None,
                                     )
                                     msg += f" 📧 {res_m}" if ok_m else f" ⚠️ Correo: {res_m}"
                         st.success(msg)
