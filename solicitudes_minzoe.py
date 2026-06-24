@@ -474,6 +474,102 @@ def carpeta_sede(sede_nombre):
     limpio = "".join(c for c in sede_nombre if c.isalnum() or c in " _-").strip()
     return "00_" + "_".join(w.capitalize() for w in limpio.split())
 
+def ocr_documento(file_bytes, mime_type):
+    """Extrae texto de imagen o PDF usando Google Cloud Vision. Retorna (texto, confianza 0-1)."""
+    try:
+        from google.cloud import vision as gcv
+        from google.oauth2.service_account import Credentials as SACredentials
+
+        creds = SACredentials.from_service_account_info(
+            dict(st.secrets["gcp_service_account"]),
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        client = gcv.ImageAnnotatorClient(credentials=creds)
+
+        if mime_type == "application/pdf":
+            # Convertir primera página del PDF a imagen con PyMuPDF
+            import fitz
+            doc = fitz.open(stream=file_bytes, filetype="pdf")
+            pag = doc[0]
+            mat = fitz.Matrix(2, 2)  # zoom 2x para mejor calidad
+            pix = pag.get_pixmap(matrix=mat)
+            img_bytes = pix.tobytes("png")
+        else:
+            img_bytes = file_bytes
+
+        imagen = gcv.Image(content=img_bytes)
+        resp   = client.text_detection(image=imagen)
+
+        if resp.error.message:
+            return "", 0.0
+
+        anotaciones = resp.text_annotations
+        if not anotaciones:
+            return "", 0.0
+
+        texto = anotaciones[0].description
+        # Confianza basada en cantidad de texto extraído
+        confianza = min(len(texto) / 500, 1.0)
+        return texto, confianza
+    except Exception as e:
+        return "", 0.0
+
+
+def _buscar(texto, patrones):
+    """Busca el primer patrón que haga match en el texto."""
+    import re
+    for pat in patrones:
+        m = re.search(pat, texto, re.IGNORECASE | re.MULTILINE)
+        if m:
+            val = m.group(1).strip().replace("\n", " ")
+            return val[:80]  # max 80 chars
+    return ""
+
+def parsear_hvac(texto):
+    """Extrae campos del formulario HVAC del texto OCR."""
+    c = {}
+    c["cliente"]    = _buscar(texto, [r"CLIENTE[:\s]+([^\n|]+)", r"^CLIENTE\s+(.+)$"])
+    c["ciudad"]     = _buscar(texto, [r"CIUDAD[:\s]+([^\n|]+)"])
+    c["sucursal"]   = _buscar(texto, [r"SUCURSAL[:\s]+([^\n|]+)", r"SEDE[:\s]+([^\n|]+)"])
+    c["contacto"]   = _buscar(texto, [r"CONTACTO[:\s]+([^\n|]+)"])
+    c["marca"]      = _buscar(texto, [r"MARCA[:\s]+([^\n|]+)"])
+    c["modelo"]     = _buscar(texto, [r"MODELO[:\s]+([^\n|]+)"])
+    c["ser_cond"]   = _buscar(texto, [r"SERIAL CONDENSADORA[:\s]+([^\n|]+)", r"SERIAL COND[:\s]+([^\n|]+)"])
+    c["ser_evap"]   = _buscar(texto, [r"SERIAL EVAPORADORA[:\s]+([^\n|]+)", r"SERIAL EVAP[:\s]+([^\n|]+)"])
+    c["btu"]        = _buscar(texto, [r"BTU[:\s]+([\d,.\s]+)", r"CAPACIDAD[:\s]+([^\n|]+)"])
+    c["refrig"]     = _buscar(texto, [r"REFRIGERANTE[:\s]+([^\n|]+)", r"R-\d+[A-Z]?"])
+    c["ubic_evap"]  = _buscar(texto, [r"UBICACI.N EVAPORADORA[:\s]+([^\n|]+)"])
+    c["ubic_cond"]  = _buscar(texto, [r"UBICACI.N CONDENSADORA[:\s]+([^\n|]+)"])
+    c["v_cond"]     = _buscar(texto, [r"VOLTAJE[\s\S]{0,30}?(\d{2,3})\s*V"])
+    c["psi_a"]      = _buscar(texto, [r"PSI ALTA[:\s]+([\d.]+)", r"ALTA[:\s]+([\d.]+)\s*PSI"])
+    c["psi_b"]      = _buscar(texto, [r"PSI BAJA[:\s]+([\d.]+)", r"BAJA[:\s]+([\d.]+)\s*PSI"])
+    c["obs"]        = _buscar(texto, [r"OBSERVACIONES[:\s]+([^\n]{5,200})"])
+    c["tecnico"]    = _buscar(texto, [r"NOMBRE TECNICO[:\s]+([^\n|]+)", r"T[EÉ]CNICO[:\s]+([^\n|]+)"])
+
+    # Confianza: % de campos clave encontrados
+    clave = ["cliente","marca","modelo","btu","refrig"]
+    encontrados = sum(1 for k in clave if c.get(k,"").strip())
+    confianza = encontrados / len(clave)
+    return c, confianza
+
+
+def parsear_locativos(texto):
+    """Extrae campos del formulario Locativos del texto OCR."""
+    c = {}
+    c["cliente"]   = _buscar(texto, [r"CLIENTE[:\s]+([^\n|]+)"])
+    c["ciudad"]    = _buscar(texto, [r"CIUDAD[:\s]+([^\n|]+)"])
+    c["sucursal"]  = _buscar(texto, [r"SUCURSAL[:\s]+([^\n|]+)"])
+    c["contacto"]  = _buscar(texto, [r"CONTACTO[:\s]+([^\n|]+)"])
+    c["area"]      = _buscar(texto, [r"[AÁ]REA INTERVENIDA[:\s]+([^\n|]+)"])
+    c["tecnico"]   = _buscar(texto, [r"NOMBRE TECNICO[:\s]+([^\n|]+)", r"T[EÉ]CNICO[:\s]+([^\n|]+)"])
+    c["obs"]       = _buscar(texto, [r"OBSERVACIONES[:\s]+([^\n]{5,200})"])
+
+    clave = ["cliente","sucursal","area"]
+    encontrados = sum(1 for k in clave if c.get(k,"").strip())
+    confianza = encontrados / len(clave)
+    return c, confianza
+
+
 def get_drive_service():
     from google.oauth2.service_account import Credentials
     from googleapiclient.discovery import build
@@ -2329,6 +2425,38 @@ elif pagina == "ots":
 
                 with rep:
                     servicio_ot = fila_ot.get("Servicio", "")
+
+                    # ── Selector Automático / Manual ─────────────────────
+                    modo = st.radio("¿Cómo quieres llenar el informe?",
+                                    ["✏️ Manual", "🤖 Automático (leer documento)"],
+                                    horizontal=True, key=f"modo_rep_{id_ot_sel}")
+
+                    datos_ocr = {}
+                    if modo == "🤖 Automático (leer documento)":
+                        archivo_ocr = st.file_uploader(
+                            "Sube la orden de servicio (PDF o imagen)",
+                            type=["pdf","png","jpg","jpeg"],
+                            key=f"ocr_file_{id_ot_sel}"
+                        )
+                        if archivo_ocr:
+                            with st.spinner("Leyendo documento con Google Vision..."):
+                                mime = archivo_ocr.type
+                                texto_ocr, conf_ocr = ocr_documento(archivo_ocr.read(), mime)
+
+                            if conf_ocr < 0.3 or not texto_ocr.strip():
+                                st.error("❌ No se pudo leer el documento. Llena el informe manualmente.")
+                                modo = "✏️ Manual"
+                            else:
+                                if servicio_ot == "Aires Acondicionados":
+                                    datos_ocr, conf_campos = parsear_hvac(texto_ocr)
+                                else:
+                                    datos_ocr, conf_campos = parsear_locativos(texto_ocr)
+
+                                if conf_campos >= 0.6:
+                                    st.success(f"✅ Documento leído correctamente ({int(conf_campos*100)}% de campos detectados). Revisa y ajusta si es necesario.")
+                                else:
+                                    st.warning(f"⚠️ Solo se detectó el {int(conf_campos*100)}% de los campos. Completa los que faltan manualmente.")
+
                     if servicio_ot == "Aires Acondicionados":
                         # Buscar datos del equipo si viene de contrato
                         equipos = get_equipos()
@@ -2355,16 +2483,16 @@ elif pagina == "ots":
                             st.markdown("**🔧 Datos del equipo**")
                             dc1, dc2 = st.columns(2)
                             with dc1:
-                                r_tipo_eq   = st.text_input("Tipo de equipo",    value=eq_data.get("Servicio",""))
-                                r_marca     = st.text_input("Marca",             value=eq_data.get("Marca",""))
-                                r_modelo    = st.text_input("Modelo",            value=eq_data.get("Modelo",""))
-                                r_ser_cond  = st.text_input("Serial Condensadora", value=eq_data.get("Numero_Serie",""))
-                                r_ser_evap  = st.text_input("Serial Evaporadora")
+                                r_tipo_eq   = st.text_input("Tipo de equipo",      value=datos_ocr.get("marca", eq_data.get("Servicio","")))
+                                r_marca     = st.text_input("Marca",               value=datos_ocr.get("marca",   eq_data.get("Marca","")))
+                                r_modelo    = st.text_input("Modelo",              value=datos_ocr.get("modelo",  eq_data.get("Modelo","")))
+                                r_ser_cond  = st.text_input("Serial Condensadora", value=datos_ocr.get("ser_cond",eq_data.get("Numero_Serie","")))
+                                r_ser_evap  = st.text_input("Serial Evaporadora",  value=datos_ocr.get("ser_evap",""))
                             with dc2:
-                                r_btu       = st.text_input("Capacidad BTU/CFM", value=eq_data.get("Especificaciones",""))
-                                r_refrig    = st.text_input("Tipo de refrigerante", value=eq_data.get("Tipo_Refrigerante","") if "Tipo_Refrigerante" in eq_data else "")
-                                r_ubic_evap = st.text_input("Ubicación Evaporadora", value=eq_data.get("Ubicacion",""))
-                                r_ubic_cond = st.text_input("Ubicación Condensadora")
+                                r_btu       = st.text_input("Capacidad BTU/CFM",   value=datos_ocr.get("btu",     eq_data.get("Especificaciones","")))
+                                r_refrig    = st.text_input("Tipo de refrigerante", value=datos_ocr.get("refrig", eq_data.get("Tipo_Refrigerante","")))
+                                r_ubic_evap = st.text_input("Ubicación Evaporadora", value=datos_ocr.get("ubic_evap", eq_data.get("Ubicacion","")))
+                                r_ubic_cond = st.text_input("Ubicación Condensadora", value=datos_ocr.get("ubic_cond",""))
 
                             st.divider()
                             # ── Datos de medición ─────────────────────────
@@ -2740,7 +2868,7 @@ elif pagina == "ots":
                             c1, c2 = st.columns(2)
                             with c1:
                                 st.markdown("**📍 Datos del cliente**")
-                                l_area = st.text_input("Área intervenida", key="l_area")
+                                l_area = st.text_input("Área intervenida", value=datos_ocr.get("area",""), key="l_area")
 
                                 st.markdown("**⚙️ Sistema**")
                                 sc1, sc2 = st.columns(2)
