@@ -2713,6 +2713,37 @@ elif pagina == "ots":
         st.divider()
         st.markdown("### 🔧 2. Detalle del Trabajo")
 
+        # Selector de equipo reactivo ANTES del form
+        ot_equipo_id   = ""
+        ot_equipo_desc = ""
+        equipos_ot     = get_equipos()
+
+        # Mostrar selector solo si hay cliente/sede y el servicio es Aires
+        if empresa_final_ot and not equipos_ot.empty:
+            eq_sede = equipos_ot[
+                (equipos_ot["Cliente"].str.strip().str.lower() == empresa_final_ot.strip().lower()) &
+                (equipos_ot["Servicio"] == "Aires Acondicionados")
+            ]
+            if not eq_sede.empty:
+                # Filtrar por sede si está seleccionada
+                if sede_ot_v and sede_ot_v.strip():
+                    eq_sede = eq_sede[eq_sede["Sede"].str.strip().str.lower() == sede_ot_v.strip().lower()]
+                if not eq_sede.empty:
+                    st.markdown("### ❄️ Equipo de Aire Acondicionado")
+                    opciones_eq = ["Sin vincular a equipo específico"] + [
+                        f"{r['ID_Item']} — {r['Marca']} {r['Modelo']} | {r['Ubicacion'][:40]}"
+                        for _, r in eq_sede.iterrows()
+                    ]
+                    eq_sel = st.selectbox("Selecciona el equipo afectado", opciones_eq, key="ot_eq_sel")
+                    if eq_sel != "Sin vincular a equipo específico":
+                        ot_equipo_id   = eq_sel.split(" — ")[0]
+                        eq_row         = eq_sede[eq_sede["ID_Item"] == ot_equipo_id].iloc[0]
+                        ot_equipo_desc = f"{eq_row['Marca']} {eq_row['Modelo']} — Serial: {eq_row['Numero_Serie']} — {eq_row['Especificaciones']}"
+                        st.info(f"**Equipo:** {ot_equipo_desc}")
+
+        st.divider()
+        st.markdown("### 🔧 Detalle del Trabajo")
+
         with st.form("form_nueva_ot", clear_on_submit=True):
             c1, c2 = st.columns(2)
             with c1:
@@ -2758,11 +2789,23 @@ elif pagina == "ots":
                         "Materiales":      ot_materiales.strip(),
                         "Valor_COP":       ot_valor.strip(),
                         "Estado":          ot_estado,
-                        "Observaciones":   ot_obs.strip(),
+                        "Observaciones":   (f"Equipo: {ot_equipo_id} — {ot_equipo_desc}\n" if ot_equipo_id else "") + ot_obs.strip(),
                     }
+                    # Actualizar último/próximo mantenimiento si se vinculó un equipo
+                    if ot_equipo_id and not equipos_ot.empty:
+                        idx_eq = equipos_ot[equipos_ot["ID_Item"] == ot_equipo_id].index
+                        if len(idx_eq) > 0:
+                            freq_eq = contratos[contratos["ID_Contrato"] == equipos_ot.loc[idx_eq[0],"ID_Contrato"]]["Frecuencia"].values
+                            freq    = freq_eq[0] if len(freq_eq) > 0 else "Mensual"
+                            equipos_ot.loc[idx_eq[0], "Ultimo_Mantenimiento"]  = ahora_colombia().strftime("%Y-%m-%d")
+                            equipos_ot.loc[idx_eq[0], "Proximo_Mantenimiento"] = proxima_fecha(ahora_colombia().strftime("%Y-%m-%d"), freq)
+                            save_equipos(equipos_ot)
                     ots = pd.concat([ots, pd.DataFrame([nueva_ot])], ignore_index=True)
                     save_ots(ots)
-                    st.success(f"✅ OT **{nueva_ot['ID']}** guardada para {empresa_final_ot}.")
+                    msg_ot = f"✅ OT **{nueva_ot['ID']}** guardada para {empresa_final_ot}."
+                    if ot_equipo_id:
+                        msg_ot += f" Vinculada al equipo **{ot_equipo_id}**."
+                    st.success(msg_ot)
 
     # ── VER OTs ───────────────────────────────────────────────────────────────
     else:
