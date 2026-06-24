@@ -91,6 +91,11 @@ COLS_COSTO = [
 
 ESTADOS_PAGO = ["Pendiente", "Pagada", "Vencida", "Anulada"]
 
+
+def ahora_colombia():
+    """Retorna datetime actual en hora Colombia (UTC-5)."""
+    return datetime.utcnow() - timedelta(hours=5)
+
 COLS_COUNTERS = ["tipo", "prefijo", "ultimo_num"]
 
 def load_counters():
@@ -390,7 +395,7 @@ def save_cv(df):
     gs_save("compras_ventas", df)
 
 def gen_cv_id(df):
-    hoy = datetime.now().strftime("%y%m%d")
+    hoy = ahora_colombia().strftime("%y%m%d")
     pre = f"CV-{hoy}-"
     ids = df[df["ID_Registro"].str.startswith(pre, na=False)]["ID_Registro"] if not df.empty else pd.Series(dtype=str)
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CV-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
@@ -402,7 +407,7 @@ def save_ventas(df):
     gs_save("ventas", df)
 
 def gen_fac_id(df):
-    hoy = datetime.now().strftime("%y%m%d")
+    hoy = ahora_colombia().strftime("%y%m%d")
     pre = f"FAC-{hoy}-"
     ids = df[df["ID_Factura"].str.startswith(pre, na=False)]["ID_Factura"] if not df.empty else pd.Series(dtype=str)
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'FAC-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
@@ -414,7 +419,7 @@ def save_costos(df):
     gs_save("costos", df)
 
 def gen_costo_id(df):
-    hoy = datetime.now().strftime("%y%m%d")
+    hoy = ahora_colombia().strftime("%y%m%d")
     pre = f"COS-{hoy}-"
     ids = df[df["ID_Costo"].str.startswith(pre, na=False)]["ID_Costo"] if not df.empty else pd.Series(dtype=str)
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'COS-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
@@ -441,7 +446,7 @@ def save_equipos(df):
 
 
 def gen_contrato_id(df):
-    hoy = datetime.now().strftime("%y%m%d")
+    hoy = ahora_colombia().strftime("%y%m%d")
     pre = f"CON-{hoy}-"
     ids = df[df["ID_Contrato"].str.startswith(pre, na=False)]["ID_Contrato"] if not df.empty else pd.Series(dtype=str)
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CON-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
@@ -468,7 +473,7 @@ def proxima_fecha(desde_str, frecuencia):
 
 
 def generate_ot_id(df):
-    hoy     = datetime.now().strftime("%y%m%d")
+    hoy     = ahora_colombia().strftime("%y%m%d")
     prefijo = f"OT-{hoy}-"
     return siguiente_id("OT", prefijo)
 
@@ -519,7 +524,7 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
 
         asunto = f"✅ Solicitud {sol_id} recibida — Construcciones Minzoe SAS"
 
-        hora   = datetime.now().hour
+        hora   = ahora_colombia().hour
         saludo = "Buenos días" if hora < 12 else ("Buenas tardes" if hora < 18 else "Buenas noches")
 
         cuerpo = f"""
@@ -636,7 +641,7 @@ def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_dest
         if not email_user or not email_pwd:
             return False, f"Credenciales no configuradas para {email_user}."
 
-        hora   = datetime.now().hour
+        hora   = ahora_colombia().hour
         saludo = "Buenos días" if hora < 12 else ("Buenas tardes" if hora < 18 else "Buenas noches")
         asunto = f"📋 Actualización Solicitud {sol_id} — Construcciones Minzoe SAS"
 
@@ -925,9 +930,9 @@ def guardar_en_drive(html, cliente, sede, ot_id, fecha_ot):
         ).execute()
         shared_drive_id = root_info.get("driveId", root_id)
 
-        fecha  = fecha_ot or datetime.now().strftime("%Y-%m-%d")
+        fecha  = fecha_ot or ahora_colombia().strftime("%Y-%m-%d")
         anio   = fecha[:4]
-        mes    = fecha[5:7] if len(fecha) >= 7 else datetime.now().strftime("%m")
+        mes    = fecha[5:7] if len(fecha) >= 7 else ahora_colombia().strftime("%m")
 
         cli_id  = drive_buscar_o_crear_carpeta(service, carpeta_cliente(cliente), root_id)
         anio_id = drive_buscar_o_crear_carpeta(service, f"01_{anio}", cli_id)
@@ -954,9 +959,9 @@ def guardar_reporte_local(html, cliente, sede, ot_id, fecha_ot):
     try:
         if not os.path.exists(BASE_REPORTES):
             return False, f"No se encontró el disco H:\\ ({BASE_REPORTES})"
-        fecha = fecha_ot or datetime.now().strftime("%Y-%m-%d")
+        fecha = fecha_ot or ahora_colombia().strftime("%Y-%m-%d")
         anio  = fecha[:4]
-        mes   = fecha[5:7] if len(fecha) >= 7 else datetime.now().strftime("%m")
+        mes   = fecha[5:7] if len(fecha) >= 7 else ahora_colombia().strftime("%m")
         ruta  = os.path.join(
             BASE_REPORTES,
             carpeta_cliente(cliente),
@@ -1043,7 +1048,7 @@ def calcular_horas(inicio, final):
 
 def calcular_fecha_limite(sla, zona_completa, desde=None):
     """Retorna la fecha límite como string dado el SLA y la zona."""
-    desde = desde or datetime.now()
+    desde = desde or ahora_colombia()
     clave = zona_completa[:2] if zona_completa else "Z0"  # extrae "Z0", "Z1", etc.
     horas = SLA_HORAS.get(sla, {}).get(clave)
     if horas is None:
@@ -1055,7 +1060,7 @@ def crear_ot_desde_sol(sol, ots):
     """Crea una OT a partir de una fila de solicitud. Evita duplicados por SOL_Ref."""
     if not ots.empty and "SOL_Ref" in ots.columns and sol["ID"] in ots["SOL_Ref"].values:
         return ots, False  # Ya existe
-    ahora = datetime.now()
+    ahora = ahora_colombia()
     nueva_ot = {
         "ID":               generate_ot_id(ots),
         "Origen":           "Solicitud",
@@ -1088,7 +1093,7 @@ def crear_ot_desde_sol(sol, ots):
 
 
 def generate_id(df):
-    hoy     = datetime.now().strftime("%y%m%d")
+    hoy     = ahora_colombia().strftime("%y%m%d")
     prefijo = f"SOL-{hoy}-"
     return siguiente_id("SOL", prefijo)
 
@@ -1692,7 +1697,7 @@ if pagina == "nueva":
             else:
                 nueva = {
                     "ID":               generate_id(df),
-                    "Fecha":            datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "Fecha":            ahora_colombia().strftime("%Y-%m-%d %H:%M"),
                     "Creado_Por":       st.session_state.get("user_nombre",""),
                     "Cliente":          empresa_final,
                     "NIT":              nit_v,
@@ -1791,7 +1796,7 @@ elif pagina == "ver":
             st.download_button(
                 label="⬇️ Exportar a Excel",
                 data=buf.getvalue(),
-                file_name=f"solicitudes_minzoe_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                file_name=f"solicitudes_minzoe_{ahora_colombia().strftime('%Y%m%d_%H%M')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True,
             )
@@ -1904,7 +1909,7 @@ elif pagina == "ver":
                                         cliente         = sol_row.get("Cliente",""),
                                         contacto_nombre = sol_row.get("Nombre_Contacto",""),
                                         correo_destino  = correo_cli,
-                                        fecha           = datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                        fecha           = ahora_colombia().strftime("%Y-%m-%d %H:%M"),
                                         reply_to_id     = msg_id_orig or None,
                                     )
                                     msg += f" 📧 {res_m}" if ok_m else f" ⚠️ Correo: {res_m}"
@@ -1933,7 +1938,7 @@ elif pagina == "resumen":
     import plotly.express as px
     import plotly.graph_objects as go
     df = get_df(); ots = get_ots(); cv = get_cv(); ventas = get_ventas(); costos = get_costos(); contratos = get_contratos()
-    hoy_dash = datetime.now()
+    hoy_dash = ahora_colombia()
     mes_dash = hoy_dash.strftime("%Y-%m")
 
     # ── Estilos CSS ──────────────────────────────────────────────────────────
@@ -2227,7 +2232,7 @@ elif pagina == "resumen":
     # ── SECCIÓN 6: GESTIÓN POR USUARIO ───────────────────────────────────────
     if not df.empty and "Creado_Por" in df.columns:
         st.markdown('<p class="section-title">👤 GESTIÓN POR USUARIO</p>', unsafe_allow_html=True)
-        mes_act = datetime.now().strftime("%Y-%m")
+        mes_act = ahora_colombia().strftime("%Y-%m")
         df_mes  = df[df["Fecha"].str.startswith(mes_act, na=False)] if "Fecha" in df.columns else df
         c1, c2 = st.columns(2)
         with c1:
@@ -2554,7 +2559,7 @@ elif pagina == "ots":
                 ot_tecnico   = st.text_input("Técnico asignado")
                 ot_cel_tec   = st.text_input("📱 Celular del técnico", placeholder="Ej: 3001234567")
             with c2:
-                ot_fecha      = st.date_input("Fecha de ejecución", value=datetime.today())
+                ot_fecha      = st.date_input("Fecha de ejecución", value=ahora_colombia().date())
                 ot_hora_ini   = st.selectbox("Hora de inicio", HORAS_12, index=16)  # 08:00 AM
                 ot_hora_fin   = st.selectbox("Hora final",     HORAS_12, index=32)  # 04:00 PM
                 ot_estado     = st.selectbox("Estado", ESTADOS_OT)
@@ -2574,7 +2579,7 @@ elif pagina == "ots":
                         "Origen":          "Manual",
                         "Creado_Por":      st.session_state.get("user_nombre",""),
                         "SOL_Ref":         "",
-                        "Fecha_Creacion":  datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "Fecha_Creacion":  ahora_colombia().strftime("%Y-%m-%d %H:%M"),
                         "Cliente":         empresa_final_ot,
                         "NIT":             nit_ot,
                         "Sede":            sede_ot_v,
@@ -2660,7 +2665,7 @@ elif pagina == "ots":
                     vista_ot_ord.to_excel(w, index=False, sheet_name="OTs")
                 st.download_button(
                     "⬇️ Exportar Excel", data=buf_ot.getvalue(),
-                    file_name=f"OTs_minzoe_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    file_name=f"OTs_minzoe_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True,
                 )
@@ -3528,7 +3533,7 @@ elif pagina == "contratos_mto":
                 con_freq     = st.selectbox("Frecuencia", FRECUENCIAS)
                 con_tecnico  = st.text_input("Técnico responsable")
                 con_valor    = st.text_input("Valor del contrato (COP)", placeholder="Ej: 1200000")
-                con_inicio   = st.date_input("Fecha inicio", value=datetime.today())
+                con_inicio   = st.date_input("Fecha inicio", value=ahora_colombia().date())
                 con_fin      = st.date_input("Fecha fin")
                 con_estado   = st.selectbox("Estado", ["Activo", "Inactivo"])
 
@@ -3591,7 +3596,7 @@ elif pagina == "contratos_mto":
                     item_specs   = st.text_input("Especificaciones", placeholder="Ej: 12000 BTU, R-410A / 5 KVA / 4MP")
                 with c2:
                     item_ubic    = st.text_input("Ubicación dentro de la sede", placeholder="Ej: Oficina 301, Sala servidor")
-                    item_primer  = st.date_input("Fecha primer mantenimiento", value=datetime.today())
+                    item_primer  = st.date_input("Fecha primer mantenimiento", value=ahora_colombia().date())
 
                 if st.form_submit_button("➕ Agregar ítem", type="primary", use_container_width=True):
                     id_con_sel = item_con_sel.split(" — ")[0]
@@ -3627,7 +3632,7 @@ elif pagina == "contratos_mto":
 
     # ── TAB 3: GENERAR OTs DEL MES ────────────────────────────────────────────
     with tab_gen:
-        hoy        = datetime.today()
+        hoy        = ahora_colombia()
         mes_actual = hoy.strftime("%Y-%m")
         st.subheader(f"Generar OTs del mes — {hoy.strftime('%B %Y').capitalize()}")
 
@@ -3807,7 +3812,7 @@ elif pagina == "compras_ventas":
                 v_num_fac  = st.text_input("Número de Factura", placeholder="Ej: FV-001")
                 v_cot      = st.text_input("Cotización Siigo", placeholder="Ej: COT-2026-001")
             with c2:
-                v_fec_fac  = st.date_input("Fecha Facturación", value=datetime.today())
+                v_fec_fac  = st.date_input("Fecha Facturación", value=ahora_colombia().date())
                 v_fec_ven  = st.date_input("Fecha Vencimiento")
             with c3:
                 v_oc       = st.text_input("Orden de Compra", placeholder="Ej: OC-12345")
@@ -3894,7 +3899,7 @@ elif pagina == "compras_ventas":
             with pd.ExcelWriter(buf_v, engine="openpyxl") as w:
                 vista_v.to_excel(w, index=False, sheet_name="Ventas")
             st.download_button("⬇️ Exportar Excel", data=buf_v.getvalue(),
-                               file_name=f"ventas_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                               file_name=f"ventas_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
     # ════════════════════════════════════════════════════════════════════════
@@ -3951,7 +3956,7 @@ elif pagina == "compras_ventas":
             if st.form_submit_button("💾 Guardar costo", type="primary", use_container_width=True):
                 nuevo_cos = {
                     "ID_Costo":          gen_costo_id(costos),
-                    "Fecha":             datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "Fecha":             ahora_colombia().strftime("%Y-%m-%d %H:%M"),
                     "OT_Ref":            c_ot_ref,
                     "SOL_Ref":           c_sol_ref,
                     "Cliente":           c_cliente,
@@ -3976,7 +3981,7 @@ elif pagina == "compras_ventas":
             with pd.ExcelWriter(buf_c, engine="openpyxl") as w:
                 costos.to_excel(w, index=False, sheet_name="Costos")
             st.download_button("⬇️ Exportar Excel", data=buf_c.getvalue(),
-                               file_name=f"costos_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                               file_name=f"costos_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
     # ════════════════════════════════════════════════════════════════════════
