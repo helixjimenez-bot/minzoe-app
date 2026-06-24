@@ -1902,17 +1902,27 @@ elif pagina == "ver":
                         df.loc[idx, "Estado"]           = e_estado
                         save_sol(df)
                         msg = f"✅ Solicitud {id_sel} actualizada."
+                        st.success(msg)
+
                         if e_estado == "Aprobado":
                             try:
-                                sol_row = df[df["ID"] == id_sel].iloc[0]
+                                sol_row   = df[df["ID"] == id_sel].iloc[0]
                                 ots_fresh = load_ots()
                                 ots_fresh, creada = crear_ot_desde_sol(sol_row, ots_fresh)
                                 if creada:
                                     save_ots(ots_fresh)
                                     ots = ots_fresh
                                     nueva_ot_id = ots.iloc[-1]["ID"]
-                                    msg += f" OT **{nueva_ot_id}** creada automáticamente."
-                                    # Enviar correo de actualización al contacto
+
+                                    # Mensaje prominente de OT creada
+                                    st.success(
+                                        f"🛠️ **Orden de Trabajo creada exitosamente**\n\n"
+                                        f"**OT:** {nueva_ot_id}  |  **SOL:** {id_sel}  |  "
+                                        f"**Cliente:** {sol_row.get('Cliente','')}  |  "
+                                        f"**Servicio:** {sol_row.get('Servicio','')}"
+                                    )
+
+                                    # Enviar correo de actualización
                                     correo_cli = sol_row.get("Correo_Contacto","").strip()
                                     if correo_cli:
                                         msg_id_orig = sol_row.get("Email_Message_ID","").strip()
@@ -1925,12 +1935,17 @@ elif pagina == "ver":
                                             fecha           = ahora_colombia().strftime("%Y-%m-%d %H:%M"),
                                             reply_to_id     = msg_id_orig or None,
                                         )
-                                        msg += f" 📧 {res_m}" if ok_m else f" ⚠️ Correo: {res_m}"
+                                        if ok_m:
+                                            st.success(f"📧 Correo de actualización enviado a **{correo_cli}**")
+                                        else:
+                                            st.warning(f"⚠️ Correo no enviado: {res_m}")
+                                    else:
+                                        st.info("ℹ️ No hay correo de contacto registrado para notificar.")
                                 else:
-                                    msg += " ⚠️ Ya existe una OT para esta solicitud."
+                                    st.warning("⚠️ Ya existe una OT para esta solicitud.")
                             except Exception as ex_ot:
-                                msg += f" ❌ Error creando OT: {ex_ot}"
-                        st.success(msg)
+                                st.error(f"❌ Error creando OT: {ex_ot}")
+
                         st.rerun()
 
             # ── ELIMINAR ──────────────────────────────────────────────────────
