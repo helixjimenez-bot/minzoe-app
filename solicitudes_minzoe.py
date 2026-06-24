@@ -3808,41 +3808,90 @@ elif pagina == "contratos_mto":
     # ── TAB 2: EQUIPOS / ÍTEMS ───────────────────────────────────────────────
     with tab_equ:
         st.subheader("Registrar equipo o ítem por contrato")
-        st.caption("Solo para servicios que requieren registro por equipo: Aires, UPS y Plantas, Cámaras de Seguridad.")
 
         contratos_eq = contratos[contratos["Servicio"].isin(SERVICIOS_CON_EQUIPOS)] if not contratos.empty else pd.DataFrame()
 
         if contratos_eq.empty:
             st.warning("No hay contratos de Aires, UPS o Cámaras registrados aún.")
         else:
+            # ── Selector de contrato fuera del form (reactivo) ────────────
+            opciones_con = contratos_eq.apply(
+                lambda r: f"{r['ID_Contrato']} — {r['Servicio']} | {r['Cliente']}", axis=1
+            ).tolist()
+            item_con_sel = st.selectbox("Contrato *", opciones_con, key="item_con_sel")
+            id_con_sel   = item_con_sel.split(" — ")[0]
+            fila_con     = contratos[contratos["ID_Contrato"] == id_con_sel].iloc[0]
+            frecuencia_con = fila_con.get("Frecuencia","Mensual")
+            servicio_con   = fila_con.get("Servicio","")
+
+            # ── Selector de sede (fuera del form, reactivo) ───────────────
+            # Buscar sedes del cliente en la tabla de clientes
+            sedes_cliente = []
+            if not cli.empty:
+                filas_cli = cli[cli["Empresa"].str.strip().str.lower() == fila_con["Cliente"].strip().lower()]
+                sedes_cliente = filas_cli["Sede"].tolist()
+
+            sede_sel = st.selectbox(
+                "Sede / Sucursal *",
+                sedes_cliente if sedes_cliente else ["Sin sedes registradas"],
+                key="item_sede_sel"
+            )
+
+            # Auto-calcular fecha primer mantenimiento según frecuencia
+            hoy_item    = ahora_colombia().date()
+            meses_freq  = FREQ_MESES.get(frecuencia_con, 1)
+            mes_sig     = hoy_item.month - 1 + meses_freq
+            anio_sig    = hoy_item.year + mes_sig // 12
+            mes_sig     = mes_sig % 12 + 1
+            from datetime import date as _date
+            fecha_sugerida = _date(anio_sig, mes_sig, min(hoy_item.day, 28))
+            st.info(f"📅 Frecuencia del contrato: **{frecuencia_con}** — Primer mantenimiento sugerido: **{fecha_sugerida}**")
+
             with st.form("form_item", clear_on_submit=True):
-                opciones_con = contratos_eq.apply(
-                    lambda r: f"{r['ID_Contrato']} — {r['Servicio']} | {r['Cliente']} / {r['Sede']}", axis=1
-                ).tolist()
-                item_con_sel = st.selectbox("Contrato *", opciones_con)
-                c1, c2 = st.columns(2)
-                with c1:
-                    item_marca   = st.text_input("Marca")
-                    item_modelo  = st.text_input("Modelo")
-                    item_serial  = st.text_input("Número de serie")
-                    item_specs   = st.text_input("Especificaciones", placeholder="Ej: 12000 BTU, R-410A / 5 KVA / 4MP")
-                with c2:
-                    item_ubic    = st.text_input("Ubicación dentro de la sede", placeholder="Ej: Oficina 301, Sala servidor")
-                    item_primer  = st.date_input("Fecha primer mantenimiento", value=ahora_colombia().date())
+                es_aire = servicio_con == "Aires Acondicionados"
+
+                if es_aire:
+                    st.markdown("**🔧 Datos del equipo de Aire Acondicionado**")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        item_tipo_eq  = st.text_input("Tipo de equipo", placeholder="Ej: Mini Split, Cassette, Piso-techo")
+                        item_marca    = st.text_input("Marca")
+                        item_modelo   = st.text_input("Modelo")
+                        item_ser_cond = st.text_input("Serial Condensadora")
+                        item_ser_evap = st.text_input("Serial Evaporadora")
+                    with c2:
+                        item_btu      = st.text_input("Capacidad en BTU o CFM", placeholder="Ej: 12000 BTU / 1 TON")
+                        item_refrig   = st.selectbox("Tipo de refrigerante", REFRIGERANTES)
+                        item_ubic_ev  = st.text_input("Ubicación Evaporadora", placeholder="Ej: Oficina 301")
+                        item_ubic_co  = st.text_input("Ubicación Condensadora", placeholder="Ej: Azotea piso 3")
+                    item_specs = f"{item_btu} | {item_refrig}"
+                    item_ubic  = f"Evap: {item_ubic_ev} | Cond: {item_ubic_co}"
+                    item_serie = f"Cond: {item_ser_cond} | Evap: {item_ser_evap}"
+                else:
+                    st.markdown("**🔧 Datos del ítem**")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        item_tipo_eq = st.text_input("Tipo de equipo")
+                        item_marca   = st.text_input("Marca")
+                        item_modelo  = st.text_input("Modelo")
+                        item_serie   = st.text_input("Número de serie")
+                    with c2:
+                        item_specs   = st.text_input("Especificaciones")
+                        item_ubic    = st.text_input("Ubicación dentro de la sede")
+
+                item_primer = st.date_input("Fecha primer mantenimiento", value=fecha_sugerida)
 
                 if st.form_submit_button("➕ Agregar ítem", type="primary", use_container_width=True):
-                    id_con_sel = item_con_sel.split(" — ")[0]
-                    fila_con   = contratos[contratos["ID_Contrato"] == id_con_sel].iloc[0]
                     primer_m   = item_primer.strftime("%Y-%m-%d")
                     nuevo_item = {
                         "ID_Item":              gen_item_id(equipos),
                         "ID_Contrato":          id_con_sel,
                         "Cliente":              fila_con["Cliente"],
-                        "Sede":                 fila_con["Sede"],
-                        "Servicio":             fila_con["Servicio"],
+                        "Sede":                 sede_sel,
+                        "Servicio":             servicio_con,
                         "Marca":                item_marca,
-                        "Modelo":               item_modelo,
-                        "Numero_Serie":         item_serial,
+                        "Modelo":               f"{item_tipo_eq} {item_modelo}".strip() if es_aire else item_modelo,
+                        "Numero_Serie":         item_serie,
                         "Especificaciones":     item_specs,
                         "Ubicacion":            item_ubic,
                         "Ultimo_Mantenimiento":  "",
@@ -3850,7 +3899,7 @@ elif pagina == "contratos_mto":
                     }
                     equipos = pd.concat([equipos, pd.DataFrame([nuevo_item])], ignore_index=True)
                     save_equipos(equipos)
-                    st.success(f"✅ {nuevo_item['ID_Item']} registrado — próximo: {primer_m}")
+                    st.success(f"✅ {nuevo_item['ID_Item']} registrado — próximo mantenimiento: **{primer_m}**")
 
             st.divider()
             if not equipos.empty:
