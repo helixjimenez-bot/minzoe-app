@@ -3002,12 +3002,14 @@ elif pagina == "ots":
                                     "Otro" if l_otro_sis else "",
                                 ]))
                                 filas_act = "".join(
-                                    f"<tr><td>{item}</td>"
-                                    f"<td style='text-align:center'>{ck(v['buen'])}</td>"
-                                    f"<td style='text-align:center'>{ck(v['mal'])}</td>"
-                                    f"<td style='text-align:center'>{ck(v['req'])}</td>"
-                                    f"<td style='text-align:center'>{ck(v['inst'])}</td>"
-                                    f"<td>{v['obs']}</td></tr>"
+                                    f"<tr>"
+                                    f"<td style='white-space:nowrap'>{item}</td>"
+                                    f"<td style='text-align:center;font-size:10pt'>{ck(v['buen'])}</td>"
+                                    f"<td style='text-align:center;font-size:10pt'>{ck(v['mal'])}</td>"
+                                    f"<td style='text-align:center;font-size:10pt'>{ck(v['req'])}</td>"
+                                    f"<td style='text-align:center;font-size:10pt'>{ck(v['inst'])}</td>"
+                                    f"<td style='word-wrap:break-word'>{v['obs']}</td>"
+                                    f"</tr>"
                                     for item,v in l_act.items()
                                 )
                                 html_loc = f"""<!DOCTYPE html>
@@ -3088,33 +3090,45 @@ elif pagina == "ots":
 
 <div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto} &nbsp;&nbsp; <b>Sistema:</b> {sistemas}</div>
 
-<table><tr>
+<table style="table-layout:fixed;width:100%"><tr>
   <th colspan="2">DATOS DEL CLIENTE</th>
 </tr><tr>
-  <td><b>Cliente:</b></td><td>{fila_ot['Cliente']}</td>
+  <td style="width:28%;white-space:nowrap;font-weight:bold">Cliente:</td>
+  <td>{fila_ot['Cliente']}</td>
 </tr><tr>
-  <td><b>Ciudad:</b></td><td>{fila_ot.get('Sede','')}</td>
+  <td style="font-weight:bold">Ciudad:</td>
+  <td>{fila_ot.get('Sede','')}</td>
 </tr><tr>
-  <td><b>Sucursal:</b></td><td>{fila_ot.get('Sede','')}</td>
+  <td style="font-weight:bold">Sucursal:</td>
+  <td>{fila_ot.get('Sede','')}</td>
 </tr><tr>
-  <td><b>Contacto:</b></td><td>{fila_ot.get('Nombre_Contacto','')}</td>
+  <td style="font-weight:bold">Contacto:</td>
+  <td>{fila_ot.get('Nombre_Contacto','')}</td>
 </tr><tr>
-  <td><b>Área intervenida:</b></td><td>{l_area}</td>
+  <td style="font-weight:bold">Área intervenida:</td>
+  <td>{l_area}</td>
 </tr></table>
 
-<div style="background:#f8f8f8;border:1px solid #ccc;padding:6px;margin:6px 0;font-size:8px">
-EL INTERVENTOR (O SUPERVISOR/ENCARGADO, SI CORRESPONDE) CERTIFICA QUE EL PRODUCTO OBJETO DEL CONTRATO
-HA SIDO ENTREGADO POR EL CONTRATISTA Y QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
+<div style="background:#f8f8f8;border:0.5pt solid #ccc;padding:4pt;margin:4pt 0;font-size:7pt">
+EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 </div>
 
 <div class="section">ACTIVIDADES DE TRABAJO</div>
-<table>
+<table style="table-layout:fixed;width:100%">
+<colgroup>
+  <col style="width:22%">
+  <col style="width:9%">
+  <col style="width:9%">
+  <col style="width:12%">
+  <col style="width:12%">
+  <col style="width:36%">
+</colgroup>
 <tr>
-  <th style="width:15%">Ítem</th>
-  <th style="width:10%;text-align:center">Buen Estado</th>
-  <th style="width:10%;text-align:center">Mal Estado</th>
-  <th style="width:12%;text-align:center">Req. Reparación</th>
-  <th style="width:12%;text-align:center">Inst. Repuestos</th>
+  <th>Ítem</th>
+  <th style="text-align:center">Buen Estado</th>
+  <th style="text-align:center">Mal Estado</th>
+  <th style="text-align:center">Req. Reparación</th>
+  <th style="text-align:center">Inst. Repuestos</th>
   <th>Observaciones</th>
 </tr>
 {filas_act}
