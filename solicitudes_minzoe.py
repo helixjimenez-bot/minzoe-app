@@ -474,6 +474,46 @@ def carpeta_sede(sede_nombre):
     limpio = "".join(c for c in sede_nombre if c.isalnum() or c in " _-").strip()
     return "00_" + "_".join(w.capitalize() for w in limpio.split())
 
+def css_formato_carta():
+    """CSS estándar para formatos en tamaño carta con márgenes ICONTEC."""
+    return """
+  @page { size: letter; margin: 3cm 2cm 3cm 4cm; }
+  * { box-sizing: border-box; }
+
+  /* Pantalla: simula hoja blanca sobre fondo gris */
+  @media screen {
+    body { background: #c0c0c0; padding: 20px; margin: 0; }
+    .pagina {
+      background: white;
+      width: 216mm;
+      min-height: 279mm;
+      margin: 0 auto;
+      padding: 3cm 2cm 3cm 4cm;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    }
+  }
+  /* Impresión: márgenes ICONTEC, sin fondo gris */
+  @media print {
+    body { background: white; margin: 0; padding: 0; }
+    .pagina { padding: 0; box-shadow: none; width: auto; }
+    .no-print { display: none !important; }
+  }
+
+  body { font-family: Arial, sans-serif; font-size: 7.5pt; color: #000; line-height: 1.2; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start;
+            border-bottom: 2pt solid #dc2626; padding-bottom: 4pt; margin-bottom: 6pt; }
+  .logo { font-size: 11pt; font-weight: 900; color: #dc2626; }
+  table { width:100%; border-collapse:collapse; margin-bottom:4pt; font-size:7pt; }
+  td, th { border: 0.5pt solid #999; padding: 2pt 3pt; vertical-align: middle; }
+  th { background:#dc2626; color:white; font-weight:bold; text-align:left; font-size:7pt; }
+  .section { background:#dc2626; color:white; font-weight:bold;
+             padding:2pt 4pt; font-size:7pt; margin:3pt 0 2pt 0; }
+  .ck { width:12pt; text-align:center; font-weight:bold; }
+  .firma-box { border-top:0.5pt solid #000; margin-top:12pt;
+               font-size:7pt; text-align:center; padding-top:2pt; }
+"""
+
+
 def ocr_documento(file_bytes, mime_type):
     """Extrae texto de imagen o PDF usando Google Cloud Vision. Retorna (texto, confianza, error)."""
     try:
@@ -2656,67 +2696,9 @@ elif pagina == "ots":
                                 html = f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
 <title>Reporte HVAC {id_ot_sel}</title>
-<style>
-  /* Tamaño carta con márgenes ICONTEC */
-  @page {{
-    size: letter;
-    margin: 3cm 2cm 3cm 4cm;
-  }}
-  * {{ box-sizing: border-box; }}
-  body {{
-    font-family: Arial, sans-serif;
-    font-size: 7.5pt;
-    color: #000;
-    margin: 0;
-    padding: 0;
-    line-height: 1.2;
-  }}
-  .header {{
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 2px solid #dc2626;
-    padding-bottom: 4pt;
-    margin-bottom: 6pt;
-  }}
-  .logo {{ font-size: 11pt; font-weight: 900; color: #dc2626; }}
-  .logo-sub {{ font-size: 7pt; color: #333; }}
-  table {{
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 4pt;
-    font-size: 7pt;
-  }}
-  td, th {{
-    border: 0.5pt solid #999;
-    padding: 2pt 3pt;
-    vertical-align: middle;
-  }}
-  th {{
-    background: #dc2626;
-    color: white;
-    font-weight: bold;
-    text-align: left;
-    font-size: 7pt;
-  }}
-  .section {{
-    background: #dc2626;
-    color: white;
-    font-weight: bold;
-    padding: 2pt 4pt;
-    font-size: 7pt;
-    margin: 3pt 0 2pt 0;
-  }}
-  .ck {{ width: 12pt; text-align: center; font-weight: bold; }}
-  .firma-box {{
-    border-top: 0.5pt solid #000;
-    margin-top: 12pt;
-    font-size: 7pt;
-    text-align: center;
-    padding-top: 2pt;
-  }}
-  @media print {{ .no-print {{ display: none !important; }} }}
-</style></head><body>
+<style>{css_formato_carta()}</style>
+</head><body>
+<div class="pagina">
 <div class="header">
   <div>
     <div class="logo">🏗️ CONSTRUCCIONES MINZOE SAS</div>
@@ -2872,6 +2854,7 @@ elif pagina == "ots":
     🖨️ Imprimir / Guardar como PDF
   </button>
 </div>
+</div>
 </body></html>"""
 
                                 # Guardar html en session_state para procesar FUERA del form
@@ -3015,65 +2998,9 @@ elif pagina == "ots":
                                 html_loc = f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
 <title>Reporte Locativos {id_ot_sel}</title>
-<style>
-  /* Tamaño carta con márgenes ICONTEC */
-  @page {{
-    size: letter;
-    margin: 3cm 2cm 3cm 4cm;
-  }}
-  * {{ box-sizing: border-box; }}
-  body {{
-    font-family: Arial, sans-serif;
-    font-size: 8pt;
-    color: #000;
-    margin: 0;
-    padding: 0;
-    line-height: 1.3;
-  }}
-  .logo {{ font-size: 12pt; font-weight: 900; color: #dc2626; }}
-  .header {{
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 2pt solid #dc2626;
-    padding-bottom: 4pt;
-    margin-bottom: 6pt;
-  }}
-  table {{
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 5pt;
-    font-size: 7.5pt;
-  }}
-  td, th {{
-    border: 0.5pt solid #999;
-    padding: 2pt 4pt;
-    vertical-align: middle;
-  }}
-  th {{
-    background: #dc2626;
-    color: white;
-    font-weight: bold;
-    text-align: left;
-    font-size: 7.5pt;
-  }}
-  .section {{
-    background: #dc2626;
-    color: white;
-    font-weight: bold;
-    padding: 2pt 4pt;
-    font-size: 7.5pt;
-    margin: 3pt 0 2pt 0;
-  }}
-  .firma-box {{
-    border-top: 0.5pt solid #000;
-    margin-top: 14pt;
-    font-size: 7pt;
-    text-align: center;
-    padding-top: 2pt;
-  }}
-  @media print {{ .no-print {{ display: none !important; }} }}
-</style></head><body>
+<style>{css_formato_carta()}</style>
+</head><body>
+<div class="pagina">
 
 <div class="header">
   <div>
@@ -3164,6 +3091,7 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
     padding:10px 30px;font-size:14px;border-radius:6px;cursor:pointer">
     🖨️ Imprimir / Guardar como PDF
   </button>
+</div>
 </div>
 </body></html>"""
 
