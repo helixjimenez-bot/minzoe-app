@@ -1438,30 +1438,35 @@ if pagina == "nueva":
             with c2:
                 st.text_input("Dirección de la empresa", value=dir_emp_v, disabled=True, key="dir_dis")
 
-            # Sede → lista desplegable filtrada por empresa
+            # Sede → empieza vacía, sin auto-selección
             sedes_lista = filas_emp["Sede"].tolist()
-            sede_sel = st.selectbox("Sede / Sucursal", sedes_lista, key="sede_sel")
+            sede_sel = st.selectbox(
+                "Sede / Sucursal",
+                sedes_lista,
+                index=None,
+                placeholder="Selecciona la sede...",
+                key="sede_sel"
+            )
 
-            # Buscar datos de la sede seleccionada
-            fila_sede_df = filas_emp[filas_emp["Sede"] == sede_sel]
-            if not fila_sede_df.empty:
-                fila_sede   = fila_sede_df.iloc[0]
-                dir_sede_v  = fila_sede["Direccion_Sede"]
-                nom_c_v     = fila_sede["Nombre_Contacto"]
-                cor_c_v     = fila_sede["Correo_Contacto"]
-                cel_c_v     = fila_sede["Celular_Contacto"]
-                sede_v      = sede_sel
-
-            st.text_input("Dirección de la sede", value=dir_sede_v, disabled=True, key="dir_sede_dis")
-
-            st.markdown("**Datos del contacto**")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.text_input("Nombre del contacto", value=nom_c_v, disabled=True, key="nc_dis")
-            with c2:
-                st.text_input("Correo del contacto", value=cor_c_v, disabled=True, key="cc_dis")
-            with c3:
-                st.text_input("Celular del contacto", value=cel_c_v, disabled=True, key="cel_dis")
+            # Solo mostrar dirección y contacto cuando se seleccione una sede
+            if sede_sel:
+                fila_sede_df = filas_emp[filas_emp["Sede"] == sede_sel]
+                if not fila_sede_df.empty:
+                    fila_sede   = fila_sede_df.iloc[0]
+                    dir_sede_v  = fila_sede["Direccion_Sede"]
+                    nom_c_v     = fila_sede["Nombre_Contacto"]
+                    cor_c_v     = fila_sede["Correo_Contacto"]
+                    cel_c_v     = fila_sede["Celular_Contacto"]
+                    sede_v      = sede_sel
+                st.text_input("Dirección de la sede", value=dir_sede_v, disabled=True, key="dir_sede_dis")
+                st.markdown("**Datos del contacto**")
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.text_input("Nombre del contacto", value=nom_c_v, disabled=True, key="nc_dis")
+                with c2:
+                    st.text_input("Correo del contacto", value=cor_c_v, disabled=True, key="cc_dis")
+                with c3:
+                    st.text_input("Celular del contacto", value=cel_c_v, disabled=True, key="cel_dis")
 
     elif empresa_sel == opcion_nueva:
         # Entrada manual
