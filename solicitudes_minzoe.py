@@ -104,21 +104,32 @@ def load_counters():
 def save_counters(df):
     gs_save("contadores", df)
 
-def siguiente_id(tipo, prefijo):
+def siguiente_id(tipo, prefijo, df_existente=None):
     """Genera el siguiente ID único e irrepetible para SOL u OT."""
-    contadores = load_counters()
-    mask = (contadores["tipo"] == tipo) & (contadores["prefijo"] == prefijo) if not contadores.empty else None
+    try:
+        contadores = load_counters()
+        mask = (contadores["tipo"] == tipo) & (contadores["prefijo"] == prefijo) if not contadores.empty else None
 
-    if contadores.empty or not mask.any():
-        num = 1
-        nuevo = pd.DataFrame([{"tipo": tipo, "prefijo": prefijo, "ultimo_num": "1"}])
-        contadores = pd.concat([contadores, nuevo], ignore_index=True)
-    else:
-        num = int(contadores.loc[mask, "ultimo_num"].values[0]) + 1
-        contadores.loc[mask, "ultimo_num"] = str(num)
+        if contadores.empty or mask is None or not mask.any():
+            num = 1
+            # Verificar registros existentes para no repetir
+            if df_existente is not None and not df_existente.empty:
+                ids_pre = df_existente[df_existente["ID"].str.startswith(prefijo, na=False)]["ID"]
+                if not ids_pre.empty:
+                    nums_ex = ids_pre.str.extract(r"-(\d{3})$")[0].dropna().astype(int)
+                    if not nums_ex.empty:
+                        num = int(nums_ex.max()) + 1
+            nuevo = pd.DataFrame([{"tipo": tipo, "prefijo": prefijo, "ultimo_num": str(num)}])
+            contadores = pd.concat([contadores, nuevo], ignore_index=True)
+        else:
+            num = int(contadores.loc[mask, "ultimo_num"].values[0]) + 1
+            contadores.loc[mask, "ultimo_num"] = str(num)
 
-    save_counters(contadores)
-    return f"{prefijo}{num:03d}"
+        save_counters(contadores)
+        return f"{prefijo}{num:03d}"
+    except Exception:
+        # Fallback: usar timestamp para garantizar unicidad
+        return f"{prefijo}{ahora_colombia().strftime('%H%M%S')}"
 
 
 COLS_CONTRATO = [
@@ -475,7 +486,7 @@ def proxima_fecha(desde_str, frecuencia):
 def generate_ot_id(df):
     hoy     = ahora_colombia().strftime("%y%m%d")
     prefijo = f"OT-{hoy}-"
-    return siguiente_id("OT", prefijo)
+    return siguiente_id("OT", prefijo, df)
 
 
 def carpeta_cliente(cliente_nombre):
@@ -1095,7 +1106,7 @@ def crear_ot_desde_sol(sol, ots):
 def generate_id(df):
     hoy     = ahora_colombia().strftime("%y%m%d")
     prefijo = f"SOL-{hoy}-"
-    return siguiente_id("SOL", prefijo)
+    return siguiente_id("SOL", prefijo, df)
 
 
 def color_estado(val):
