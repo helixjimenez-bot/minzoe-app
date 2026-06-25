@@ -4665,8 +4665,17 @@ elif pagina == "usuarios":
                                 if c not in df_gs.columns:
                                     df_gs[c] = ""
                             df_gs = df_gs[cols]
-                            sb_save(tab, df_gs)
-                            st.success(f"✅ **{tab}**: {len(df_gs)} registros migrados")
+                            # Eliminar duplicados por la primera columna (PK)
+                            pk_col = cols[0]
+                            antes = len(df_gs)
+                            df_gs = df_gs.drop_duplicates(subset=[pk_col]).reset_index(drop=True)
+                            if len(df_gs) < antes:
+                                st.warning(f"⚠️ **{tab}**: {antes - len(df_gs)} duplicado(s) eliminado(s)")
+                            ok = sb_save(tab, df_gs)
+                            if ok:
+                                st.success(f"✅ **{tab}**: {len(df_gs)} registros migrados")
+                            else:
+                                st.error(f"❌ **{tab}**: fallo al guardar")
                         else:
                             st.info(f"ℹ️ **{tab}**: sin datos en Google Sheets")
                     except Exception as e:
