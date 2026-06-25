@@ -101,22 +101,22 @@ COLS_HISTORIAL   = ["ID_Log","Fecha","Usuario","Entidad","Entidad_ID","Campo","V
 COLS_COMENTARIOS = ["ID_Com","Fecha","Usuario","Entidad","Entidad_ID","Comentario"]
 
 def load_counters():
-    return gs_load("contadores", tuple(COLS_COUNTERS), _v=_ver_cache("contadores"))
+    return sb_load("contadores", COLS_COUNTERS)
 
 def save_counters(df):
-    gs_save("contadores", df)
+    sb_save("contadores", df)
 
 def load_historial():
-    return gs_load("historial", tuple(COLS_HISTORIAL), _v=_ver_cache("historial"))
+    return sb_load("historial", COLS_HISTORIAL)
 
 def save_historial(df):
-    gs_save("historial", df)
+    sb_save("historial", df)
 
 def load_comentarios():
-    return gs_load("comentarios", tuple(COLS_COMENTARIOS), _v=_ver_cache("comentarios"))
+    return sb_load("comentarios", COLS_COMENTARIOS)
 
 def save_comentarios(df):
-    gs_save("comentarios", df)
+    sb_save("comentarios", df)
 
 def registrar_cambio(entidad, entidad_id, campo, val_ant, val_nuevo):
     """Registra un cambio en el historial de auditoría."""
@@ -387,6 +387,41 @@ COLS_OT = [
 def get_gc():
     return gspread.service_account_from_dict(dict(st.secrets["gcp_service_account"]))
 
+# ── Supabase ──────────────────────────────────────────────────────────────────
+@st.cache_resource
+def get_sb():
+    from supabase import create_client
+    return create_client(st.secrets["supabase_url"], st.secrets["supabase_key"])
+
+def sb_load(table_name, cols):
+    """Carga datos desde Supabase."""
+    try:
+        sb   = get_sb()
+        resp = sb.table(table_name).select("*").execute()
+        if resp.data:
+            df = pd.DataFrame(resp.data).fillna("").astype(str)
+            for c in list(cols):
+                if c not in df.columns:
+                    df[c] = ""
+            return df[list(cols)]
+        return pd.DataFrame(columns=list(cols))
+    except Exception:
+        return pd.DataFrame(columns=list(cols))
+
+def sb_save(table_name, df):
+    """Guarda dataframe en Supabase (truncate + insert)."""
+    try:
+        sb = get_sb()
+        sb.rpc("truncate_table", {"table_name": table_name}).execute()
+        if not df.empty:
+            records = df.fillna("").astype(str).to_dict("records")
+            for i in range(0, len(records), 100):
+                sb.table(table_name).insert(records[i:i+100]).execute()
+        return True
+    except Exception as e:
+        st.error(f"❌ Error Supabase '{table_name}': {e}")
+        return False
+
 def get_sheet(tab_name):
     gc = get_gc()
     sid = (st.secrets.get("spreadsheet_id") or
@@ -438,32 +473,35 @@ def gs_save(tab_name, df):
 # ── Carga / guardado ──────────────────────────────────────────────────────────
 
 def load_sol():
-    return gs_load("solicitudes", tuple(COLS_SOL), _v=_ver_cache("solicitudes"))
+    return sb_load("solicitudes", COLS_SOL)
 
 def save_sol(df):
-    gs_save("solicitudes", df)
+    sb_save("solicitudes", df)
+    _invalidar_cache("solicitudes")
 
 def load_cli():
-    df = gs_load("clientes", tuple(COLS_CLI), _v=_ver_cache("clientes"))
+    df = sb_load("clientes", COLS_CLI)
     for col in df.columns:
         df[col] = df[col].str.strip()
     return df[df["Empresa"] != ""].reset_index(drop=True)
 
 def save_cli(df):
-    gs_save("clientes", df)
+    sb_save("clientes", df)
+    _invalidar_cache("clientes")
 
 def load_ots():
-    return gs_load("ordenes_trabajo", tuple(COLS_OT), _v=_ver_cache("ordenes_trabajo"))
+    return sb_load("ordenes_trabajo", COLS_OT)
 
 def save_ots(df):
-    gs_save("ordenes_trabajo", df)
+    sb_save("ordenes_trabajo", df)
+    _invalidar_cache("ordenes_trabajo")
 
 
 def load_cv():
-    return gs_load("compras_ventas", tuple(COLS_CV), _v=_ver_cache("compras_ventas"))
+    return sb_load("compras_ventas", COLS_CV)
 
 def save_cv(df):
-    gs_save("compras_ventas", df)
+    sb_save("compras_ventas", df)
 
 def gen_cv_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
@@ -472,10 +510,10 @@ def gen_cv_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CV-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_ventas():
-    return gs_load("ventas", tuple(COLS_VENTA), _v=_ver_cache("ventas"))
+    return sb_load("ventas", COLS_VENTA)
 
 def save_ventas(df):
-    gs_save("ventas", df)
+    sb_save("ventas", df)
 
 def gen_fac_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
@@ -484,10 +522,10 @@ def gen_fac_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'FAC-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_costos():
-    return gs_load("costos", tuple(COLS_COSTO), _v=_ver_cache("costos"))
+    return sb_load("costos", COLS_COSTO)
 
 def save_costos(df):
-    gs_save("costos", df)
+    sb_save("costos", df)
 
 def gen_costo_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
@@ -504,16 +542,16 @@ def to_num(val):
 
 
 def load_contratos():
-    return gs_load("contratos", tuple(COLS_CONTRATO), _v=_ver_cache("contratos"))
+    return sb_load("contratos", COLS_CONTRATO)
 
 def save_contratos(df):
-    gs_save("contratos", df)
+    sb_save("contratos", df)
 
 def load_equipos():
-    return gs_load("equipos", tuple(COLS_EQUIPO), _v=_ver_cache("equipos"))
+    return sb_load("equipos", COLS_EQUIPO)
 
 def save_equipos(df):
-    gs_save("equipos", df)
+    sb_save("equipos", df)
 
 
 def gen_contrato_id(df):
@@ -1180,10 +1218,10 @@ def hash_pwd(pwd):
     return hashlib.sha256(pwd.encode()).hexdigest()
 
 def load_usuarios():
-    return gs_load("usuarios", ("nombre", "correo", "password_hash", "rol"), _v=_ver_cache("usuarios"))
+    return sb_load("usuarios", ["nombre", "correo", "password_hash", "rol"])
 
 def save_usuarios(df):
-    gs_save("usuarios", df)
+    sb_save("usuarios", df)
 
 def verificar_login(correo, pwd, usuarios):
     u = usuarios[usuarios["correo"].str.lower() == correo.strip().lower()]
