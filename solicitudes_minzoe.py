@@ -3593,6 +3593,8 @@ elif pagina == "ots":
                                     f"</tr>"
                                     for item,v in l_act.items()
                                 )
+                                _logo_b64 = get_logo_base64()
+                                _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
                                 html_loc = f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
 <title>Reporte Locativos {id_ot_sel}</title>
