@@ -2650,7 +2650,11 @@ elif pagina == "clientes":
 elif pagina == "ots":
     import io
     df = get_df(); ots = get_ots(); cli = get_cli()
-    st.subheader("🛠️ Órdenes de Trabajo")
+    c_tit_ot, c_ref_ot = st.columns([5,1])
+    c_tit_ot.subheader("🛠️ Órdenes de Trabajo")
+    if c_ref_ot.button("🔄 Actualizar", use_container_width=True, key="ref_ots"):
+        _invalidar_cache("ordenes_trabajo")
+        st.rerun()
 
     # Mantener selección después de guardar reporte
     if st.session_state.get("_ot_volver_ver"):
