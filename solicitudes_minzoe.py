@@ -409,14 +409,15 @@ def sb_load(table_name, cols):
         return pd.DataFrame(columns=list(cols))
 
 def sb_save(table_name, df):
-    """Guarda dataframe en Supabase (truncate + insert)."""
+    """Guarda dataframe en Supabase (truncate + upsert)."""
     try:
         sb = get_sb()
+        # Truncar tabla y reinsertar
         sb.rpc("truncate_table", {"table_name": table_name}).execute()
         if not df.empty:
             records = df.fillna("").astype(str).to_dict("records")
             for i in range(0, len(records), 100):
-                sb.table(table_name).insert(records[i:i+100]).execute()
+                sb.table(table_name).upsert(records[i:i+100]).execute()
         return True
     except Exception as e:
         st.error(f"❌ Error Supabase '{table_name}': {e}")
