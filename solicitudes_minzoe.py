@@ -4621,24 +4621,34 @@ elif pagina == "usuarios":
 
     st.divider()
     st.subheader("Usuarios registrados")
+
+    # Recargar frescos para evitar problemas de caché
+    usuarios = load_usuarios()
+
     if not usuarios.empty:
         vista_u = usuarios[["nombre", "correo", "rol"]].copy()
         tabla_html(vista_u.reset_index(drop=True))
+        st.caption(f"{len(usuarios)} usuario(s) registrado(s). Sin límite máximo.")
 
         st.divider()
         st.subheader("Eliminar usuario")
-        ops_eli = [f"{r['nombre']} ({r['correo']})" for _, r in usuarios.iterrows()
-                   if r["correo"] != st.session_state.get("user_correo")]
-        if ops_eli:
-            sel_eli = st.selectbox("Selecciona el usuario a eliminar", ops_eli)
-            if st.button("🗑️ Eliminar", type="secondary"):
-                correo_eli = sel_eli.split("(")[-1].replace(")", "").strip()
-                usuarios = usuarios[usuarios["correo"] != correo_eli].reset_index(drop=True)
-                save_usuarios(usuarios)
-                st.success("Usuario eliminado.")
-                st.rerun()
+        mi_correo = st.session_state.get("user_correo", "")
+        otros = usuarios[usuarios["correo"].str.lower() != mi_correo.lower()]
+
+        if otros.empty:
+            st.info("No hay otros usuarios para eliminar. Agrega más usuarios primero.")
         else:
-            st.info("No hay otros usuarios para eliminar.")
+            ops = {f"{r['nombre']} — {r['correo']} ({r['rol']})": r['correo']
+                   for _, r in otros.iterrows()}
+            sel = st.selectbox("Selecciona el usuario a eliminar", list(ops.keys()))
+            if st.button("🗑️ Eliminar usuario", type="secondary", use_container_width=True):
+                correo_eli = ops[sel]
+                usuarios = usuarios[usuarios["correo"].str.lower() != correo_eli.lower()].reset_index(drop=True)
+                save_usuarios(usuarios)
+                st.success(f"✅ Usuario **{sel}** eliminado.")
+                st.rerun()
+    else:
+        st.warning("No hay usuarios registrados.")
 
         st.divider()
         st.subheader("Cambiar mi contraseña")
