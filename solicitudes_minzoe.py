@@ -2263,11 +2263,29 @@ elif pagina == "resumen":
 
     col_a, col_b = st.columns(2)
 
-    def _fila_tabla(bg, color, *celdas):
-        return "".join(f"<td style='background:{bg};color:{color};padding:6px 8px;border:0.5px solid #ddd;font-size:12px;white-space:nowrap'>{c}</td>" for c in celdas)
+    # CSS parpadeo para filas vencidas
+    st.markdown("""
+    <style>
+    @keyframes parpadeo {
+        0%,100%{opacity:1;} 50%{opacity:0.3;}
+    }
+    .fila-vencida td { animation: parpadeo 1s ease-in-out infinite; }
+    .tabla-alertas { overflow-x:auto; border:1px solid #dc2626; border-radius:8px; margin-bottom:4px; }
+    .tabla-alertas table { border-collapse:collapse; width:100%; }
+    .tabla-alertas th { background:#dc2626; color:white; padding:7px 8px; font-size:12px; text-align:left; font-weight:700; }
+    .tabla-alertas td { padding:6px 8px; border:0.5px solid #eee; font-size:12px; white-space:nowrap; }
+    </style>""", unsafe_allow_html=True)
 
-    def _encabezado(*cols):
-        return "<tr>" + "".join(f"<th style='background:#dc2626;color:white;padding:7px 8px;font-size:12px;text-align:left;font-weight:700'>{c}</th>" for c in cols) + "</tr>"
+    def _alerta_tabla(filas_data, borde_color="#dc2626"):
+        html = "<div class='tabla-alertas' style='border-color:" + borde_color + "'><table>"
+        html += "<tr>" + "".join(f"<th>{c}</th>" for c in filas_data[0]) + "</tr>"
+        for fila, bg, color, blink in filas_data[1:]:
+            cls = " class='fila-vencida'" if blink else ""
+            html += f"<tr{cls}>" + "".join(
+                f"<td style='background:{bg};color:{color}'>{c}</td>" for c in fila
+            ) + "</tr>"
+        html += "</table></div>"
+        return html
 
     with col_a:
         st.markdown("**🔴 OTs que requieren atención**")
@@ -2288,29 +2306,19 @@ elif pagina == "resumen":
             if ots_a.empty:
                 st.success("✅ Sin OTs vencidas ni próximas a vencer")
             else:
-                # Tabla con encabezado
-                filas_html = _encabezado("Estado","ID","Vencimiento","Cliente","Servicio","")
-                for i, (_, r) in enumerate(ots_a.head(8).iterrows()):
+                data = [["Estado","ID","Vencimiento","Cliente","Servicio","Acción"]]
+                for _, r in ots_a.head(8).iterrows():
                     tipo, fec = info_limite(r["Fecha_Limite"])
                     bg    = "#fee2e2" if tipo=="vencida" else "#fef9c3"
                     color = "#7f1d1d" if tipo=="vencida" else "#78350f"
                     icono = "🔴" if tipo=="vencida" else "🟡"
-                    filas_html += f"<tr class='fila-{i}'>" + _fila_tabla(bg, color,
-                        icono, r["ID"], fec, r["Cliente"][:20], r["Servicio"][:18],
-                        f"<span style='display:none' id='btn_{r['ID']}'>{r['ID']}</span>🔗"
-                    ) + "</tr>"
-                st.markdown(
-                    f"<div style='overflow-x:auto;border:1px solid #dc2626;border-radius:8px'>"
-                    f"<table style='border-collapse:collapse;width:100%'>{filas_html}</table></div>",
-                    unsafe_allow_html=True
-                )
-                # Botones por fila
-                for _, r in ots_a.head(8).iterrows():
-                    tipo, _ = info_limite(r["Fecha_Limite"])
-                    btn_color = "#dc2626" if tipo=="vencida" else "#d97706"
-                    if st.button(f"📂 Abrir {r['ID']}", key=f"alerta_ot_{r['ID']}",
-                                 use_container_width=True):
-                        st.session_state["pagina"]       = "ots"
+                    blink = tipo == "vencida"
+                    data.append(([icono, r["ID"], fec, r["Cliente"][:22], r["Servicio"][:18], "→ ver OT"], bg, color, blink))
+                st.markdown(_alerta_tabla(data), unsafe_allow_html=True)
+                c_btns = st.columns(len(ots_a.head(8)))
+                for i, (_, r) in enumerate(ots_a.head(8).iterrows()):
+                    if c_btns[i].button(r["ID"][-3:], key=f"aot_{r['ID']}", help=f"Abrir {r['ID']}"):
+                        st.session_state["pagina"] = "ots"
                         st.session_state["accion_ot_radio"] = "📋 Ver OTs"
                         st.session_state["ot_preselect"] = r["ID"]
                         st.rerun()
@@ -2324,19 +2332,14 @@ elif pagina == "resumen":
             if pend_df.empty:
                 st.success("✅ Sin solicitudes pendientes")
             else:
-                filas_sol = _encabezado("ID","Fecha","Cliente","Servicio","")
+                data_s = [["ID","Fecha","Cliente","Servicio","Acción"]]
                 for _, r in pend_df.iterrows():
-                    filas_sol += "<tr>" + _fila_tabla("#fef9c3","#78350f",
-                        r["ID"], r["Fecha"][:16], r["Cliente"][:20], r["Servicio"][:18], "📋"
-                    ) + "</tr>"
-                st.markdown(
-                    f"<div style='overflow-x:auto;border:1px solid #d97706;border-radius:8px'>"
-                    f"<table style='border-collapse:collapse;width:100%'>{filas_sol}</table></div>",
-                    unsafe_allow_html=True
-                )
-                for _, r in pend_df.iterrows():
-                    if st.button(f"📂 Abrir {r['ID']}", key=f"alerta_sol_{r['ID']}",
-                                 use_container_width=True):
+                    data_s.append(([r["ID"], r["Fecha"][:16], r["Cliente"][:22], r["Servicio"][:18], "→ ver SOL"],
+                                   "#fef9c3","#78350f", False))
+                st.markdown(_alerta_tabla(data_s, "#d97706"), unsafe_allow_html=True)
+                c_btns2 = st.columns(len(pend_df))
+                for i, (_, r) in enumerate(pend_df.iterrows()):
+                    if c_btns2[i].button(r["ID"][-3:], key=f"asol_{r['ID']}", help=f"Abrir {r['ID']}"):
                         st.session_state["pagina"] = "ver"
                         st.rerun()
         else:
