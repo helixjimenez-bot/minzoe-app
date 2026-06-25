@@ -4640,29 +4640,39 @@ elif pagina == "usuarios":
             st.warning("Ejecuta esto UNA SOLA VEZ para copiar todos los datos existentes.")
             if st.button("🚀 Iniciar migración", type="primary", use_container_width=True):
                 tablas = [
-                    ("solicitudes",    COLS_SOL),
-                    ("clientes",       COLS_CLI),
-                    ("ordenes_trabajo",COLS_OT),
-                    ("contratos",      COLS_CONTRATO),
-                    ("equipos",        COLS_EQUIPO),
-                    ("ventas",         COLS_VENTA),
-                    ("costos",         COLS_COSTO),
-                    ("contadores",     COLS_COUNTERS),
+                    ("solicitudes",     COLS_SOL),
+                    ("clientes",        COLS_CLI),
+                    ("ordenes_trabajo", COLS_OT),
+                    ("contratos",       COLS_CONTRATO),
+                    ("equipos",         COLS_EQUIPO),
+                    ("ventas",          COLS_VENTA),
+                    ("costos",          COLS_COSTO),
+                    ("contadores",      COLS_COUNTERS),
                 ]
                 errores = []
+                gc_mig = get_gc()
                 for tab, cols in tablas:
                     try:
-                        df_gs = gs_load(tab, tuple(cols))
-                        if not df_gs.empty:
+                        # Leer directo de Google Sheets sin caché
+                        sh  = gc_mig.open_by_key(st.secrets["spreadsheet_id"] or
+                                                  st.secrets["gcp_service_account"].get("spreadsheet_id",""))
+                        ws  = sh.worksheet(tab)
+                        data = ws.get_all_records()
+                        if data:
+                            df_gs = pd.DataFrame(data).astype(str).fillna("")
+                            for c in cols:
+                                if c not in df_gs.columns:
+                                    df_gs[c] = ""
+                            df_gs = df_gs[cols]
                             sb_save(tab, df_gs)
-                            st.success(f"✅ {tab}: {len(df_gs)} registros migrados")
+                            st.success(f"✅ **{tab}**: {len(df_gs)} registros migrados")
                         else:
-                            st.info(f"ℹ️ {tab}: sin datos")
+                            st.info(f"ℹ️ **{tab}**: sin datos en Google Sheets")
                     except Exception as e:
-                        errores.append(f"{tab}: {e}")
-                        st.error(f"❌ {tab}: {e}")
+                        errores.append(tab)
+                        st.error(f"❌ **{tab}**: {e}")
                 if not errores:
-                    st.success("🎉 Migración completa. Todos los datos están en Supabase.")
+                    st.success("🎉 ¡Migración completa! Todos los datos están en Supabase.")
         st.stop()
 
     st.subheader("👥 Gestión de Usuarios")
