@@ -1597,6 +1597,103 @@ input[type="date"], input[type="time"] {
 [data-testid="stForm"] span,
 [data-testid="stForm"] label,
 [data-testid="stForm"] div { color: #111111 !important; }
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE MÓVIL Y TABLET
+   ══════════════════════════════════════════════════ */
+
+/* ── Tablet (≤1024px) ── */
+@media (max-width: 1024px) {
+    /* Contenedor principal más aprovechado */
+    .block-container { padding: 1rem 1.5rem !important; }
+
+    /* Tablas HTML personalizadas: scroll horizontal */
+    [data-testid="stMarkdownContainer"] table {
+        display: block !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        white-space: nowrap !important;
+        font-size: 0.82rem !important;
+    }
+
+    /* Botones más grandes para dedos */
+    .stButton > button {
+        min-height: 44px !important;
+        font-size: 0.9rem !important;
+    }
+}
+
+/* ── Celular (≤768px) ── */
+@media (max-width: 768px) {
+    /* Menos padding, más espacio útil */
+    .block-container { padding: 0.75rem 0.75rem 2rem !important; max-width: 100% !important; }
+
+    /* Tablas con scroll táctil */
+    [data-testid="stMarkdownContainer"] table {
+        display: block !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        white-space: nowrap !important;
+        font-size: 0.78rem !important;
+        border-radius: 6px !important;
+    }
+
+    /* Columnas de Streamlit en móvil: no tan apretadas */
+    [data-testid="column"] { min-width: 140px !important; }
+
+    /* Inputs y selectbox: más altos para tocar con dedo */
+    input, textarea, select,
+    [data-baseweb="input"] input,
+    [data-baseweb="textarea"] textarea {
+        font-size: 16px !important; /* evita zoom automático en iOS */
+        min-height: 42px !important;
+    }
+
+    /* Botones primarios más grandes */
+    .stButton > button {
+        min-height: 48px !important;
+        font-size: 0.95rem !important;
+        border-radius: 8px !important;
+    }
+
+    /* Títulos más pequeños en móvil */
+    h1 { font-size: 1.4rem !important; }
+    h2 { font-size: 1.2rem !important; }
+    h3 { font-size: 1.05rem !important; }
+
+    /* Métricas del sidebar más compactas */
+    [data-testid="stMetric"] label { font-size: 0.75rem !important; }
+    [data-testid="stMetric"] [data-testid="stMetricValue"] { font-size: 1.3rem !important; }
+
+    /* Radio buttons más separados */
+    [data-testid="stRadio"] label { padding: 6px 0 !important; }
+
+    /* Checkboxes más grandes */
+    [data-testid="stCheckbox"] label { padding: 4px 0 !important; font-size: 0.9rem !important; }
+
+    /* Formularios sin tanto padding */
+    [data-testid="stForm"] { padding: 10px !important; }
+
+    /* Gráficas Plotly: scroll si son muy anchas */
+    [data-testid="stPlotlyChart"] {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Expanders: texto más legible */
+    [data-testid="stExpander"] summary { font-size: 0.9rem !important; }
+
+    /* Tabs en móvil */
+    [data-testid="stTabs"] [role="tab"] { font-size: 0.82rem !important; padding: 6px 10px !important; }
+}
+
+/* ── Celular muy pequeño (≤400px) ── */
+@media (max-width: 400px) {
+    .block-container { padding: 0.5rem 0.5rem 2rem !important; }
+    [data-testid="stMarkdownContainer"] table { font-size: 0.72rem !important; }
+    h2 { font-size: 1.1rem !important; }
+    .stButton > button { font-size: 0.88rem !important; }
+}
 </style>
 """, unsafe_allow_html=True)
 
