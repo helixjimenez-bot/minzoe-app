@@ -397,7 +397,7 @@ def get_sheet(tab_name):
     except gspread.exceptions.WorksheetNotFound:
         return sh.add_worksheet(title=tab_name, rows=1000, cols=30)
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=1800)
 def gs_load(tab_name, cols_tuple, _v=0):
     """Carga datos de Google Sheets con caché de 10 min por tabla."""
     cols = list(cols_tuple)
