@@ -1651,31 +1651,36 @@ with st.sidebar:
         """, unsafe_allow_html=True)
     st.divider()
 
+    _rol_actual = st.session_state.get("user_rol", "usuario")
+    _es_tecnico = _rol_actual == "tecnico"
+
     # ── GENERAL ──────────────────────────────────────────────────────────────
     if st.button("📊 Dashboard", use_container_width=True):
         st.session_state["pagina"] = "resumen"
         st.rerun()
 
-    st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>BASE DE DATOS</p>", unsafe_allow_html=True)
-
-    if st.button("🏢 Clientes", use_container_width=True):
-        st.session_state["pagina"] = "clientes"
-        st.rerun()
+    if not _es_tecnico:
+        st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>BASE DE DATOS</p>", unsafe_allow_html=True)
+        if st.button("🏢 Clientes", use_container_width=True):
+            st.session_state["pagina"] = "clientes"
+            st.rerun()
 
     st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>OPERACIONES</p>", unsafe_allow_html=True)
 
-    if st.button("➕ Nueva Solicitud", use_container_width=True, type="primary"):
-        for key in ["empresa_sel", "sede_sel"]:
-            if key in st.session_state:
-                del st.session_state[key]
-        st.session_state["pagina"] = "nueva"
-        st.rerun()
+    if not _es_tecnico:
+        if st.button("➕ Nueva Solicitud", use_container_width=True, type="primary"):
+            for key in ["empresa_sel", "sede_sel"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.session_state["pagina"] = "nueva"
+            st.rerun()
 
-    if st.button("📋 Ver Solicitudes", use_container_width=True):
-        st.session_state["pagina"] = "ver"
-        st.rerun()
+        if st.button("📋 Ver Solicitudes", use_container_width=True):
+            st.session_state["pagina"] = "ver"
+            st.rerun()
 
-    if st.button("🛠️ Órdenes de Trabajo", use_container_width=True):
+    _lbl_ots = "🛠️ Mis OTs" if _es_tecnico else "🛠️ Órdenes de Trabajo"
+    if st.button(_lbl_ots, use_container_width=True, type="primary" if _es_tecnico else "secondary"):
         st.session_state["pagina"] = "ots"
         st.session_state["accion_ot_radio"] = "📋 Ver OTs"
         st.rerun()
@@ -1684,25 +1689,34 @@ with st.sidebar:
         st.session_state["pagina"] = "calendario"
         st.rerun()
 
-    if st.button("📄 Contratos de Mantenimiento", use_container_width=True):
-        st.session_state["pagina"] = "contratos_mto"
-        st.rerun()
+    if not _es_tecnico:
+        if st.button("📄 Contratos de Mantenimiento", use_container_width=True):
+            st.session_state["pagina"] = "contratos_mto"
+            st.rerun()
 
     if st.button("🗂️ Hojas de Vida Equipos", use_container_width=True):
         st.session_state["pagina"] = "hojas_vida"
         st.rerun()
 
-    st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>FINANCIERO</p>", unsafe_allow_html=True)
-
-    if st.button("💰 Compras y Ventas", use_container_width=True):
-        st.session_state["pagina"] = "compras_ventas"
-        st.rerun()
+    if not _es_tecnico:
+        st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>FINANCIERO</p>", unsafe_allow_html=True)
+        if st.button("💰 Compras y Ventas", use_container_width=True):
+            st.session_state["pagina"] = "compras_ventas"
+            st.rerun()
 
     st.divider()
-    pendientes  = int((_df_sidebar["Estado"] == "Pendiente").sum()) if not _df_sidebar.empty else 0
-    ots_activas = int((_ots_sidebar["Estado"].isin(["Programada","En ejecución"])).sum()) if not _ots_sidebar.empty else 0
-    st.metric("🟡 Sol. Pendientes", pendientes)
-    st.metric("🛠️ OTs Activas",    ots_activas)
+    if _es_tecnico:
+        _nom_tec_sidebar = st.session_state.get("user_nombre", "")
+        _mis_ots = _ots_sidebar[_ots_sidebar["Tecnico"].str.strip().str.lower() == _nom_tec_sidebar.strip().lower()] if not _ots_sidebar.empty else _ots_sidebar
+        ots_activas = int((_mis_ots["Estado"].isin(["Programada","En ejecución"])).sum()) if not _mis_ots.empty else 0
+        ots_hoy = int((_mis_ots["Fecha_Ejecucion"].str.startswith(ahora_colombia().strftime("%Y-%m-%d"), na=False)).sum()) if not _mis_ots.empty else 0
+        st.metric("🛠️ Mis OTs Activas", ots_activas)
+        st.metric("📅 Visitas hoy",     ots_hoy)
+    else:
+        pendientes  = int((_df_sidebar["Estado"] == "Pendiente").sum()) if not _df_sidebar.empty else 0
+        ots_activas = int((_ots_sidebar["Estado"].isin(["Programada","En ejecución"])).sum()) if not _ots_sidebar.empty else 0
+        st.metric("🟡 Sol. Pendientes", pendientes)
+        st.metric("🛠️ OTs Activas",    ots_activas)
     st.divider()
 
     # Usuario actual
@@ -1749,6 +1763,9 @@ st.markdown("""
 # PÁGINA: NUEVA SOLICITUD
 # ══════════════════════════════════════════════════════════════════════════════
 if pagina == "nueva":
+    if st.session_state.get("user_rol") == "tecnico":
+        st.warning("⛔ No tienes permiso para acceder a esta sección.")
+        st.stop()
     df = get_df(); cli = get_cli(); ots = get_ots()
     st.subheader("Registrar nueva solicitud")
 
@@ -1940,6 +1957,9 @@ if pagina == "nueva":
 # PÁGINA: VER SOLICITUDES
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "ver":
+    if st.session_state.get("user_rol") == "tecnico":
+        st.warning("⛔ No tienes permiso para acceder a esta sección.")
+        st.stop()
     import io
     df = get_df(); ots = get_ots()
 
@@ -2589,6 +2609,9 @@ elif pagina == "resumen":
 # PÁGINA: CLIENTES
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "clientes":
+    if st.session_state.get("user_rol") == "tecnico":
+        st.warning("⛔ No tienes permiso para acceder a esta sección.")
+        st.stop()
     cli = get_cli()
     st.subheader("Registro de Empresas y Sedes")
     st.caption("Agrega aquí las empresas. Al crear solicitudes, sus datos se llenarán solos.")
@@ -2773,8 +2796,12 @@ elif pagina == "clientes":
 elif pagina == "ots":
     import io
     df = get_df(); ots = get_ots(); cli = get_cli()
+    _rol_ots    = st.session_state.get("user_rol", "usuario")
+    _es_tec_ots = _rol_ots == "tecnico"
+    _nom_tec_ots = st.session_state.get("user_nombre", "")
+
     c_tit_ot, c_ref_ot = st.columns([5,1])
-    c_tit_ot.subheader("🛠️ Órdenes de Trabajo")
+    c_tit_ot.subheader("🛠️ Mis OTs" if _es_tec_ots else "🛠️ Órdenes de Trabajo")
     if c_ref_ot.button("🔄 Actualizar", use_container_width=True, key="ref_ots"):
         _invalidar_cache("ordenes_trabajo")
         st.rerun()
@@ -2784,8 +2811,14 @@ elif pagina == "ots":
         st.session_state["accion_ot_radio"] = "📋 Ver OTs"
         st.session_state.pop("_ot_volver_ver", None)
 
-    accion_ot = st.radio("", ["➕ Nueva OT", "📋 Ver OTs"], horizontal=True,
-                         label_visibility="collapsed", key="accion_ot_radio")
+    if _es_tec_ots:
+        accion_ot = "📋 Ver OTs"
+        # Filtrar OTs por técnico
+        if not ots.empty and "Tecnico" in ots.columns:
+            ots = ots[ots["Tecnico"].str.strip().str.lower() == _nom_tec_ots.strip().lower()].copy()
+    else:
+        accion_ot = st.radio("", ["➕ Nueva OT", "📋 Ver OTs"], horizontal=True,
+                             label_visibility="collapsed", key="accion_ot_radio")
     st.divider()
 
     # ── NUEVA OT ──────────────────────────────────────────────────────────────
@@ -3926,6 +3959,9 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 # PÁGINA: CONTRATOS DE MANTENIMIENTO
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "contratos_mto":
+    if st.session_state.get("user_rol") == "tecnico":
+        st.warning("⛔ No tienes permiso para acceder a esta sección.")
+        st.stop()
     import io
     ots = get_ots(); contratos = get_contratos(); equipos = get_equipos(); cli = get_cli()
     st.subheader("📄 Contratos de Mantenimiento")
@@ -4261,6 +4297,9 @@ elif pagina == "contratos_mto":
 # PÁGINA: COMPRAS Y VENTAS (NUEVA VERSIÓN)
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "compras_ventas":
+    if st.session_state.get("user_rol") == "tecnico":
+        st.warning("⛔ No tienes permiso para acceder a esta sección.")
+        st.stop()
     import io
     ots = get_ots(); ventas = get_ventas(); costos = get_costos(); cv = get_cv()
     st.subheader("💰 Compras y Ventas")
@@ -4792,7 +4831,7 @@ elif pagina == "usuarios":
             nu_correo = st.text_input("Correo electrónico")
         with c2:
             nu_pwd    = st.text_input("Contraseña", type="password")
-            nu_rol    = st.selectbox("Rol", ["usuario", "admin"])
+            nu_rol    = st.selectbox("Rol", ["usuario", "tecnico", "admin"])
         if st.form_submit_button("➕ Agregar usuario", type="primary", use_container_width=True):
             if not nu_nombre or not nu_correo or not nu_pwd:
                 st.error("Todos los campos son obligatorios.")
