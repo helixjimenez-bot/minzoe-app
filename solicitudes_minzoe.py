@@ -705,8 +705,8 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
 </div>
 </body></html>
 """
-        import uuid
-        message_id = f"<{sol_id}.{uuid.uuid4().hex[:8]}@{dominio}>"
+        # ID fijo basado en la SOL — no necesita guardarse en base de datos
+        message_id = f"<{sol_id}@{dominio}>"
 
         msg = MIMEMultipart("alternative")
         msg["Subject"]    = asunto
@@ -2043,7 +2043,8 @@ elif pagina == "ver":
 
                                     correo_cli = sol_row.get("Correo_Contacto","").strip()
                                     if correo_cli:
-                                        msg_id_orig = sol_row.get("Email_Message_ID","").strip()
+                                        # Message-ID determinístico: siempre <SOL-ID@dominio>
+                                        msg_id_orig = f"<{id_sel}@construminzoe.com>"
                                         ok_m, res_m = enviar_actualizacion_ot(
                                             sol_id          = id_sel,
                                             ot_id           = nueva_ot_id,
@@ -2051,7 +2052,7 @@ elif pagina == "ver":
                                             contacto_nombre = sol_row.get("Nombre_Contacto",""),
                                             correo_destino  = correo_cli,
                                             fecha           = ahora_colombia().strftime("%Y-%m-%d %H:%M"),
-                                            reply_to_id     = msg_id_orig or None,
+                                            reply_to_id     = msg_id_orig,
                                         )
                                         if ok_m:
                                             notif.append(("success", f"📧 Correo enviado a **{correo_cli}**"))
