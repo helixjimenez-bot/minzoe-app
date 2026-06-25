@@ -2181,6 +2181,77 @@ elif pagina == "resumen":
     margen    = (util_tot / venta_tot * 100) if venta_tot > 0 else 0
     con_act   = int((contratos["Estado_Contrato"] == "Activo").sum()) if not contratos.empty else 0
 
+    # ── ALERTAS PRIMERO ───────────────────────────────────────────────────────
+    st.markdown('<p class="section-title">🚨 ALERTAS Y PENDIENTES</p>', unsafe_allow_html=True)
+    st.markdown("""<style>
+    @keyframes parpadeo { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    </style>""", unsafe_allow_html=True)
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown("**🔴 OTs que requieren atención**")
+        st.markdown("""<div style='display:flex;background:#dc2626;color:white;border-radius:6px 6px 0 0;
+            padding:5px 8px;gap:8px;font-size:12px;font-weight:700;'>
+            <span style='min-width:20px'>⚠️</span><span style='min-width:110px'>ID</span>
+            <span style='min-width:120px'>Vencimiento</span><span style='min-width:120px'>Cliente</span>
+            <span style='flex:1'>Servicio</span><span style='min-width:80px'>Acción</span>
+            </div>""", unsafe_allow_html=True)
+        if not ots.empty and "Fecha_Limite" in ots.columns:
+            def _il(val):
+                try:
+                    fl=datetime.strptime(val,"%Y-%m-%d %H:%M"); diff=(fl-hoy_dash).total_seconds()/3600
+                    return ("vencida",fl.strftime("%d/%m/%Y %H:%M")) if diff<0 else (("proxima",fl.strftime("%d/%m/%Y %H:%M")) if diff<=24 else (None,""))
+                except: return (None,"")
+            ots_al=ots[(ots["Estado"].isin(["Programada","En ejecución"]))&(ots["Fecha_Limite"].apply(lambda x:_il(x)[0] is not None))].copy()
+            if ots_al.empty:
+                st.success("✅ Sin OTs vencidas ni próximas a vencer")
+            else:
+                for _,r in ots_al.head(8).iterrows():
+                    tipo,fec=_il(r["Fecha_Limite"]); icono="🔴" if tipo=="vencida" else "🟡"
+                    bg="#fee2e2" if tipo=="vencida" else "#fef9c3"; borde="2px solid #dc2626" if tipo=="vencida" else "1px solid #d97706"
+                    anim="animation:parpadeo 1s infinite;" if tipo=="vencida" else ""
+                    c1,c2=st.columns([5,1])
+                    with c1:
+                        st.markdown(f"""<div style='{anim}background:{bg};border:{borde};border-radius:6px;
+                            padding:5px 8px;margin:2px 0;font-size:12px;display:flex;gap:8px;'>
+                            <span style='min-width:20px'>{icono}</span><span style='min-width:110px;font-weight:700'>{r['ID']}</span>
+                            <span style='min-width:120px'>{fec}</span><span style='min-width:120px'>{r['Cliente'][:20]}</span>
+                            <span>{r['Servicio'][:18]}</span></div>""",unsafe_allow_html=True)
+                    with c2:
+                        if st.button("→ Ver OT",key=f"aot2_{r['ID']}",use_container_width=True):
+                            st.session_state["pagina"]="ots"; st.session_state["accion_ot_radio"]="📋 Ver OTs"; st.session_state["ot_preselect"]=r["ID"]; st.rerun()
+        else:
+            st.success("✅ Sin alertas")
+
+    with col_b:
+        st.markdown("**🟡 Solicitudes pendientes más antiguas**")
+        st.markdown("""<div style='display:flex;background:#dc2626;color:white;border-radius:6px 6px 0 0;
+            padding:5px 8px;gap:8px;font-size:12px;font-weight:700;'>
+            <span style='min-width:110px'>ID</span><span style='min-width:120px'>Fecha</span>
+            <span style='min-width:120px'>Cliente</span><span style='flex:1'>Servicio</span>
+            <span style='min-width:80px'>Acción</span></div>""", unsafe_allow_html=True)
+        if not df.empty:
+            pend_df2=df[df["Estado"]=="Pendiente"].sort_values("Fecha").head(5)
+            if pend_df2.empty:
+                st.success("✅ Sin solicitudes pendientes")
+            else:
+                for _,r in pend_df2.iterrows():
+                    c1,c2=st.columns([5,1])
+                    with c1:
+                        st.markdown(f"""<div style='background:#fef9c3;border:1px solid #d97706;border-radius:6px;
+                            padding:5px 8px;margin:2px 0;font-size:12px;display:flex;gap:8px;'>
+                            <span style='min-width:110px;font-weight:700'>{r['ID']}</span>
+                            <span style='min-width:120px'>{r['Fecha'][:16]}</span>
+                            <span style='min-width:120px'>{r['Cliente'][:20]}</span>
+                            <span>{r['Servicio'][:18]}</span></div>""",unsafe_allow_html=True)
+                    with c2:
+                        if st.button("→ Ver SOL",key=f"asol2_{r['ID']}",use_container_width=True):
+                            st.session_state["pagina"]="ver"; st.rerun()
+        else:
+            st.success("✅ Sin pendientes")
+
+    st.divider()
+
     # ── SECCIÓN 1: SOLICITUDES ────────────────────────────────────────────────
     st.markdown('<p class="section-title">📋 SOLICITUDES</p>', unsafe_allow_html=True)
     c1, c2, c3, c4, c5 = st.columns(5)
