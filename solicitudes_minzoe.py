@@ -1829,7 +1829,11 @@ elif pagina == "ver":
             elif tipo == "error":  st.error(texto)
             else: st.info(texto)
 
-    st.subheader("📋 Solicitudes registradas")
+    c_tit, c_ref = st.columns([5,1])
+    c_tit.subheader("📋 Solicitudes registradas")
+    if c_ref.button("🔄 Actualizar", use_container_width=True):
+        _invalidar_cache("solicitudes")
+        st.rerun()
 
     if df.empty:
         st.info("Aún no hay solicitudes registradas.")
