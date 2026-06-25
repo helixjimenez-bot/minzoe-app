@@ -2265,16 +2265,13 @@ elif pagina == "resumen":
 
     with col_a:
         st.markdown("**🔴 OTs que requieren atención**")
-        st.markdown('<div class="panel-alertas">', unsafe_allow_html=True)
         if not ots.empty and "Fecha_Limite" in ots.columns:
             def info_limite(val):
                 try:
                     fl   = datetime.strptime(val, "%Y-%m-%d %H:%M")
                     diff = (fl - hoy_dash).total_seconds() / 3600
-                    if diff < 0:
-                        return ("vencida", f"Venció el {fl.strftime('%d/%m/%Y %H:%M')}")
-                    elif diff <= 24:
-                        return ("proxima", f"Vence el {fl.strftime('%d/%m/%Y %H:%M')}")
+                    if diff < 0:   return ("vencida",  fl.strftime("%d/%m/%Y %H:%M"))
+                    elif diff<=24: return ("proxima",  fl.strftime("%d/%m/%Y %H:%M"))
                     return (None, "")
                 except Exception:
                     return (None, "")
@@ -2283,38 +2280,40 @@ elif pagina == "resumen":
                         (ots["Fecha_Limite"].apply(lambda x: info_limite(x)[0] is not None))].copy()
 
             if ots_a.empty:
-                st.markdown('<div style="color:#16a34a;padding:8px">✅ Sin OTs vencidas ni próximas a vencer</div>', unsafe_allow_html=True)
+                st.success("✅ Sin OTs vencidas ni próximas a vencer")
             else:
-                for _, r in ots_a.head(8).iterrows():
-                    tipo, fecha_txt = info_limite(r["Fecha_Limite"])
-                    css_cls = "alerta-vencida" if tipo == "vencida" else "alerta-proxima"
-                    icono   = "🔴" if tipo == "vencida" else "🟡"
-                    label   = f"{icono} <b>{r['ID']}</b> — {r['Cliente']}<br><small>📅 {fecha_txt} | {r['Servicio']}</small>"
-                    st.markdown(f'<div class="{css_cls}">{label}</div>', unsafe_allow_html=True)
-                    if st.button("→ Ver OT", key=f"alerta_ot_{r['ID']}", use_container_width=False):
+                ots_a["Vencimiento"] = ots_a["Fecha_Limite"].apply(lambda x: info_limite(x)[1])
+                ots_a["Alerta"]      = ots_a["Fecha_Limite"].apply(
+                    lambda x: "🔴 Vencida" if info_limite(x)[0]=="vencida" else "🟡 Próxima")
+                tabla_ot_al = ots_a[["Alerta","ID","Vencimiento","Cliente","Servicio"]].reset_index(drop=True)
+                tabla_html(tabla_ot_al, color_col="Alerta",
+                           colores_estado={
+                               "🔴 Vencida": ("#fee2e2","#7f1d1d"),
+                               "🟡 Próxima": ("#fef3c7","#78350f"),
+                           })
+                # Botones para ir a cada OT vencida
+                for _, r in ots_a.head(3).iterrows():
+                    if st.button(f"→ Abrir {r['ID']}", key=f"alerta_ot_{r['ID']}"):
                         st.session_state["pagina"]       = "ots"
                         st.session_state["ot_preselect"] = r["ID"]
                         st.rerun()
         else:
-            st.markdown('<div style="color:#16a34a;padding:8px">✅ Sin alertas</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.success("✅ Sin alertas")
 
     with col_b:
         st.markdown("**🟡 Solicitudes pendientes más antiguas**")
-        st.markdown('<div class="panel-alertas">', unsafe_allow_html=True)
         if not df.empty:
             pend_df = df[df["Estado"] == "Pendiente"].sort_values("Fecha").head(5)
             if pend_df.empty:
-                st.markdown('<div style="color:#16a34a;padding:8px">✅ Sin solicitudes pendientes</div>', unsafe_allow_html=True)
+                st.success("✅ Sin solicitudes pendientes")
             else:
-                for _, r in pend_df.iterrows():
-                    st.markdown(
-                        f'<div class="alerta-sol"><b>{r["ID"]}</b> — {r["Cliente"]}<br>'
-                        f'<small>🔧 {r["Servicio"]} | 📅 {r["Fecha"]}</small></div>',
-                        unsafe_allow_html=True)
+                tabla_html(
+                    pend_df[["ID","Fecha","Cliente","Servicio","Estado"]].reset_index(drop=True),
+                    color_col="Estado",
+                    colores_estado={"Pendiente": ("#fef3c7","#78350f")}
+                )
         else:
-            st.markdown('<div style="color:#16a34a;padding:8px">✅ Sin pendientes</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.success("✅ Sin pendientes")
 
     st.divider()
 
