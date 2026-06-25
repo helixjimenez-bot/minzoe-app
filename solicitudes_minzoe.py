@@ -3387,6 +3387,92 @@ elif pagina == "ots":
                                 ]))
                                 _logo_b64 = get_logo_base64()
                                 _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
+
+                                # ── Filas dinámicas cliente/equipo (solo campos con valor) ──
+                                _cli_rows = []
+                                if fila_ot.get('Cliente',''): _cli_rows.append(("Cliente:", fila_ot['Cliente']))
+                                if fila_ot.get('Sede',''): _cli_rows.append(("Sucursal:", fila_ot.get('Sede','')))
+                                if fila_ot.get('Nombre_Contacto',''): _cli_rows.append(("Contacto:", fila_ot.get('Nombre_Contacto','')))
+
+                                _eq_rows = []
+                                if r_tipo_eq.strip(): _eq_rows.append(("Tipo de equipo:", r_tipo_eq))
+                                if r_marca.strip(): _eq_rows.append(("Marca:", r_marca))
+                                if r_modelo.strip(): _eq_rows.append(("Modelo:", r_modelo))
+                                if r_ser_cond.strip(): _eq_rows.append(("Serial Condensadora:", r_ser_cond))
+                                if r_ser_evap.strip(): _eq_rows.append(("Serial Evaporadora:", r_ser_evap))
+                                if r_btu.strip(): _eq_rows.append(("Capacidad BTU/CFM:", r_btu))
+                                if r_refrig.strip(): _eq_rows.append(("Tipo de Refrigerante:", r_refrig))
+                                if r_ubic_evap.strip(): _eq_rows.append(("Ubic. Evaporadora:", r_ubic_evap))
+                                if r_ubic_cond.strip(): _eq_rows.append(("Ubic. Condensadora:", r_ubic_cond))
+
+                                _rows_ce = ""
+                                for _i in range(max(len(_cli_rows), len(_eq_rows))):
+                                    _cl = f"<td><b>{_cli_rows[_i][0]}</b></td><td>{_cli_rows[_i][1]}</td>" if _i < len(_cli_rows) else "<td></td><td></td>"
+                                    _eq = f"<td><b>{_eq_rows[_i][0]}</b></td><td>{_eq_rows[_i][1]}</td>" if _i < len(_eq_rows) else "<td></td><td></td>"
+                                    _rows_ce += f"<tr>{_cl}{_eq}</tr>\n"
+
+                                # Sección medición: solo si hay algún valor
+                                _med_vals = [m_cond_v,m_cond_a,m_cond_f,m_vcond_v,m_vcond_a,m_vcond_f,m_vcond_hp,m_vcond_r,
+                                             m_psi_a,m_psi_b,m_psi_f,m_evap_v,m_evap_a,m_evap_f,
+                                             m_vevap_v,m_vevap_a,m_vevap_f,m_vevap_h,m_vevap_r,
+                                             m_t_sum,m_t_ret,m_t_amb,m_ext_v,m_ext_a,m_ext_h,m_ext_r,m_caudal]
+                                if any(v.strip() for v in _med_vals):
+                                    _seccion_medicion = (
+                                        '<div class="section">DATOS DE MEDICIÓN</div>'
+                                        '<table><tr>'
+                                        '<th colspan="2">Eq. Condensadora</th>'
+                                        '<th colspan="2">Vent. Condensadora</th>'
+                                        '<th colspan="2">Presiones Refrig.</th>'
+                                        '<th colspan="2">Eq. Evaporador</th>'
+                                        '<th colspan="2">Vent. Evaporador</th>'
+                                        f'</tr><tr>'
+                                        f'<td>Voltaje</td><td>{m_cond_v}</td>'
+                                        f'<td>Voltaje</td><td>{m_vcond_v}</td>'
+                                        f'<td>PSI Alta</td><td>{m_psi_a}</td>'
+                                        f'<td>Voltaje</td><td>{m_evap_v}</td>'
+                                        f'<td>Voltaje</td><td>{m_vevap_v}</td>'
+                                        f'</tr><tr>'
+                                        f'<td>Amperaje</td><td>{m_cond_a}</td>'
+                                        f'<td>Amperaje</td><td>{m_vcond_a}</td>'
+                                        f'<td>PSI Baja</td><td>{m_psi_b}</td>'
+                                        f'<td>Amperaje</td><td>{m_evap_a}</td>'
+                                        f'<td>Amperaje</td><td>{m_vevap_a}</td>'
+                                        f'</tr><tr>'
+                                        f'<td>N° Fase</td><td>{m_cond_f}</td>'
+                                        f'<td>N° Fase</td><td>{m_vcond_f}</td>'
+                                        f'<td>Últ. Med.</td><td>{m_psi_f}</td>'
+                                        f'<td>N° Fase</td><td>{m_evap_f}</td>'
+                                        f'<td>N° Fase</td><td>{m_vevap_f}</td>'
+                                        f'</tr><tr>'
+                                        f'<td></td><td></td><td>HP</td><td>{m_vcond_hp}</td>'
+                                        f'<td></td><td></td><td></td><td></td>'
+                                        f'<td>HP</td><td>{m_vevap_h}</td>'
+                                        f'</tr><tr>'
+                                        f'<td></td><td></td><td>RPM</td><td>{m_vcond_r}</td>'
+                                        f'<td></td><td></td><td></td><td></td>'
+                                        f'<td>RPM</td><td>{m_vevap_r}</td>'
+                                        '</tr></table>'
+                                        '<table><tr>'
+                                        '<th colspan="2">Temperatura</th>'
+                                        '<th colspan="2">Ventilador/Extractor</th>'
+                                        '<th colspan="2">Ductos/Rejillas</th>'
+                                        f'</tr><tr>'
+                                        f'<td>Suministro</td><td>{m_t_sum}</td>'
+                                        f'<td>Voltaje</td><td>{m_ext_v}</td>'
+                                        f'<td>Caudal de Aire</td><td>{m_caudal}</td>'
+                                        f'</tr><tr>'
+                                        f'<td>Retorno</td><td>{m_t_ret}</td>'
+                                        f'<td>Amperaje</td><td>{m_ext_a}</td>'
+                                        '<td></td><td></td>'
+                                        f'</tr><tr>'
+                                        f'<td>Ambiente</td><td>{m_t_amb}</td>'
+                                        f'<td>HP / RPM</td><td>{m_ext_h} / {m_ext_r}</td>'
+                                        '<td></td><td></td>'
+                                        '</tr></table>'
+                                    )
+                                else:
+                                    _seccion_medicion = ""
+
                                 html = f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
 <title>Reporte HVAC {id_ot_sel}</title>
@@ -3414,91 +3500,10 @@ elif pagina == "ots":
 <table><tr>
   <th colspan="2">DATOS DEL CLIENTE</th>
   <th colspan="2">DATOS DEL EQUIPO</th>
-</tr><tr>
-  <td><b>Cliente:</b></td><td>{fila_ot['Cliente']}</td>
-  <td><b>Tipo de equipo:</b></td><td>{r_tipo_eq}</td>
-</tr><tr>
-  <td><b>Ciudad:</b></td><td>{fila_ot.get('Sede','')}</td>
-  <td><b>Marca:</b></td><td>{r_marca}</td>
-</tr><tr>
-  <td><b>Sucursal:</b></td><td>{fila_ot.get('Sede','')}</td>
-  <td><b>Modelo:</b></td><td>{r_modelo}</td>
-</tr><tr>
-  <td><b>Contacto:</b></td><td>{fila_ot.get('Nombre_Contacto','')}</td>
-  <td><b>Serial Condensadora:</b></td><td>{r_ser_cond}</td>
-</tr><tr>
-  <td></td><td></td>
-  <td><b>Serial Evaporadora:</b></td><td>{r_ser_evap}</td>
-</tr><tr>
-  <td></td><td></td>
-  <td><b>Capacidad BTU/CFM:</b></td><td>{r_btu}</td>
-</tr><tr>
-  <td></td><td></td>
-  <td><b>Tipo de Refrigerante:</b></td><td>{r_refrig}</td>
-</tr><tr>
-  <td></td><td></td>
-  <td><b>Ubic. Evaporadora:</b></td><td>{r_ubic_evap}</td>
-</tr><tr>
-  <td></td><td></td>
-  <td><b>Ubic. Condensadora:</b></td><td>{r_ubic_cond}</td>
-</tr></table>
+</tr>
+{_rows_ce}</table>
 
-<div class="section">DATOS DE MEDICIÓN</div>
-<table><tr>
-  <th colspan="2">Eq. Condensadora</th>
-  <th colspan="2">Vent. Condensadora</th>
-  <th colspan="2">Presiones Refrig.</th>
-  <th colspan="2">Eq. Evaporador</th>
-  <th colspan="2">Vent. Evaporador</th>
-</tr><tr>
-  <td>Voltaje</td><td>{m_cond_v}</td>
-  <td>Voltaje</td><td>{m_vcond_v}</td>
-  <td>PSI Alta</td><td>{m_psi_a}</td>
-  <td>Voltaje</td><td>{m_evap_v}</td>
-  <td>Voltaje</td><td>{m_vevap_v}</td>
-</tr><tr>
-  <td>Amperaje</td><td>{m_cond_a}</td>
-  <td>Amperaje</td><td>{m_vcond_a}</td>
-  <td>PSI Baja</td><td>{m_psi_b}</td>
-  <td>Amperaje</td><td>{m_evap_a}</td>
-  <td>Amperaje</td><td>{m_vevap_a}</td>
-</tr><tr>
-  <td>N° Fase</td><td>{m_cond_f}</td>
-  <td>N° Fase</td><td>{m_vcond_f}</td>
-  <td>Últ. Med.</td><td>{m_psi_f}</td>
-  <td>N° Fase</td><td>{m_evap_f}</td>
-  <td>N° Fase</td><td>{m_vevap_f}</td>
-</tr><tr>
-  <td></td><td></td>
-  <td>HP</td><td>{m_vcond_hp}</td>
-  <td></td><td></td>
-  <td></td><td></td>
-  <td>HP</td><td>{m_vevap_h}</td>
-</tr><tr>
-  <td></td><td></td>
-  <td>RPM</td><td>{m_vcond_r}</td>
-  <td></td><td></td>
-  <td></td><td></td>
-  <td>RPM</td><td>{m_vevap_r}</td>
-</tr></table>
-
-<table><tr>
-  <th colspan="2">Temperatura</th>
-  <th colspan="2">Ventilador/Extractor</th>
-  <th colspan="2">Ductos/Rejillas</th>
-</tr><tr>
-  <td>Suministro</td><td>{m_t_sum}</td>
-  <td>Voltaje</td><td>{m_ext_v}</td>
-  <td>Caudal de Aire</td><td>{m_caudal}</td>
-</tr><tr>
-  <td>Retorno</td><td>{m_t_ret}</td>
-  <td>Amperaje</td><td>{m_ext_a}</td>
-  <td></td><td></td>
-</tr><tr>
-  <td>Ambiente</td><td>{m_t_amb}</td>
-  <td>HP / RPM</td><td>{m_ext_h} / {m_ext_r}</td>
-  <td></td><td></td>
-</tr></table>
+{_seccion_medicion}
 
 <div class="section">LISTA DE CHEQUEO</div>
 <table><tr>
