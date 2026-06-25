@@ -4647,9 +4647,6 @@ elif pagina == "usuarios":
                 save_usuarios(usuarios)
                 st.success(f"✅ Usuario **{sel}** eliminado.")
                 st.rerun()
-    else:
-        st.warning("No hay usuarios registrados.")
-
         st.divider()
         st.subheader("Cambiar mi contraseña")
         with st.form("form_cambiar_pwd"):
@@ -4657,17 +4654,17 @@ elif pagina == "usuarios":
             pwd_new  = st.text_input("Nueva contraseña", type="password")
             pwd_new2 = st.text_input("Confirmar nueva contraseña", type="password")
             if st.form_submit_button("🔐 Cambiar contraseña", type="primary"):
-                mi_correo = st.session_state.get("user_correo")
-                u_row = usuarios[usuarios["correo"] == mi_correo]
-                if u_row.iloc[0]["password_hash"] != hash_pwd(pwd_act):
+                mi_correo2 = st.session_state.get("user_correo")
+                u_row = usuarios[usuarios["correo"] == mi_correo2]
+                if u_row.empty or u_row.iloc[0]["password_hash"] != hash_pwd(pwd_act):
                     st.error("La contraseña actual no es correcta.")
                 elif pwd_new != pwd_new2:
                     st.error("Las contraseñas nuevas no coinciden.")
                 elif len(pwd_new) < 6:
                     st.error("La contraseña debe tener al menos 6 caracteres.")
                 else:
-                    usuarios.loc[usuarios["correo"] == mi_correo, "password_hash"] = hash_pwd(pwd_new)
+                    usuarios.loc[usuarios["correo"] == mi_correo2, "password_hash"] = hash_pwd(pwd_new)
                     save_usuarios(usuarios)
                     st.success("✅ Contraseña actualizada correctamente.")
     else:
-        st.info("No hay usuarios registrados.")
+        st.warning("No hay usuarios registrados.")
