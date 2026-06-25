@@ -673,24 +673,16 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
         msg["Subject"]    = asunto
         msg["From"]       = f"Construcciones Minzoe SAS <{email_user}>"
         msg["To"]         = correo_destino
+        msg["Bcc"]        = email_user  # Copia a tu bandeja de entrada
         msg["Message-ID"] = message_id
         msg.attach(MIMEText(cuerpo, "html", "utf-8"))
 
-        context = ssl.create_default_context()
+        context   = ssl.create_default_context()
         msg_bytes = msg.as_bytes()
 
         with smtplib.SMTP_SSL("smtp.hostinger.com", 465, context=context) as server:
             server.login(email_user, email_pwd)
-            server.sendmail(email_user, correo_destino, msg_bytes)
-
-        try:
-            import imaplib
-            imap = imaplib.IMAP4_SSL("imap.hostinger.com", 993)
-            imap.login(email_user, email_pwd)
-            _guardar_en_enviados(imap, msg_bytes)
-            imap.logout()
-        except Exception:
-            pass
+            server.sendmail(email_user, [correo_destino, email_user], msg_bytes)
 
         return True, f"Confirmación enviada a {correo_destino}", message_id
     except Exception as e:
@@ -798,21 +790,14 @@ def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_dest
         if reply_to_id:
             msg["In-Reply-To"] = reply_to_id
             msg["References"]  = reply_to_id
+        msg["Bcc"] = email_user  # Copia a tu bandeja de entrada
         msg.attach(MIMEText(cuerpo, "html", "utf-8"))
         msg_bytes = msg.as_bytes()
 
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL("smtp.hostinger.com", 465, context=context) as server:
             server.login(email_user, email_pwd)
-            server.sendmail(email_user, correo_destino, msg_bytes)
-
-        try:
-            imap = imaplib.IMAP4_SSL("imap.hostinger.com", 993)
-            imap.login(email_user, email_pwd)
-            _guardar_en_enviados(imap, msg_bytes)
-            imap.logout()
-        except Exception:
-            pass
+            server.sendmail(email_user, [correo_destino, email_user], msg_bytes)
 
         return True, f"Actualización enviada a {correo_destino}"
     except Exception as e:
