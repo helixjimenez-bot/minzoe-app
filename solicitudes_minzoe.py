@@ -4634,6 +4634,35 @@ elif pagina == "usuarios":
     usuarios = load_usuarios()
     if st.session_state.get("user_rol") != "admin":
         st.error("Acceso restringido.")
+    else:
+        # ── Migración Google Sheets → Supabase (solo una vez) ─────────────
+        with st.expander("🔄 Migrar datos desde Google Sheets a Supabase", expanded=False):
+            st.warning("Ejecuta esto UNA SOLA VEZ para copiar todos los datos existentes.")
+            if st.button("🚀 Iniciar migración", type="primary", use_container_width=True):
+                tablas = [
+                    ("solicitudes",    COLS_SOL),
+                    ("clientes",       COLS_CLI),
+                    ("ordenes_trabajo",COLS_OT),
+                    ("contratos",      COLS_CONTRATO),
+                    ("equipos",        COLS_EQUIPO),
+                    ("ventas",         COLS_VENTA),
+                    ("costos",         COLS_COSTO),
+                    ("contadores",     COLS_COUNTERS),
+                ]
+                errores = []
+                for tab, cols in tablas:
+                    try:
+                        df_gs = gs_load(tab, tuple(cols))
+                        if not df_gs.empty:
+                            sb_save(tab, df_gs)
+                            st.success(f"✅ {tab}: {len(df_gs)} registros migrados")
+                        else:
+                            st.info(f"ℹ️ {tab}: sin datos")
+                    except Exception as e:
+                        errores.append(f"{tab}: {e}")
+                        st.error(f"❌ {tab}: {e}")
+                if not errores:
+                    st.success("🎉 Migración completa. Todos los datos están en Supabase.")
         st.stop()
 
     st.subheader("👥 Gestión de Usuarios")
