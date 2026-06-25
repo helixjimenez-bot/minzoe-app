@@ -96,6 +96,88 @@ def ahora_colombia():
     """Retorna datetime actual en hora Colombia (UTC-5)."""
     return datetime.utcnow() - timedelta(hours=5)
 
+
+def festivos_colombia(año):
+    """Festivos nacionales de Colombia para el año dado (set de date)."""
+    from datetime import date
+    f = set()
+    # Fijos
+    f.add(date(año, 1, 1))   # Año Nuevo
+    f.add(date(año, 5, 1))   # Día del Trabajo
+    f.add(date(año, 7, 20))  # Independencia
+    f.add(date(año, 8, 7))   # Batalla de Boyacá
+    f.add(date(año, 12, 8))  # Inmaculada Concepción
+    f.add(date(año, 12, 25)) # Navidad
+
+    def sig_lunes(d):
+        """Ley Emiliani: mueve al siguiente lunes si no cae en lunes."""
+        dias = (7 - d.weekday()) % 7
+        return d + timedelta(days=dias if dias else 7) if d.weekday() != 0 else d
+
+    # Movibles (Ley Emiliani)
+    f.add(sig_lunes(date(año, 1, 6)))    # Reyes Magos
+    f.add(sig_lunes(date(año, 3, 19)))   # San José
+    f.add(sig_lunes(date(año, 6, 29)))   # San Pedro y San Pablo
+    f.add(sig_lunes(date(año, 8, 15)))   # Asunción de la Virgen
+    f.add(sig_lunes(date(año, 10, 12)))  # Día de la Raza
+    f.add(sig_lunes(date(año, 11, 1)))   # Todos los Santos
+    f.add(sig_lunes(date(año, 11, 11)))  # Independencia de Cartagena
+
+    # Pascua (algoritmo de Meeus/Jones/Butcher)
+    a = año % 19
+    b = año // 100; c = año % 100
+    d_ = b // 4;    e = b % 4
+    ff = (b + 8) // 25
+    g = (b - ff + 1) // 3
+    h = (19*a + b - d_ - g + 15) % 30
+    i = c // 4;     k = c % 4
+    l = (32 + 2*e + 2*i - h - k) % 7
+    m = (a + 11*h + 22*l) // 451
+    mes_p = (h + l - 7*m + 114) // 31
+    dia_p = ((h + l - 7*m + 114) % 31) + 1
+    from datetime import date as _date
+    pascua = _date(año, mes_p, dia_p)
+    f.add(pascua - timedelta(days=3))                   # Jueves Santo
+    f.add(pascua - timedelta(days=2))                   # Viernes Santo
+    f.add(sig_lunes(pascua + timedelta(days=39)))       # Ascensión
+    f.add(sig_lunes(pascua + timedelta(days=60)))       # Corpus Christi
+    f.add(sig_lunes(pascua + timedelta(days=68)))       # Sagrado Corazón
+    return f
+
+
+def es_dia_laboral(dt):
+    """True si la fecha es día laboral: lunes a sábado, sin festivos colombianos."""
+    d = dt.date() if isinstance(dt, datetime) else dt
+    if d.weekday() == 6:  # domingo
+        return False
+    return d not in festivos_colombia(d.year)
+
+
+def sumar_horas_laborales(desde, horas):
+    """Suma N horas avanzando solo en días laborales (lun-sáb, no festivos).
+    Domingos y festivos se saltan por completo al siguiente día laboral."""
+    dt = desde
+    pendientes = float(horas)
+    while pendientes > 0:
+        # Si el día actual no es laboral, saltar al inicio del siguiente día
+        if not es_dia_laboral(dt):
+            dt = datetime(dt.year, dt.month, dt.day) + timedelta(days=1)
+            continue
+        # Horas que quedan hasta la medianoche de este día laboral
+        sig = datetime(dt.year, dt.month, dt.day) + timedelta(days=1)
+        horas_dia = (sig - dt).total_seconds() / 3600
+        if pendientes <= horas_dia:
+            dt = dt + timedelta(hours=pendientes)
+            pendientes = 0
+        else:
+            pendientes -= horas_dia
+            dt = sig
+    # Si el resultado cae en día no laboral, mover al inicio del próximo laboral
+    while not es_dia_laboral(dt):
+        dt = datetime(dt.year, dt.month, dt.day) + timedelta(days=1)
+    return dt
+
+
 COLS_COUNTERS    = ["tipo", "prefijo", "ultimo_num"]
 COLS_HISTORIAL   = ["ID_Log","Fecha","Usuario","Entidad","Entidad_ID","Campo","Valor_Anterior","Valor_Nuevo"]
 COLS_COMENTARIOS = ["ID_Com","Fecha","Usuario","Entidad","Entidad_ID","Comentario"]
@@ -1152,13 +1234,14 @@ def calcular_horas(inicio, final):
 
 
 def calcular_fecha_limite(sla, zona_completa, desde=None):
-    """Retorna la fecha límite como string dado el SLA y la zona."""
+    """Retorna la fecha límite como string dado el SLA y la zona.
+    El conteo de horas salta domingos y festivos colombianos."""
     desde = desde or ahora_colombia()
-    clave = zona_completa[:2] if zona_completa else "Z0"  # extrae "Z0", "Z1", etc.
+    clave = zona_completa[:2] if zona_completa else "Z0"
     horas = SLA_HORAS.get(sla, {}).get(clave)
     if horas is None:
         return TEXTO_Z5.get(sla, "Por definir")
-    return (desde + timedelta(hours=horas)).strftime("%Y-%m-%d %H:%M")
+    return sumar_horas_laborales(desde, horas).strftime("%Y-%m-%d %H:%M")
 
 
 def crear_ot_desde_sol(sol, ots):
