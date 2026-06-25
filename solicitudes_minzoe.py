@@ -2263,6 +2263,12 @@ elif pagina == "resumen":
 
     col_a, col_b = st.columns(2)
 
+    def _fila_tabla(bg, color, *celdas):
+        return "".join(f"<td style='background:{bg};color:{color};padding:6px 8px;border:0.5px solid #ddd;font-size:12px;white-space:nowrap'>{c}</td>" for c in celdas)
+
+    def _encabezado(*cols):
+        return "<tr>" + "".join(f"<th style='background:#dc2626;color:white;padding:7px 8px;font-size:12px;text-align:left;font-weight:700'>{c}</th>" for c in cols) + "</tr>"
+
     with col_a:
         st.markdown("**🔴 OTs que requieren atención**")
         if not ots.empty and "Fecha_Limite" in ots.columns:
@@ -2282,19 +2288,30 @@ elif pagina == "resumen":
             if ots_a.empty:
                 st.success("✅ Sin OTs vencidas ni próximas a vencer")
             else:
-                ots_a["Vencimiento"] = ots_a["Fecha_Limite"].apply(lambda x: info_limite(x)[1])
-                ots_a["Alerta"]      = ots_a["Fecha_Limite"].apply(
-                    lambda x: "🔴 Vencida" if info_limite(x)[0]=="vencida" else "🟡 Próxima")
-                tabla_ot_al = ots_a[["Alerta","ID","Vencimiento","Cliente","Servicio"]].reset_index(drop=True)
-                tabla_html(tabla_ot_al, color_col="Alerta",
-                           colores_estado={
-                               "🔴 Vencida": ("#fee2e2","#7f1d1d"),
-                               "🟡 Próxima": ("#fef3c7","#78350f"),
-                           })
-                # Botones para ir a cada OT vencida
-                for _, r in ots_a.head(3).iterrows():
-                    if st.button(f"→ Abrir {r['ID']}", key=f"alerta_ot_{r['ID']}"):
+                # Tabla con encabezado
+                filas_html = _encabezado("Estado","ID","Vencimiento","Cliente","Servicio","")
+                for i, (_, r) in enumerate(ots_a.head(8).iterrows()):
+                    tipo, fec = info_limite(r["Fecha_Limite"])
+                    bg    = "#fee2e2" if tipo=="vencida" else "#fef9c3"
+                    color = "#7f1d1d" if tipo=="vencida" else "#78350f"
+                    icono = "🔴" if tipo=="vencida" else "🟡"
+                    filas_html += f"<tr class='fila-{i}'>" + _fila_tabla(bg, color,
+                        icono, r["ID"], fec, r["Cliente"][:20], r["Servicio"][:18],
+                        f"<span style='display:none' id='btn_{r['ID']}'>{r['ID']}</span>🔗"
+                    ) + "</tr>"
+                st.markdown(
+                    f"<div style='overflow-x:auto;border:1px solid #dc2626;border-radius:8px'>"
+                    f"<table style='border-collapse:collapse;width:100%'>{filas_html}</table></div>",
+                    unsafe_allow_html=True
+                )
+                # Botones por fila
+                for _, r in ots_a.head(8).iterrows():
+                    tipo, _ = info_limite(r["Fecha_Limite"])
+                    btn_color = "#dc2626" if tipo=="vencida" else "#d97706"
+                    if st.button(f"📂 Abrir {r['ID']}", key=f"alerta_ot_{r['ID']}",
+                                 use_container_width=True):
                         st.session_state["pagina"]       = "ots"
+                        st.session_state["accion_ot_radio"] = "📋 Ver OTs"
                         st.session_state["ot_preselect"] = r["ID"]
                         st.rerun()
         else:
@@ -2307,11 +2324,21 @@ elif pagina == "resumen":
             if pend_df.empty:
                 st.success("✅ Sin solicitudes pendientes")
             else:
-                tabla_html(
-                    pend_df[["ID","Fecha","Cliente","Servicio","Estado"]].reset_index(drop=True),
-                    color_col="Estado",
-                    colores_estado={"Pendiente": ("#fef3c7","#78350f")}
+                filas_sol = _encabezado("ID","Fecha","Cliente","Servicio","")
+                for _, r in pend_df.iterrows():
+                    filas_sol += "<tr>" + _fila_tabla("#fef9c3","#78350f",
+                        r["ID"], r["Fecha"][:16], r["Cliente"][:20], r["Servicio"][:18], "📋"
+                    ) + "</tr>"
+                st.markdown(
+                    f"<div style='overflow-x:auto;border:1px solid #d97706;border-radius:8px'>"
+                    f"<table style='border-collapse:collapse;width:100%'>{filas_sol}</table></div>",
+                    unsafe_allow_html=True
                 )
+                for _, r in pend_df.iterrows():
+                    if st.button(f"📂 Abrir {r['ID']}", key=f"alerta_sol_{r['ID']}",
+                                 use_container_width=True):
+                        st.session_state["pagina"] = "ver"
+                        st.rerun()
         else:
             st.success("✅ Sin pendientes")
 
