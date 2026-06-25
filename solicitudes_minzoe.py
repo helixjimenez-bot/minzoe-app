@@ -4639,17 +4639,23 @@ elif pagina == "usuarios":
         # ── Migración Google Sheets → Supabase (solo una vez) ─────────────
         with st.expander("🔄 Migrar datos desde Google Sheets a Supabase", expanded=False):
             st.warning("Ejecuta esto UNA SOLA VEZ para copiar todos los datos existentes.")
+            TABLAS_MIG = {
+                "solicitudes":     COLS_SOL,
+                "clientes":        COLS_CLI,
+                "ordenes_trabajo": COLS_OT,
+                "contratos":       COLS_CONTRATO,
+                "equipos":         COLS_EQUIPO,
+                "ventas":          COLS_VENTA,
+                "costos":          COLS_COSTO,
+                "contadores":      COLS_COUNTERS,
+            }
+            sel_tablas = st.multiselect(
+                "¿Qué tablas migrar?",
+                list(TABLAS_MIG.keys()),
+                default=list(TABLAS_MIG.keys()),
+            )
             if st.button("🚀 Iniciar migración", type="primary", use_container_width=True):
-                tablas = [
-                    ("solicitudes",     COLS_SOL),
-                    ("clientes",        COLS_CLI),
-                    ("ordenes_trabajo", COLS_OT),
-                    ("contratos",       COLS_CONTRATO),
-                    ("equipos",         COLS_EQUIPO),
-                    ("ventas",          COLS_VENTA),
-                    ("costos",          COLS_COSTO),
-                    ("contadores",      COLS_COUNTERS),
-                ]
+                tablas = [(t, TABLAS_MIG[t]) for t in sel_tablas]
                 errores = []
                 gc_mig = get_gc()
                 for tab, cols in tablas:
