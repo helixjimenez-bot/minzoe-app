@@ -2223,45 +2223,98 @@ elif pagina == "resumen":
 
     # ── SECCIÓN 4: ALERTAS ───────────────────────────────────────────────────
     st.markdown('<p class="section-title">🚨 ALERTAS Y PENDIENTES</p>', unsafe_allow_html=True)
+
+    # CSS animación de titilación para alertas críticas
+    st.markdown("""
+    <style>
+    @keyframes titilar {
+        0%   { opacity: 1; border-color: #dc2626; background: #fff0f0; }
+        50%  { opacity: 0.6; border-color: #ff0000; background: #ffe0e0; }
+        100% { opacity: 1; border-color: #dc2626; background: #fff0f0; }
+    }
+    .alerta-vencida {
+        animation: titilar 1.2s ease-in-out infinite;
+        border: 2px solid #dc2626 !important;
+        background: #fff0f0 !important;
+        border-radius: 8px; padding: 10px 14px; margin: 4px 0;
+        font-size: 13px; cursor: pointer;
+    }
+    .alerta-proxima {
+        border: 2px solid #d97706 !important;
+        background: #fffbeb !important;
+        border-radius: 8px; padding: 10px 14px; margin: 4px 0;
+        font-size: 13px; cursor: pointer;
+    }
+    .panel-alertas {
+        background: #fafafa;
+        border: 1.5px solid #e5e5e5;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 8px;
+    }
+    .alerta-sol {
+        border-left: 4px solid #d97706;
+        background: #fffbeb;
+        border-radius: 6px; padding: 8px 12px; margin: 4px 0;
+        font-size: 13px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.markdown("**OTs que requieren atención**")
+        st.markdown("**🔴 OTs que requieren atención**")
+        st.markdown('<div class="panel-alertas">', unsafe_allow_html=True)
         if not ots.empty and "Fecha_Limite" in ots.columns:
-            def est_lim(val):
+            def info_limite(val):
                 try:
-                    diff = (datetime.strptime(val, "%Y-%m-%d %H:%M") - hoy_dash).total_seconds() / 3600
-                    return "🔴 Vencida" if diff < 0 else ("🟡 Vence en <24h" if diff <= 24 else None)
+                    fl   = datetime.strptime(val, "%Y-%m-%d %H:%M")
+                    diff = (fl - hoy_dash).total_seconds() / 3600
+                    if diff < 0:
+                        return ("vencida", f"Venció el {fl.strftime('%d/%m/%Y %H:%M')}")
+                    elif diff <= 24:
+                        return ("proxima", f"Vence el {fl.strftime('%d/%m/%Y %H:%M')}")
+                    return (None, "")
                 except Exception:
-                    return None
+                    return (None, "")
+
             ots_a = ots[(ots["Estado"].isin(["Programada","En ejecución"])) &
-                        (ots["Fecha_Limite"].apply(lambda x: est_lim(x) is not None))].copy()
-            ots_a["⚠️"] = ots_a["Fecha_Limite"].apply(est_lim)
+                        (ots["Fecha_Limite"].apply(lambda x: info_limite(x)[0] is not None))].copy()
+
             if ots_a.empty:
-                st.markdown('<div class="alert-box alert-green">✅ Sin OTs vencidas ni próximas a vencer</div>', unsafe_allow_html=True)
+                st.markdown('<div style="color:#16a34a;padding:8px">✅ Sin OTs vencidas ni próximas a vencer</div>', unsafe_allow_html=True)
             else:
-                for _, r in ots_a.head(5).iterrows():
-                    cls   = "alert-red" if "Vencida" in r["⚠️"] else "alert-yellow"
-                    label = f"{r['⚠️']} — {r['ID']} | {r['Cliente']} | {r['Fecha_Limite']}"
-                    if st.button(label, key=f"alerta_ot_{r['ID']}",
-                                 use_container_width=True):
-                        st.session_state["pagina"]        = "ots"
-                        st.session_state["ot_preselect"]  = r["ID"]
+                for _, r in ots_a.head(8).iterrows():
+                    tipo, fecha_txt = info_limite(r["Fecha_Limite"])
+                    css_cls = "alerta-vencida" if tipo == "vencida" else "alerta-proxima"
+                    icono   = "🔴" if tipo == "vencida" else "🟡"
+                    label   = f"{icono} <b>{r['ID']}</b> — {r['Cliente']}<br><small>📅 {fecha_txt} | {r['Servicio']}</small>"
+                    st.markdown(f'<div class="{css_cls}">{label}</div>', unsafe_allow_html=True)
+                    if st.button("→ Ver OT", key=f"alerta_ot_{r['ID']}", use_container_width=False):
+                        st.session_state["pagina"]       = "ots"
+                        st.session_state["ot_preselect"] = r["ID"]
                         st.rerun()
         else:
-            st.markdown('<div class="alert-box alert-green">✅ Sin alertas</div>', unsafe_allow_html=True)
+            st.markdown('<div style="color:#16a34a;padding:8px">✅ Sin alertas</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     with col_b:
-        st.markdown("**Solicitudes pendientes más antiguas**")
+        st.markdown("**🟡 Solicitudes pendientes más antiguas**")
+        st.markdown('<div class="panel-alertas">', unsafe_allow_html=True)
         if not df.empty:
             pend_df = df[df["Estado"] == "Pendiente"].sort_values("Fecha").head(5)
             if pend_df.empty:
-                st.markdown('<div class="alert-box alert-green">✅ Sin solicitudes pendientes</div>', unsafe_allow_html=True)
+                st.markdown('<div style="color:#16a34a;padding:8px">✅ Sin solicitudes pendientes</div>', unsafe_allow_html=True)
             else:
                 for _, r in pend_df.iterrows():
-                    st.markdown(f'<div class="alert-box alert-yellow"><strong>{r["ID"]}</strong> — {r["Cliente"]} | {r["Servicio"]} | {r["Fecha"]}</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="alerta-sol"><b>{r["ID"]}</b> — {r["Cliente"]}<br>'
+                        f'<small>🔧 {r["Servicio"]} | 📅 {r["Fecha"]}</small></div>',
+                        unsafe_allow_html=True)
         else:
-            st.markdown('<div class="alert-box alert-green">✅ Sin pendientes</div>', unsafe_allow_html=True)
+            st.markdown('<div style="color:#16a34a;padding:8px">✅ Sin pendientes</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.divider()
 
