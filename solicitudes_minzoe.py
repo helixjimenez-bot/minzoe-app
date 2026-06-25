@@ -3469,6 +3469,10 @@ elif pagina == "ots":
                             if ok_h:
                                 st.success(f"✅ Guardado en: `{res_h}`\n\n{msg_fin}")
                             else:
+                                st.info(msg_fin)
+                                fmt_h = st.radio("Formato de descarga",
+                                    ["📄 HTML", "📕 PDF (imprimir desde el archivo)", "🖼️ PNG/TIFF (captura)"],
+                                    horizontal=True, key="fmt_hvac")
                                 st.download_button(
                                     "⬇️ Descargar Reporte",
                                     data=_html,
@@ -3477,7 +3481,10 @@ elif pagina == "ots":
                                     use_container_width=True,
                                     type="primary"
                                 )
-                                st.info(msg_fin)
+                                if fmt_h == "📕 PDF (imprimir desde el archivo)":
+                                    st.info("💡 Abre el archivo HTML descargado → clic en **🖨️ Imprimir / Guardar como PDF** → elige destino **Guardar como PDF**.")
+                                elif fmt_h == "🖼️ PNG/TIFF (captura)":
+                                    st.info("💡 Abre el archivo HTML → presiona **Ctrl+P** → cambia el destino a **Microsoft Print to PDF** o toma una captura con la herramienta de recorte de Windows.")
                                 if st.button("✅ Listo, cerrar", key="cerrar_hvac"):
                                     st.rerun()
                             if ok_h:
@@ -3722,6 +3729,10 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             if ok_h:
                                 st.success(f"✅ Guardado en: `{res_h}`\n\nOT **{id_ot_sel}** finalizada." + (f" SOL **{ot_row_l['SOL_Ref']}** cerrada." if cerrada_l else ""))
                             else:
+                                st.info(f"OT **{id_ot_sel}** finalizada." + (f" SOL cerrada." if cerrada_l else ""))
+                                fmt_l = st.radio("Formato de descarga",
+                                    ["📄 HTML", "📕 PDF (imprimir desde el archivo)", "🖼️ PNG/TIFF (captura)"],
+                                    horizontal=True, key="fmt_loc")
                                 st.download_button(
                                     "⬇️ Descargar Reporte",
                                     data=_html_l,
@@ -3730,7 +3741,10 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                                     use_container_width=True,
                                     type="primary"
                                 )
-                                st.info(f"OT **{id_ot_sel}** finalizada." + (f" SOL cerrada." if cerrada_l else ""))
+                                if fmt_l == "📕 PDF (imprimir desde el archivo)":
+                                    st.info("💡 Abre el archivo HTML → clic en **🖨️ Imprimir / Guardar como PDF** → elige destino **Guardar como PDF**.")
+                                elif fmt_l == "🖼️ PNG/TIFF (captura)":
+                                    st.info("💡 Abre el archivo HTML → **Ctrl+P** → destino **Microsoft Print to PDF**, o usa la herramienta de recorte de Windows.")
                                 if st.button("✅ Listo, cerrar", key="cerrar_loc"):
                                     st.rerun()
                             if ok_h:
