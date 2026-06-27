@@ -665,7 +665,9 @@ def load_contratos():
     return sb_load("contratos", COLS_CONTRATO)
 
 def save_contratos(df):
-    sb_save("contratos", df)
+    ok = sb_save("contratos", df)
+    _invalidar_cache("contratos")
+    return ok
 
 def load_equipos():
     return sb_load("equipos", COLS_EQUIPO)
@@ -4684,10 +4686,13 @@ elif pagina == "contratos_mto":
 
                                 contratos = pd.concat([contratos, pd.DataFrame(nuevos_cons)], ignore_index=True)
                                 ots       = pd.concat([ots,       pd.DataFrame(nuevas_ots)],  ignore_index=True)
-                                save_contratos(contratos)
-                                save_ots(ots)
-                                st.success(f"✅ Se crearon **{len(nuevos_cons)} contratos** y "
-                                           f"**{len(nuevas_ots)} OTs** de mantenimiento.")
+                                ok_con = save_contratos(contratos)
+                                ok_ot  = save_ots(ots)
+                                if ok_con is not False and ok_ot is not False:
+                                    st.success(f"✅ Se crearon **{len(nuevos_cons)} contrato(s)** y "
+                                               f"**{len(nuevas_ots)} OT(s)** de mantenimiento.")
+                                else:
+                                    st.error("❌ Hubo un error al guardar. Intenta de nuevo.")
                                 st.rerun()
 
             else:
