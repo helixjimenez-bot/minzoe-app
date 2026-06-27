@@ -929,12 +929,15 @@ def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_dest
 def get_logo_base64():
     """Carga el logo de Minzoe en base64 para embeber en HTML."""
     import base64
-    logo_path = r"D:\Escritorio\LA ASISTENTE MINZOE\LOGO MINZOE.png"
-    try:
-        with open(logo_path, "rb") as f:
-            return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
-    except Exception:
-        return ""
+    for ruta in ["logo.png", "LOGO MINZOE.png",
+                 r"D:\Escritorio\LA ASISTENTE MINZOE\logo.png",
+                 r"D:\Escritorio\LA ASISTENTE MINZOE\LOGO MINZOE.png"]:
+        try:
+            with open(ruta, "rb") as f:
+                return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
+        except Exception:
+            continue
+    return ""
 
 
 def css_formato_carta():
@@ -1327,11 +1330,14 @@ def pagina_login():
     </style>
     """, unsafe_allow_html=True)
 
-    LOGO_PATH = r"D:\Escritorio\LA ASISTENTE MINZOE\LOGO MINZOE.png"
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        if os.path.exists(LOGO_PATH):
-            st.image(LOGO_PATH, width=180)
+        for _rp in ["logo.png", "LOGO MINZOE.png",
+                    r"D:\Escritorio\LA ASISTENTE MINZOE\logo.png",
+                    r"D:\Escritorio\LA ASISTENTE MINZOE\LOGO MINZOE.png"]:
+            if os.path.exists(_rp):
+                st.image(_rp, width=180)
+                break
         st.markdown("""
         <div style='text-align:center; margin-bottom:24px;'>
             <span style='color:#dc2626; font-size:1.5rem; font-weight:900;'>CONSTRUCCIONES MINZOE SAS</span><br>
@@ -1735,10 +1741,16 @@ def get_costos():    return load_costos()
 # ── Menú lateral ─────────────────────────────────────────────────────────────
 with st.sidebar:
     # Logo
-    LOGO_PATH = r"D:\Escritorio\LA ASISTENTE MINZOE\LOGO MINZOE.png"
-    if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, use_container_width=True)
-    else:
+    _logo_rutas = ["logo.png", "LOGO MINZOE.png",
+                   r"D:\Escritorio\LA ASISTENTE MINZOE\logo.png",
+                   r"D:\Escritorio\LA ASISTENTE MINZOE\LOGO MINZOE.png"]
+    _logo_cargado = False
+    for _ruta in _logo_rutas:
+        if os.path.exists(_ruta):
+            st.image(_ruta, use_container_width=True)
+            _logo_cargado = True
+            break
+    if not _logo_cargado:
         st.markdown("""
         <div style='text-align:center; padding: 12px 0 4px 0;'>
             <span style='font-size:2.8rem;'>🏗️</span><br>
