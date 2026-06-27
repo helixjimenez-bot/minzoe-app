@@ -1486,6 +1486,12 @@ button[data-testid="baseButton-primary"] {
 .stSelectbox > div > div {
     background: #ffffff !important; color: #111111 !important;
     border: 1px solid #dc2626 !important; border-radius: 6px !important;
+    caret-color: #111111 !important;
+}
+.stNumberInput > div > div > input {
+    background: #ffffff !important; color: #111111 !important;
+    border: 1px solid #dc2626 !important; border-radius: 6px !important;
+    caret-color: #111111 !important;
 }
 
 /* ── Campos deshabilitados (auto-relleno) ── */
