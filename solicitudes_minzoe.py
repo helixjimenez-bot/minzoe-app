@@ -3814,22 +3814,21 @@ elif pagina == "ots":
                             key=f"tipo_eq_sel_{id_ot_sel}",
                         )
                         _es_vent_ext = _tipo_eq_sel in TIPOS_VENT
+
+                        # ── Tipo de mantenimiento (fuera del form) ────────
+                        st.markdown("**Tipo de mantenimiento**")
+                        tc1,tc2,tc3,tc4,tc5 = st.columns(5)
+                        tc1.checkbox("Preventivo",    key=f"r_prev_{id_ot_sel}", value=fila_ot.get("Tipo_Servicio","")=="Preventivo")
+                        tc2.checkbox("Correctivo",    key=f"r_corr_{id_ot_sel}", value=fila_ot.get("Tipo_Servicio","")=="Correctivo")
+                        tc3.checkbox("Visita Técnica",key=f"r_vis_{id_ot_sel}")
+                        tc4.checkbox("Emergencia",    key=f"r_emer_{id_ot_sel}")
+                        tc5.checkbox("Instalación",   key=f"r_inst_{id_ot_sel}")
+
                         st.divider()
+                        # ── Datos del equipo ──────────────────────────────
+                        st.markdown("**🔧 Datos del equipo**")
 
                         with st.form(f"form_reporte_aires_{id_ot_sel}", clear_on_submit=False):
-
-                            # ── Tipo de mantenimiento ─────────────────────
-                            st.markdown("**Tipo de mantenimiento**")
-                            tc1,tc2,tc3,tc4,tc5 = st.columns(5)
-                            r_prev  = tc1.checkbox("Preventivo",  value=fila_ot.get("Tipo_Servicio","")=="Preventivo")
-                            r_corr  = tc2.checkbox("Correctivo",  value=fila_ot.get("Tipo_Servicio","")=="Correctivo")
-                            r_vis   = tc3.checkbox("Visita Técnica")
-                            r_emer  = tc4.checkbox("Emergencia")
-                            r_inst  = tc5.checkbox("Instalación")
-
-                            st.divider()
-                            # ── Datos del equipo ──────────────────────────
-                            st.markdown("**🔧 Datos del equipo**")
 
                             if not _es_vent_ext:
                                 # ── MODO AC ──────────────────────────────
@@ -4022,6 +4021,12 @@ elif pagina == "ots":
 
                             if generar:
                                 def ck(val): return "✔" if val else ""
+                                # Leer checkboxes desde session_state (están fuera del form)
+                                r_prev = st.session_state.get(f"r_prev_{id_ot_sel}", False)
+                                r_corr = st.session_state.get(f"r_corr_{id_ot_sel}", False)
+                                r_vis  = st.session_state.get(f"r_vis_{id_ot_sel}",  False)
+                                r_emer = st.session_state.get(f"r_emer_{id_ot_sel}", False)
+                                r_inst = st.session_state.get(f"r_inst_{id_ot_sel}", False)
                                 tipo_mto = " | ".join(filter(None,[
                                     "Preventivo" if r_prev else "",
                                     "Correctivo" if r_corr else "",
