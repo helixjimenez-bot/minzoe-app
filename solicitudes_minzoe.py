@@ -3645,10 +3645,13 @@ elif pagina == "ots":
                         if not st.checkbox("Generar nuevo reporte (sobreescribe el anterior)", key=f"nuevo_rep_{id_ot_sel}"):
                             st.stop()
 
-                    # ── Selector Automático / Manual ─────────────────────
-                    modo = st.radio("¿Cómo quieres llenar el informe?",
-                                    ["✏️ Manual", "🤖 Automático (leer documento)"],
-                                    horizontal=True, key=f"modo_rep_{id_ot_sel}")
+                    # ── Selector Automático / Manual (solo admin/usuario) ──
+                    if st.session_state.get("user_rol") == "tecnico":
+                        modo = "✏️ Manual"
+                    else:
+                        modo = st.radio("¿Cómo quieres llenar el informe?",
+                                        ["✏️ Manual", "🤖 Automático (leer documento)"],
+                                        horizontal=True, key=f"modo_rep_{id_ot_sel}")
 
                     datos_ocr = {}
                     if modo == "🤖 Automático (leer documento)":
