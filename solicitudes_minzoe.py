@@ -3804,15 +3804,13 @@ elif pagina == "ots":
                             st.divider()
 
                             # ── Foto de firma del cliente (OBLIGATORIA) ───────
-                            st.markdown("**📸 Firma del cliente** *(toma una foto de la firma)*")
-                            _foto_firma_h = st.file_uploader(
-                                "Sube la foto de la firma del cliente",
-                                type=["jpg","jpeg","png","webp"],
+                            st.markdown("**📸 Firma del cliente** — El cliente firma en papel y el técnico toma la foto")
+                            _foto_firma_h = st.camera_input(
+                                "Tomar foto de la firma",
                                 key=f"firma_foto_h_{id_ot_sel}",
-                                label_visibility="collapsed",
                             )
                             if not _foto_firma_h:
-                                st.warning("⚠️ Sube la foto de la firma del cliente para continuar")
+                                st.warning("⚠️ Debes tomar la foto de la firma del cliente para continuar")
 
                             c_g1, c_g2 = st.columns([2, 1])
                             with c_g1:
@@ -4499,15 +4497,13 @@ elif pagina == "ots":
                             st.divider()
 
                             # ── Foto de firma del cliente (OBLIGATORIA) ───────
-                            st.markdown("**📸 Firma del cliente** *(toma una foto de la firma)*")
-                            _foto_firma_l = st.file_uploader(
-                                "Sube la foto de la firma del cliente",
-                                type=["jpg","jpeg","png","webp"],
+                            st.markdown("**📸 Firma del cliente** — El cliente firma en papel y el técnico toma la foto")
+                            _foto_firma_l = st.camera_input(
+                                "Tomar foto de la firma",
                                 key=f"firma_foto_l_{id_ot_sel}",
-                                label_visibility="collapsed",
                             )
                             if not _foto_firma_l:
-                                st.warning("⚠️ Sube la foto de la firma del cliente para continuar")
+                                st.warning("⚠️ Debes tomar la foto de la firma del cliente para continuar")
 
                             c_l1, c_l2 = st.columns([2, 1])
                             with c_l1:
