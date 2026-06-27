@@ -191,51 +191,40 @@ def save_counters(df):
 def load_historial():
     return sb_load("historial", COLS_HISTORIAL)
 
-def save_historial(df):
-    sb_save("historial", df)
-
 def load_comentarios():
     return sb_load("comentarios", COLS_COMENTARIOS)
 
-def save_comentarios(df):
-    sb_save("comentarios", df)
-
-def registrar_cambio(entidad, entidad_id, campo, val_ant, val_nuevo):
-    """Registra un cambio en el historial de auditoría."""
+def _sb_insert(tabla, registro):
+    """Inserta un único registro sin truncar la tabla (para historial y comentarios)."""
     try:
-        hist = load_historial()
-        nuevo = {
-            "ID_Log":         f"LOG-{ahora_colombia().strftime('%y%m%d%H%M%S')}",
-            "Fecha":          ahora_colombia().strftime("%Y-%m-%d %H:%M"),
-            "Usuario":        st.session_state.get("user_nombre",""),
-            "Entidad":        entidad,
-            "Entidad_ID":     entidad_id,
-            "Campo":          campo,
-            "Valor_Anterior": str(val_ant),
-            "Valor_Nuevo":    str(val_nuevo),
-        }
-        hist = pd.concat([hist, pd.DataFrame([nuevo])], ignore_index=True)
-        save_historial(hist)
-    except Exception:
-        pass  # No interrumpir el flujo principal
-
-def agregar_comentario(entidad, entidad_id, texto):
-    """Agrega un comentario interno a una SOL u OT."""
-    try:
-        coms = load_comentarios()
-        nuevo = {
-            "ID_Com":     f"COM-{ahora_colombia().strftime('%y%m%d%H%M%S')}",
-            "Fecha":      ahora_colombia().strftime("%Y-%m-%d %H:%M"),
-            "Usuario":    st.session_state.get("user_nombre",""),
-            "Entidad":    entidad,
-            "Entidad_ID": entidad_id,
-            "Comentario": texto.strip(),
-        }
-        coms = pd.concat([coms, pd.DataFrame([nuevo])], ignore_index=True)
-        save_comentarios(coms)
+        get_sb().table(tabla).insert(registro).execute()
         return True
     except Exception:
         return False
+
+def registrar_cambio(entidad, entidad_id, campo, val_ant, val_nuevo):
+    """Registra un cambio en el historial de auditoría."""
+    _sb_insert("historial", {
+        "ID_Log":         f"LOG-{ahora_colombia().strftime('%y%m%d%H%M%S')}",
+        "Fecha":          ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+        "Usuario":        st.session_state.get("user_nombre", ""),
+        "Entidad":        entidad,
+        "Entidad_ID":     entidad_id,
+        "Campo":          campo,
+        "Valor_Anterior": str(val_ant),
+        "Valor_Nuevo":    str(val_nuevo),
+    })
+
+def agregar_comentario(entidad, entidad_id, texto):
+    """Agrega un comentario interno a una SOL u OT."""
+    return _sb_insert("comentarios", {
+        "ID_Com":     f"COM-{ahora_colombia().strftime('%y%m%d%H%M%S')}",
+        "Fecha":      ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+        "Usuario":    st.session_state.get("user_nombre", ""),
+        "Entidad":    entidad,
+        "Entidad_ID": entidad_id,
+        "Comentario": texto.strip(),
+    })
 
 def siguiente_id(tipo, prefijo, df_existente=None):
     """Genera el siguiente ID único e irrepetible para SOL u OT."""
