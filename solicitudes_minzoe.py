@@ -6025,27 +6025,63 @@ elif pagina == "gestion_usuarios":
                 st.rerun()
 
     st.divider()
-    st.subheader("Cambiar mi contraseña")
-    with st.form("form_cambiar_pwd_gu"):
-        pwd_act  = st.text_input("Contraseña actual", type="password")
-        pwd_new  = st.text_input("Nueva contraseña", type="password")
-        pwd_new2 = st.text_input("Confirmar nueva contraseña", type="password")
-        if st.form_submit_button("🔐 Cambiar contraseña", type="primary"):
-            mi_correo2 = st.session_state.get("user_correo", "")
-            usuarios = load_usuarios()
-            idx_u = usuarios[usuarios["correo"].str.lower() == mi_correo2.lower()].index
-            if idx_u.empty:
-                st.error("Usuario no encontrado.")
-            elif usuarios.loc[idx_u[0], "password_hash"] != hash_pwd(pwd_act):
-                st.error("Contraseña actual incorrecta.")
-            elif pwd_new != pwd_new2:
-                st.error("Las contraseñas nuevas no coinciden.")
-            elif len(pwd_new) < 6:
-                st.error("La contraseña debe tener al menos 6 caracteres.")
+    st.subheader("🔐 Cambiar contraseña")
+    tab_pwd_propia, tab_pwd_otro = st.tabs(["Mi contraseña", "Contraseña de otro usuario"])
+
+    with tab_pwd_propia:
+        with st.form("form_cambiar_pwd_gu"):
+            pwd_act  = st.text_input("Contraseña actual", type="password")
+            pwd_new  = st.text_input("Nueva contraseña", type="password")
+            pwd_new2 = st.text_input("Confirmar nueva contraseña", type="password")
+            if st.form_submit_button("🔐 Cambiar mi contraseña", type="primary"):
+                mi_correo2 = st.session_state.get("user_correo", "")
+                usuarios = load_usuarios()
+                idx_u = usuarios[usuarios["correo"].str.lower() == mi_correo2.lower()].index
+                if idx_u.empty:
+                    st.error("Usuario no encontrado.")
+                elif usuarios.loc[idx_u[0], "password_hash"] != hash_pwd(pwd_act):
+                    st.error("Contraseña actual incorrecta.")
+                elif pwd_new != pwd_new2:
+                    st.error("Las contraseñas nuevas no coinciden.")
+                elif len(pwd_new) < 6:
+                    st.error("La contraseña debe tener al menos 6 caracteres.")
+                else:
+                    usuarios.loc[idx_u[0], "password_hash"] = hash_pwd(pwd_new)
+                    save_usuarios(usuarios)
+                    st.success("✅ Tu contraseña fue actualizada.")
+
+    with tab_pwd_otro:
+        if st.session_state.get("user_rol") != "admin":
+            st.warning("Solo el administrador puede cambiar contraseñas de otros usuarios.")
+        else:
+            usuarios_rec = load_usuarios()
+            mi_correo_act = st.session_state.get("user_correo", "")
+            otros_u = usuarios_rec[usuarios_rec["correo"].str.lower() != mi_correo_act.lower()]
+            if otros_u.empty:
+                st.info("No hay otros usuarios registrados.")
             else:
-                usuarios.loc[idx_u[0], "password_hash"] = hash_pwd(pwd_new)
-                save_usuarios(usuarios)
-                st.success("✅ Contraseña actualizada.")
+                ops_pwd = {f"{r['nombre']} — {r['correo']} ({r['rol']})": r['correo']
+                           for _, r in otros_u.iterrows()}
+                sel_pwd = st.selectbox("Selecciona el usuario", list(ops_pwd.keys()), key="sel_pwd_otro")
+                with st.form("form_pwd_otro"):
+                    new_pwd1 = st.text_input("Nueva contraseña", type="password")
+                    new_pwd2 = st.text_input("Confirmar nueva contraseña", type="password")
+                    if st.form_submit_button("🔐 Cambiar contraseña", type="primary", use_container_width=True):
+                        if not new_pwd1:
+                            st.error("Escribe la nueva contraseña.")
+                        elif new_pwd1 != new_pwd2:
+                            st.error("Las contraseñas no coinciden.")
+                        elif len(new_pwd1) < 6:
+                            st.error("Mínimo 6 caracteres.")
+                        else:
+                            correo_dest = ops_pwd[sel_pwd]
+                            usuarios_rec = load_usuarios()
+                            idx_o = usuarios_rec[usuarios_rec["correo"].str.lower() == correo_dest.lower()].index
+                            if not idx_o.empty:
+                                usuarios_rec.loc[idx_o[0], "password_hash"] = hash_pwd(new_pwd1)
+                                save_usuarios(usuarios_rec)
+                                nombre_dest = otros_u[otros_u["correo"].str.lower() == correo_dest.lower()]["nombre"].values[0]
+                                st.success(f"✅ Contraseña de **{nombre_dest}** actualizada.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PÁGINA: MIGRACIÓN (solo admin)
