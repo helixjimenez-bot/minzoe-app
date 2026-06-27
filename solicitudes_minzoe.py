@@ -3464,7 +3464,14 @@ elif pagina == "ots":
                 if buscar_ot:
                     vista_ot = vista_ot[vista_ot["Cliente"].str.contains(buscar_ot, case=False, na=False)]
 
-                vista_ot_ord = vista_ot.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))
+                # Ordenar: En revisión primero (más reciente arriba), luego el resto por ID desc
+                _orden_est = {"En revisión": 0, "En ejecución": 1, "Programada": 2,
+                              "Finalizada": 3, "Cancelada": 4}
+                vista_ot_ord = vista_ot.copy()
+                vista_ot_ord["_ord_est"] = vista_ot_ord["Estado"].map(_orden_est).fillna(5)
+                vista_ot_ord = vista_ot_ord.sort_values(
+                    ["_ord_est", "Fecha_Creacion"], ascending=[True, False]
+                ).drop(columns=["_ord_est"])
 
                 COLS_TABLA_OT = ["ID", "Origen", "Creado_Por", "Fecha_Creacion", "Fecha_Limite", "Cliente", "Sede",
                                  "Servicio", "SLA", "Zona", "Tecnico", "Fecha_Ejecucion", "Valor_COP", "Estado"]
@@ -3533,9 +3540,15 @@ elif pagina == "ots":
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
                 # Si viene del dashboard abrir directamente en Editar
                 tab_ini = 1 if ot_pre else 0
+                _ot_finalizada = fila_ot.get("Estado","") == "Finalizada"
                 if st.session_state.get("_tec_en_reporte"):
                     det, rep, ot_com, ot_hist = st.tabs(["🔍 Ver detalle", "📄 Reportar", "💬 Comentarios", "📜 Historial"])
                     edi = None; eli = None
+                elif _ot_finalizada:
+                    # OT cerrada — solo lectura, sin Editar ni Eliminar
+                    det, rep, ot_com, ot_hist = st.tabs(["🔍 Ver detalle", "📄 Reportar", "💬 Comentarios", "📜 Historial"])
+                    edi = None; eli = None
+                    st.success("✅ Esta OT está **Finalizada** y cerrada. No se puede modificar.")
                 else:
                     det, edi, rep, ot_com, ot_hist, eli = st.tabs(["🔍 Ver detalle", "✏️ Editar", "📄 Reportar", "💬 Comentarios", "📜 Historial", "🗑️ Eliminar"])
 
