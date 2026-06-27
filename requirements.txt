@@ -9,4 +9,3 @@ PyMuPDF
 plotly
 supabase
 streamlit-drawable-canvas
-weasyprint
