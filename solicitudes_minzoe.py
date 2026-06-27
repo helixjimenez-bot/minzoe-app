@@ -3800,27 +3800,42 @@ elif pagina == "ots":
                               <div style='font-size:0.75rem;font-weight:700;color:{_ecol}'>{_enivel}</div>
                             </div>""", unsafe_allow_html=True)
                             enc_obs_cli = st.text_input("Observaciones del cliente", key=f"enc_obs_{id_ot_sel}")
-                            enc_nom_cli = st.text_input("Nombre del cliente (confirma recibido)", key=f"enc_nom_{id_ot_sel}")
+                            enc_nom_cli = st.text_input("Nombre del cliente *", key=f"enc_nom_{id_ot_sel}")
                             st.divider()
+
+                            # ── Foto de firma del cliente (OBLIGATORIA) ───────
+                            st.markdown("**📸 Firma del cliente** *(toma una foto de la firma)*")
+                            _foto_firma_h = st.file_uploader(
+                                "Sube la foto de la firma del cliente",
+                                type=["jpg","jpeg","png","webp"],
+                                key=f"firma_foto_h_{id_ot_sel}",
+                                label_visibility="collapsed",
+                            )
+                            if not _foto_firma_h:
+                                st.warning("⚠️ Sube la foto de la firma del cliente para continuar")
 
                             c_g1, c_g2 = st.columns([2, 1])
                             with c_g1:
                                 if st.button("✅ Enviar a revisión", type="primary",
                                              use_container_width=True, key=f"enviar_hvac_{id_ot_sel}"):
-                                    # Completar HTML con encuesta (sin firma de canvas)
-                                    _firma_box = f'<div style="width:220px;height:80px;border-bottom:1px solid #333;font-size:9px;padding-top:60px;text-align:center">{enc_nom_cli}</div>'
-                                    _html_final = st.session_state[_hvac_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_box)
-                                    # Guardar en Supabase
-                                    guardar_reporte_sb(
-                                        ot_id   = id_ot_sel,
-                                        tipo    = "HVAC",
-                                        cliente = fila_ot.get("Cliente",""),
-                                        fecha   = fila_ot.get("Fecha_Ejecucion",""),
-                                        html    = _html_final,
-                                    )
-                                    st.session_state[f"hvac_html_{id_ot_sel}"] = _html_final
-                                    del st.session_state[_hvac_raw_key]
-                                    st.rerun()
+                                    if not _foto_firma_h:
+                                        st.error("📸 Debes subir la foto de la firma del cliente antes de enviar.")
+                                    else:
+                                        # Convertir foto a base64
+                                        import base64 as _b64f
+                                        _firma_b64f = f"data:{_foto_firma_h.type};base64,{_b64f.b64encode(_foto_firma_h.read()).decode()}"
+                                        _firma_img_h = f'<img src="{_firma_b64f}" style="width:220px;height:100px;object-fit:contain;display:block;border-bottom:1px solid #333">'
+                                        _html_final = st.session_state[_hvac_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_img_h)
+                                        guardar_reporte_sb(
+                                            ot_id   = id_ot_sel,
+                                            tipo    = "HVAC",
+                                            cliente = fila_ot.get("Cliente",""),
+                                            fecha   = fila_ot.get("Fecha_Ejecucion",""),
+                                            html    = _html_final,
+                                        )
+                                        st.session_state[f"hvac_html_{id_ot_sel}"] = _html_final
+                                        del st.session_state[_hvac_raw_key]
+                                        st.rerun()
                             with c_g2:
                                 if st.button("✏️ Editar", use_container_width=True,
                                              key=f"editar_hvac_{id_ot_sel}"):
@@ -4480,25 +4495,41 @@ elif pagina == "ots":
                               <div style='font-size:0.75rem;font-weight:700;color:{_lcol}'>{_lnivel}</div>
                             </div>""", unsafe_allow_html=True)
                             l_enc_obs = st.text_input("Observaciones del cliente", key=f"l_enc_obs_{id_ot_sel}")
-                            l_enc_nom = st.text_input("Nombre del cliente (confirma recibido)", key=f"l_enc_nom_{id_ot_sel}")
+                            l_enc_nom = st.text_input("Nombre del cliente *", key=f"l_enc_nom_{id_ot_sel}")
                             st.divider()
+
+                            # ── Foto de firma del cliente (OBLIGATORIA) ───────
+                            st.markdown("**📸 Firma del cliente** *(toma una foto de la firma)*")
+                            _foto_firma_l = st.file_uploader(
+                                "Sube la foto de la firma del cliente",
+                                type=["jpg","jpeg","png","webp"],
+                                key=f"firma_foto_l_{id_ot_sel}",
+                                label_visibility="collapsed",
+                            )
+                            if not _foto_firma_l:
+                                st.warning("⚠️ Sube la foto de la firma del cliente para continuar")
 
                             c_l1, c_l2 = st.columns([2, 1])
                             with c_l1:
                                 if st.button("✅ Enviar a revisión", type="primary",
                                              use_container_width=True, key=f"enviar_loc_{id_ot_sel}"):
-                                    _firma_box_l = f'<div style="width:220px;height:80px;border-bottom:1px solid #333;font-size:9px;padding-top:60px;text-align:center">{l_enc_nom}</div>'
-                                    _html_loc_final = st.session_state[_loc_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_box_l)
-                                    guardar_reporte_sb(
-                                        ot_id   = id_ot_sel,
-                                        tipo    = "Locativos",
-                                        cliente = fila_ot.get("Cliente",""),
-                                        fecha   = fila_ot.get("Fecha_Ejecucion",""),
-                                        html    = _html_loc_final,
-                                    )
-                                    st.session_state[f"loc_html_{id_ot_sel}"] = _html_loc_final
-                                    del st.session_state[_loc_raw_key]
-                                    st.rerun()
+                                    if not _foto_firma_l:
+                                        st.error("📸 Debes subir la foto de la firma del cliente antes de enviar.")
+                                    else:
+                                        import base64 as _b64fl
+                                        _firma_b64fl = f"data:{_foto_firma_l.type};base64,{_b64fl.b64encode(_foto_firma_l.read()).decode()}"
+                                        _firma_img_l = f'<img src="{_firma_b64fl}" style="width:220px;height:100px;object-fit:contain;display:block;border-bottom:1px solid #333">'
+                                        _html_loc_final = st.session_state[_loc_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_img_l)
+                                        guardar_reporte_sb(
+                                            ot_id   = id_ot_sel,
+                                            tipo    = "Locativos",
+                                            cliente = fila_ot.get("Cliente",""),
+                                            fecha   = fila_ot.get("Fecha_Ejecucion",""),
+                                            html    = _html_loc_final,
+                                        )
+                                        st.session_state[f"loc_html_{id_ot_sel}"] = _html_loc_final
+                                        del st.session_state[_loc_raw_key]
+                                        st.rerun()
                             with c_l2:
                                 if st.button("✏️ Editar", use_container_width=True,
                                              key=f"editar_loc_{id_ot_sel}"):
