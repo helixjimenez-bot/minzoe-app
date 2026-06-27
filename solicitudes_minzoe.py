@@ -3822,14 +3822,16 @@ elif pagina == "ots":
                         TIPOS_AC   = ["Minisplit", "Cassette", "Split Ducto",
                                       "Manejadora de Aire", "Paquete / Roof Top",
                                       "Chiller", "VRF / VRV", "Fan Coil", "Otro AC"]
+                        TIPOS_PORT = ["Portátil"]
                         TIPOS_VENT = ["Ventilador", "Extractor"]
-                        _tipos_hvac = TIPOS_AC + TIPOS_VENT
+                        _tipos_hvac = TIPOS_AC + TIPOS_PORT + TIPOS_VENT
                         _tipo_eq_sel = st.selectbox(
                             "Tipo de equipo *",
                             _tipos_hvac,
                             key=f"tipo_eq_sel_{id_ot_sel}",
                         )
                         _es_vent_ext = _tipo_eq_sel in TIPOS_VENT
+                        _es_portatil = _tipo_eq_sel in TIPOS_PORT
 
                         # ── Tipo de mantenimiento (fuera del form) ────────
                         st.markdown("**Tipo de mantenimiento**")
@@ -3846,8 +3848,8 @@ elif pagina == "ots":
 
                         with st.form(f"form_reporte_aires_{id_ot_sel}", clear_on_submit=False):
 
-                            if not _es_vent_ext:
-                                # ── MODO AC ──────────────────────────────
+                            if not _es_vent_ext and not _es_portatil:
+                                # ── MODO AC SPLIT ─────────────────────────
                                 dc1, dc2 = st.columns(2)
                                 with dc1:
                                     r_marca     = st.text_input("Marca",               value=eq_data.get("Marca",""))
@@ -3859,8 +3861,19 @@ elif pagina == "ots":
                                     r_refrig    = st.text_input("Tipo de refrigerante", value=_eq_refrig)
                                     r_ubic_evap = st.text_input("Ubicación Evaporadora", value=_eq_ubic_evap)
                                     r_ubic_cond = st.text_input("Ubicación Condensadora", value=_eq_ubic_cond)
-                                # Variables vent/ext vacías
                                 r_serial_vent = ""; r_ubic_vent = ""
+                            elif _es_portatil:
+                                # ── MODO PORTÁTIL ─────────────────────────
+                                dc1, dc2 = st.columns(2)
+                                with dc1:
+                                    r_marca     = st.text_input("Marca",           value=eq_data.get("Marca",""))
+                                    r_modelo    = st.text_input("Modelo",          value=eq_data.get("Modelo",""))
+                                    r_ser_cond  = st.text_input("Serial",          value=eq_data.get("Numero_Serie",""))
+                                with dc2:
+                                    r_btu       = st.text_input("Capacidad BTU",   value=_eq_btu)
+                                    r_refrig    = st.text_input("Tipo de refrigerante", value=_eq_refrig)
+                                    r_ubic_evap = st.text_input("Ubicación",       value=eq_data.get("Ubicacion",""))
+                                r_ser_evap = r_ubic_cond = r_serial_vent = r_ubic_vent = ""
                             else:
                                 # ── MODO VENTILADOR / EXTRACTOR ───────────
                                 dc1, dc2 = st.columns(2)
@@ -3870,7 +3883,6 @@ elif pagina == "ots":
                                     r_serial_vent = st.text_input("Serial",  value=eq_data.get("Numero_Serie",""))
                                 with dc2:
                                     r_ubic_vent   = st.text_input("Ubicación", value=eq_data.get("Ubicacion",""))
-                                # Variables AC vacías
                                 r_ser_cond = r_ser_evap = r_btu = r_refrig = ""
                                 r_ubic_evap = r_ubic_cond = ""
 
@@ -3878,7 +3890,7 @@ elif pagina == "ots":
                             # ── Datos de medición ─────────────────────────
                             st.markdown("**📊 Datos de medición**")
 
-                            if not _es_vent_ext:
+                            if not _es_vent_ext and not _es_portatil:
                                 # ── MEDICIÓN AC ──────────────────────────
                                 mc1, mc2, mc3 = st.columns(3)
                                 with mc1:
@@ -3915,6 +3927,25 @@ elif pagina == "ots":
                                 # Vent/ext vacíos en modo AC
                                 m_ext_v = m_ext_a = m_ext_f = m_ext_h = m_ext_r = m_caudal = ""
 
+                            elif _es_portatil:
+                                # ── MEDICIÓN PORTÁTIL ─────────────────────
+                                mp1, mp2 = st.columns(2)
+                                with mp1:
+                                    st.markdown("*Eléctricos*")
+                                    m_cond_v = st.text_input("Voltaje",    key="m_cv")
+                                    m_cond_a = st.text_input("Amperaje",   key="m_ca")
+                                    m_cond_f = st.text_input("N° de Fase", key="m_cf")
+                                with mp2:
+                                    st.markdown("*Temperatura*")
+                                    m_t_sum  = st.text_input("Suministro", key="m_ts")
+                                    m_t_ret  = st.text_input("Retorno",    key="m_tr")
+                                    m_t_amb  = st.text_input("Ambiente",   key="m_ta")
+                                # Campos no aplica para portátil
+                                m_vcond_v = m_vcond_a = m_vcond_f = m_vcond_hp = m_vcond_r = ""
+                                m_psi_a = m_psi_b = m_psi_f = ""
+                                m_evap_v = m_evap_a = m_evap_f = ""
+                                m_vevap_v = m_vevap_a = m_vevap_f = m_vevap_h = m_vevap_r = ""
+                                m_ext_v = m_ext_a = m_ext_f = m_ext_h = m_ext_r = m_caudal = ""
                             else:
                                 # ── MEDICIÓN VENTILADOR / EXTRACTOR ──────
                                 mv1, mv2 = st.columns(2)
@@ -3928,7 +3959,6 @@ elif pagina == "ots":
                                 with mv2:
                                     st.markdown("*Ductos / Rejillas*")
                                     m_caudal = st.text_input("Caudal de Aire", key="m_caudal")
-                                # AC vacíos en modo vent
                                 m_cond_v = m_cond_a = m_cond_f = ""
                                 m_vcond_v = m_vcond_a = m_vcond_f = m_vcond_hp = m_vcond_r = ""
                                 m_psi_a = m_psi_b = m_psi_f = ""
@@ -4066,7 +4096,7 @@ elif pagina == "ots":
 
                                 # ── Validación campos obligatorios de medición ──
                                 _campos_vacios = []
-                                if not _es_vent_ext:
+                                if not _es_vent_ext and not _es_portatil:
                                     _req_med = [
                                         (m_cond_v,  "Voltaje Condensadora"),
                                         (m_cond_a,  "Amperaje Condensadora"),
@@ -4089,6 +4119,15 @@ elif pagina == "ots":
                                         (m_t_sum,   "Temperatura Suministro"),
                                         (m_t_ret,   "Temperatura Retorno"),
                                         (m_t_amb,   "Temperatura Ambiente"),
+                                    ]
+                                elif _es_portatil:
+                                    _req_med = [
+                                        (m_cond_v, "Voltaje"),
+                                        (m_cond_a, "Amperaje"),
+                                        (m_cond_f, "N° de Fase"),
+                                        (m_t_sum,  "Temperatura Suministro"),
+                                        (m_t_ret,  "Temperatura Retorno"),
+                                        (m_t_amb,  "Temperatura Ambiente"),
                                     ]
                                 else:
                                     _req_med = [
@@ -4150,7 +4189,7 @@ elif pagina == "ots":
                                     _rows_ce += f"<tr>{_cl}{_eq}</tr>\n"
 
                                 # Sección medición según tipo de equipo
-                                if not _es_vent_ext:
+                                if not _es_vent_ext and not _es_portatil:
                                     # Medición AC completa
                                     _med_vals = [m_cond_v,m_cond_a,m_cond_f,m_vcond_v,m_vcond_a,
                                                  m_vcond_f,m_vcond_hp,m_vcond_r,m_psi_a,m_psi_b,
@@ -4200,6 +4239,28 @@ elif pagina == "ots":
                                             f'</tr><tr>'
                                             f'<td>Retorno</td><td>{m_t_ret}</td>'
                                             f'</tr><tr>'
+                                            f'<td>Ambiente</td><td>{m_t_amb}</td>'
+                                            '</tr></table>'
+                                        )
+                                    else:
+                                        _seccion_medicion = ""
+                                elif _es_portatil:
+                                    # Medición Portátil
+                                    _med_vals_p = [m_cond_v, m_cond_a, m_cond_f, m_t_sum, m_t_ret, m_t_amb]
+                                    if any(v.strip() for v in _med_vals_p):
+                                        _seccion_medicion = (
+                                            '<div class="section">DATOS DE MEDICIÓN</div>'
+                                            '<table><tr>'
+                                            '<th colspan="2">Eléctricos</th>'
+                                            '<th colspan="2">Temperatura</th>'
+                                            f'</tr><tr>'
+                                            f'<td>Voltaje</td><td>{m_cond_v}</td>'
+                                            f'<td>Suministro</td><td>{m_t_sum}</td>'
+                                            f'</tr><tr>'
+                                            f'<td>Amperaje</td><td>{m_cond_a}</td>'
+                                            f'<td>Retorno</td><td>{m_t_ret}</td>'
+                                            f'</tr><tr>'
+                                            f'<td>N° de Fase</td><td>{m_cond_f}</td>'
                                             f'<td>Ambiente</td><td>{m_t_amb}</td>'
                                             '</tr></table>'
                                         )
