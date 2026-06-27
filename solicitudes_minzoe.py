@@ -3931,37 +3931,34 @@ elif pagina == "ots":
                                 # ── MEDICIÓN AC ──────────────────────────
                                 mc1, mc2, mc3 = st.columns(3)
                                 with mc1:
-                                    st.markdown("*Equipo Condensadora*")
-                                    m_cond_v = st.text_input("Voltaje",    key="m_cv")
-                                    m_cond_a = st.text_input("Amperaje",   key="m_ca")
-                                    m_cond_f = st.text_input("N° de Fase", key="m_cf")
-                                    st.markdown("*Ventilador Condensadora*")
-                                    m_vcond_v  = st.text_input("Voltaje",   key="m_vcv")
-                                    m_vcond_a  = st.text_input("Amperaje",  key="m_vca")
-                                    m_vcond_f  = st.text_input("N° de Fase",key="m_vcf")
-                                    m_vcond_hp = st.text_input("HP",        key="m_vchp")
-                                    m_vcond_r  = st.text_input("RPM",       key="m_vcr")
+                                    st.markdown("*Unidad Condensadora*")
+                                    m_cond_v   = st.text_input("Voltaje",              key="m_cv")
+                                    m_cond_a   = st.text_input("Amperaje",             key="m_ca")
+                                    m_cond_f   = st.text_input("N° de Fase",           key="m_cf")
+                                    m_vcond_v  = st.text_input("Voltaje Motor Vent.",  key="m_vcv")
+                                    m_vcond_a  = st.text_input("Amperaje Motor Vent.", key="m_vca")
+                                    m_vcond_hp = st.text_input("HP",                   key="m_vchp")
+                                    m_vcond_r  = st.text_input("RPM",                  key="m_vcr")
                                 with mc2:
-                                    st.markdown("*Presiones de Refrigerante*")
-                                    m_psi_a = st.text_input("PSI Alta",             key="m_pa")
-                                    m_psi_b = st.text_input("PSI Baja",             key="m_pb")
-                                    m_psi_f = st.text_input("Fecha última medición", key="m_pf")
-                                    st.markdown("*Equipo Evaporador*")
-                                    m_evap_v = st.text_input("Voltaje",    key="m_ev")
-                                    m_evap_a = st.text_input("Amperaje",   key="m_ea")
-                                    m_evap_f = st.text_input("N° de Fase", key="m_ef")
-                                    st.markdown("*Ventilador Evaporador*")
-                                    m_vevap_v = st.text_input("Voltaje",   key="m_vev")
-                                    m_vevap_a = st.text_input("Amperaje",  key="m_vea")
-                                    m_vevap_f = st.text_input("N° de Fase",key="m_vef")
-                                    m_vevap_h = st.text_input("HP",        key="m_vehp")
-                                    m_vevap_r = st.text_input("RPM",       key="m_ver")
+                                    st.markdown("*Unidad Manejadora*")
+                                    m_evap_v  = st.text_input("Voltaje",              key="m_ev")
+                                    m_evap_a  = st.text_input("Amperaje",             key="m_ea")
+                                    m_evap_f  = st.text_input("N° de Fase",           key="m_ef")
+                                    m_vevap_v = st.text_input("Voltaje Motor Vent.",  key="m_vev")
+                                    m_vevap_a = st.text_input("Amperaje Motor Vent.", key="m_vea")
+                                    m_vevap_h = st.text_input("HP",                   key="m_vehp")
+                                    m_vevap_r = st.text_input("RPM",                  key="m_ver")
                                 with mc3:
+                                    st.markdown("*Presiones de Refrigerante*")
+                                    m_psi_a = st.text_input("PSI Alta",              key="m_pa")
+                                    m_psi_b = st.text_input("PSI Baja",              key="m_pb")
+                                    m_psi_f = st.text_input("Fecha última medición", key="m_pf")
                                     st.markdown("*Temperatura*")
                                     m_t_sum = st.text_input("Suministro", key="m_ts")
                                     m_t_ret = st.text_input("Retorno",    key="m_tr")
                                     m_t_amb = st.text_input("Ambiente",   key="m_ta")
-                                # Vent/ext vacíos en modo AC
+                                # Variables no usadas en nueva estructura
+                                m_vcond_f = m_vevap_f = ""
                                 m_ext_v = m_ext_a = m_ext_f = m_ext_h = m_ext_r = m_caudal = ""
 
                             elif _es_portatil:
@@ -4127,24 +4124,22 @@ elif pagina == "ots":
                                 _campos_vacios = []
                                 if not _es_vent_ext and not _es_portatil:
                                     _req_med = [
-                                        (m_cond_v,  "Voltaje Condensadora"),
-                                        (m_cond_a,  "Amperaje Condensadora"),
-                                        (m_cond_f,  "N° Fase Condensadora"),
-                                        (m_vcond_v, "Voltaje Vent. Condensadora"),
-                                        (m_vcond_a, "Amperaje Vent. Condensadora"),
-                                        (m_vcond_f, "N° Fase Vent. Condensadora"),
-                                        (m_vcond_hp,"HP Vent. Condensadora"),
-                                        (m_vcond_r, "RPM Vent. Condensadora"),
+                                        (m_cond_v,  "Voltaje Unidad Condensadora"),
+                                        (m_cond_a,  "Amperaje Unidad Condensadora"),
+                                        (m_cond_f,  "N° Fase Unidad Condensadora"),
+                                        (m_vcond_v, "Voltaje Motor Vent. Condensadora"),
+                                        (m_vcond_a, "Amperaje Motor Vent. Condensadora"),
+                                        (m_vcond_hp,"HP Motor Vent. Condensadora"),
+                                        (m_vcond_r, "RPM Motor Vent. Condensadora"),
                                         (m_psi_b,   "PSI Baja"),
                                         (m_psi_f,   "Fecha última medición PSI"),
-                                        (m_evap_v,  "Voltaje Evaporadora"),
-                                        (m_evap_a,  "Amperaje Evaporadora"),
-                                        (m_evap_f,  "N° Fase Evaporadora"),
-                                        (m_vevap_v, "Voltaje Vent. Evaporadora"),
-                                        (m_vevap_a, "Amperaje Vent. Evaporadora"),
-                                        (m_vevap_f, "N° Fase Vent. Evaporadora"),
-                                        (m_vevap_h, "HP Vent. Evaporadora"),
-                                        (m_vevap_r, "RPM Vent. Evaporadora"),
+                                        (m_evap_v,  "Voltaje Unidad Manejadora"),
+                                        (m_evap_a,  "Amperaje Unidad Manejadora"),
+                                        (m_evap_f,  "N° Fase Unidad Manejadora"),
+                                        (m_vevap_v, "Voltaje Motor Vent. Manejadora"),
+                                        (m_vevap_a, "Amperaje Motor Vent. Manejadora"),
+                                        (m_vevap_h, "HP Motor Vent. Manejadora"),
+                                        (m_vevap_r, "RPM Motor Vent. Manejadora"),
                                         (m_t_sum,   "Temperatura Suministro"),
                                         (m_t_ret,   "Temperatura Retorno"),
                                         (m_t_amb,   "Temperatura Ambiente"),
@@ -4229,46 +4224,41 @@ elif pagina == "ots":
                                         _seccion_medicion = (
                                             '<div class="section">DATOS DE MEDICIÓN</div>'
                                             '<table><tr>'
-                                            '<th colspan="2">Eq. Condensadora</th>'
-                                            '<th colspan="2">Vent. Condensadora</th>'
+                                            '<th colspan="2">Unidad Condensadora</th>'
+                                            '<th colspan="2">Unidad Manejadora</th>'
                                             '<th colspan="2">Presiones Refrig.</th>'
-                                            '<th colspan="2">Eq. Evaporador</th>'
-                                            '<th colspan="2">Vent. Evaporador</th>'
+                                            '<th colspan="2">Temperatura</th>'
                                             f'</tr><tr>'
                                             f'<td>Voltaje</td><td>{m_cond_v}</td>'
-                                            f'<td>Voltaje</td><td>{m_vcond_v}</td>'
-                                            f'<td>PSI Alta</td><td>{m_psi_a}</td>'
                                             f'<td>Voltaje</td><td>{m_evap_v}</td>'
-                                            f'<td>Voltaje</td><td>{m_vevap_v}</td>'
-                                            f'</tr><tr>'
-                                            f'<td>Amperaje</td><td>{m_cond_a}</td>'
-                                            f'<td>Amperaje</td><td>{m_vcond_a}</td>'
-                                            f'<td>PSI Baja</td><td>{m_psi_b}</td>'
-                                            f'<td>Amperaje</td><td>{m_evap_a}</td>'
-                                            f'<td>Amperaje</td><td>{m_vevap_a}</td>'
-                                            f'</tr><tr>'
-                                            f'<td>N° Fase</td><td>{m_cond_f}</td>'
-                                            f'<td>N° Fase</td><td>{m_vcond_f}</td>'
-                                            f'<td>Últ. Med.</td><td>{m_psi_f}</td>'
-                                            f'<td>N° Fase</td><td>{m_evap_f}</td>'
-                                            f'<td>N° Fase</td><td>{m_vevap_f}</td>'
-                                            f'</tr><tr>'
-                                            f'<td></td><td></td><td>HP</td><td>{m_vcond_hp}</td>'
-                                            f'<td></td><td></td><td></td><td></td>'
-                                            f'<td>HP</td><td>{m_vevap_h}</td>'
-                                            f'</tr><tr>'
-                                            f'<td></td><td></td><td>RPM</td><td>{m_vcond_r}</td>'
-                                            f'<td></td><td></td><td></td><td></td>'
-                                            f'<td>RPM</td><td>{m_vevap_r}</td>'
-                                            '</tr></table>'
-                                            '<table><tr>'
-                                            '<th colspan="2">Temperatura</th>'
-                                            '</tr><tr>'
+                                            f'<td>PSI Alta</td><td>{m_psi_a}</td>'
                                             f'<td>Suministro</td><td>{m_t_sum}</td>'
                                             f'</tr><tr>'
+                                            f'<td>Amperaje</td><td>{m_cond_a}</td>'
+                                            f'<td>Amperaje</td><td>{m_evap_a}</td>'
+                                            f'<td>PSI Baja</td><td>{m_psi_b}</td>'
                                             f'<td>Retorno</td><td>{m_t_ret}</td>'
                                             f'</tr><tr>'
+                                            f'<td>N° Fase</td><td>{m_cond_f}</td>'
+                                            f'<td>N° Fase</td><td>{m_evap_f}</td>'
+                                            f'<td>Últ. Med.</td><td>{m_psi_f}</td>'
                                             f'<td>Ambiente</td><td>{m_t_amb}</td>'
+                                            f'</tr><tr>'
+                                            f'<td>V. Motor Vent.</td><td>{m_vcond_v}</td>'
+                                            f'<td>V. Motor Vent.</td><td>{m_vevap_v}</td>'
+                                            '<td></td><td></td><td></td><td></td>'
+                                            f'</tr><tr>'
+                                            f'<td>A. Motor Vent.</td><td>{m_vcond_a}</td>'
+                                            f'<td>A. Motor Vent.</td><td>{m_vevap_a}</td>'
+                                            '<td></td><td></td><td></td><td></td>'
+                                            f'</tr><tr>'
+                                            f'<td>HP</td><td>{m_vcond_hp}</td>'
+                                            f'<td>HP</td><td>{m_vevap_h}</td>'
+                                            '<td></td><td></td><td></td><td></td>'
+                                            f'</tr><tr>'
+                                            f'<td>RPM</td><td>{m_vcond_r}</td>'
+                                            f'<td>RPM</td><td>{m_vevap_r}</td>'
+                                            '<td></td><td></td><td></td><td></td>'
                                             '</tr></table>'
                                         )
                                     else:
