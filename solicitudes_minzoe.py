@@ -4027,6 +4027,52 @@ elif pagina == "ots":
                                 r_vis  = st.session_state.get(f"r_vis_{id_ot_sel}",  False)
                                 r_emer = st.session_state.get(f"r_emer_{id_ot_sel}", False)
                                 r_inst = st.session_state.get(f"r_inst_{id_ot_sel}", False)
+
+                                # ── Validación campos obligatorios de medición ──
+                                _campos_vacios = []
+                                if not _es_vent_ext:
+                                    _req_med = [
+                                        (m_cond_v,  "Voltaje Condensadora"),
+                                        (m_cond_a,  "Amperaje Condensadora"),
+                                        (m_cond_f,  "N° Fase Condensadora"),
+                                        (m_vcond_v, "Voltaje Vent. Condensadora"),
+                                        (m_vcond_a, "Amperaje Vent. Condensadora"),
+                                        (m_vcond_f, "N° Fase Vent. Condensadora"),
+                                        (m_vcond_hp,"HP Vent. Condensadora"),
+                                        (m_vcond_r, "RPM Vent. Condensadora"),
+                                        (m_psi_b,   "PSI Baja"),
+                                        (m_psi_f,   "Fecha última medición PSI"),
+                                        (m_evap_v,  "Voltaje Evaporadora"),
+                                        (m_evap_a,  "Amperaje Evaporadora"),
+                                        (m_evap_f,  "N° Fase Evaporadora"),
+                                        (m_vevap_v, "Voltaje Vent. Evaporadora"),
+                                        (m_vevap_a, "Amperaje Vent. Evaporadora"),
+                                        (m_vevap_f, "N° Fase Vent. Evaporadora"),
+                                        (m_vevap_h, "HP Vent. Evaporadora"),
+                                        (m_vevap_r, "RPM Vent. Evaporadora"),
+                                        (m_t_sum,   "Temperatura Suministro"),
+                                        (m_t_ret,   "Temperatura Retorno"),
+                                        (m_t_amb,   "Temperatura Ambiente"),
+                                    ]
+                                else:
+                                    _req_med = [
+                                        (m_ext_v, "Voltaje"),
+                                        (m_ext_a, "Amperaje"),
+                                        (m_ext_f, "N° de Fase"),
+                                        (m_ext_h, "HP"),
+                                        (m_ext_r, "RPM"),
+                                    ]
+                                for _val, _nom in _req_med:
+                                    if not str(_val).strip():
+                                        _campos_vacios.append(_nom)
+
+                                if _campos_vacios:
+                                    st.error(
+                                        f"⚠️ Faltan **{len(_campos_vacios)}** campo(s) de medición obligatorio(s). "
+                                        f"Si no puedes tomar el dato escribe **N/A**:\n\n"
+                                        + "\n".join(f"• {c}" for c in _campos_vacios)
+                                    )
+                                    st.stop()
                                 tipo_mto = " | ".join(filter(None,[
                                     "Preventivo" if r_prev else "",
                                     "Correctivo" if r_corr else "",
