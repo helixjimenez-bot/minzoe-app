@@ -4636,9 +4636,9 @@ elif pagina == "contratos_mto":
                                         (cli["Empresa"].str.strip().str.lower() == con_cliente.strip().lower()) &
                                         (cli["Sede"] == _sede)
                                     ]
-                                    _cont_c = _filas_s.iloc[0].get("Nombre_Contacto","") if not _filas_s.empty else ""
+                                    _cont_c   = _filas_s.iloc[0].get("Nombre_Contacto","") if not _filas_s.empty else ""
                                     _cont_cel = _filas_s.iloc[0].get("Celular_Contacto","") if not _filas_s.empty else ""
-                                    _id_con = gen_contrato_id(
+                                    _id_con   = gen_contrato_id(
                                         pd.concat([contratos, pd.DataFrame(nuevos_cons)]) if nuevos_cons else contratos
                                     )
                                     nuevos_cons.append({
@@ -4656,33 +4656,61 @@ elif pagina == "contratos_mto":
                                         "Valor_Contrato":   con_valor,
                                         "Estado_Contrato":  con_estado,
                                     })
-                                    nuevas_ots.append({
-                                        "ID":               generate_ot_id(
-                                            pd.concat([ots, pd.DataFrame(nuevas_ots)]) if nuevas_ots else ots
-                                        ),
-                                        "Origen":           "Contrato Mantenimiento",
-                                        "Creado_Por":       st.session_state.get("user_nombre",""),
-                                        "SOL_Ref":          _id_con,
-                                        "Fecha_Creacion":   ahora_colombia().strftime("%Y-%m-%d %H:%M"),
-                                        "Fecha_Limite":     _fecha_mto.strftime("%Y-%m-%d") + " 18:00",
-                                        "Cliente":          con_cliente,
-                                        "NIT":              con_nit_v,
-                                        "Sede":             _sede,
-                                        "Nombre_Contacto":  _cont_c,
-                                        "Celular_Contacto": _cont_cel,
-                                        "Servicio":         con_servicio,
-                                        "Descripcion":      f"Mantenimiento {con_freq.lower()} de {con_servicio}",
-                                        "SLA":              "Programado",
-                                        "Zona":             "Z0",
-                                        "Tecnico":          con_tecnico,
-                                        "Celular_Tecnico":  "",
-                                        "Fecha_Ejecucion":  _fecha_mto.strftime("%Y-%m-%d"),
-                                        "Hora_Inicio":      "", "Hora_Final":  "",
-                                        "Horas_Laboradas":  "", "Materiales":  "",
-                                        "Valor_COP":        con_valor,
-                                        "Estado":           "Programada",
-                                        "Observaciones":    "",
-                                    })
+
+                                    # ── OTs: UNA POR EQUIPO (Aires/UPS/CCTV) o UNA POR SEDE (Locativos/Aseo) ──
+                                    _equipos_sede = eq_cli_srv[eq_cli_srv["Sede"] == _sede]
+                                    if con_servicio in SERVICIOS_CON_EQUIPOS and not _equipos_sede.empty:
+                                        for _, _eq in _equipos_sede.iterrows():
+                                            _desc = (f"Mtto {con_freq.lower()} — "
+                                                     f"{_eq.get('Marca','')} {_eq.get('Modelo','')} "
+                                                     f"S/N:{_eq.get('Numero_Serie','')} "
+                                                     f"Ubic:{_eq.get('Ubicacion','')}")
+                                            nuevas_ots.append({
+                                                "ID":              generate_ot_id(
+                                                    pd.concat([ots, pd.DataFrame(nuevas_ots)]) if nuevas_ots else ots
+                                                ),
+                                                "Origen":          "Contrato Mantenimiento",
+                                                "Creado_Por":      st.session_state.get("user_nombre",""),
+                                                "SOL_Ref":         _id_con,
+                                                "Fecha_Creacion":  ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+                                                "Fecha_Limite":    _fecha_mto.strftime("%Y-%m-%d") + " 18:00",
+                                                "Cliente":         con_cliente, "NIT": con_nit_v,
+                                                "Sede":            _sede,
+                                                "Nombre_Contacto": _cont_c, "Celular_Contacto": _cont_cel,
+                                                "Servicio":        con_servicio,
+                                                "Descripcion":     _desc,
+                                                "SLA": "Programado", "Zona": "Z0",
+                                                "Tecnico": con_tecnico, "Celular_Tecnico": "",
+                                                "Fecha_Ejecucion": _fecha_mto.strftime("%Y-%m-%d"),
+                                                "Hora_Inicio": "", "Hora_Final": "",
+                                                "Horas_Laboradas": "", "Materiales": "",
+                                                "Valor_COP": con_valor,
+                                                "Estado": "Programada", "Observaciones": "",
+                                            })
+                                    else:
+                                        # Una OT por sede (Locativos, Aseo, Obra Civil, etc.)
+                                        nuevas_ots.append({
+                                            "ID":              generate_ot_id(
+                                                pd.concat([ots, pd.DataFrame(nuevas_ots)]) if nuevas_ots else ots
+                                            ),
+                                            "Origen":          "Contrato Mantenimiento",
+                                            "Creado_Por":      st.session_state.get("user_nombre",""),
+                                            "SOL_Ref":         _id_con,
+                                            "Fecha_Creacion":  ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+                                            "Fecha_Limite":    _fecha_mto.strftime("%Y-%m-%d") + " 18:00",
+                                            "Cliente":         con_cliente, "NIT": con_nit_v,
+                                            "Sede":            _sede,
+                                            "Nombre_Contacto": _cont_c, "Celular_Contacto": _cont_cel,
+                                            "Servicio":        con_servicio,
+                                            "Descripcion":     f"Mantenimiento {con_freq.lower()} de {con_servicio}",
+                                            "SLA": "Programado", "Zona": "Z0",
+                                            "Tecnico": con_tecnico, "Celular_Tecnico": "",
+                                            "Fecha_Ejecucion": _fecha_mto.strftime("%Y-%m-%d"),
+                                            "Hora_Inicio": "", "Hora_Final": "",
+                                            "Horas_Laboradas": "", "Materiales": "",
+                                            "Valor_COP": con_valor,
+                                            "Estado": "Programada", "Observaciones": "",
+                                        })
 
                                 contratos = pd.concat([contratos, pd.DataFrame(nuevos_cons)], ignore_index=True)
                                 ots       = pd.concat([ots,       pd.DataFrame(nuevas_ots)],  ignore_index=True)
@@ -4733,6 +4761,35 @@ elif pagina == "contratos_mto":
             tabla_html(vista_con[["ID_Contrato","Cliente","Sede","Servicio","Frecuencia",
                                    "Fecha_Inicio","Fecha_Fin","Tecnico","Estado_Contrato"]].reset_index(drop=True))
             st.caption(f"{len(contratos)} contrato(s) registrado(s).")
+
+            st.divider()
+            st.markdown("**🗑️ Eliminar OTs de un contrato**")
+            st.caption("Usa esto para borrar OTs mal generadas y volver a crearlas correctamente.")
+            ids_con_eli = contratos["ID_Contrato"].tolist()
+            sel_eli_con = st.selectbox("Contrato a limpiar", ids_con_eli, key="sel_eli_con")
+            if sel_eli_con:
+                ots_del_con = ots[ots["SOL_Ref"] == sel_eli_con] if not ots.empty else pd.DataFrame()
+                st.caption(f"{len(ots_del_con)} OT(s) asociadas a este contrato.")
+                c_del1, c_del2 = st.columns(2)
+                with c_del1:
+                    if st.button("🗑️ Eliminar OTs de este contrato", type="secondary",
+                                 use_container_width=True, key="btn_del_ots_con"):
+                        if ots_del_con.empty:
+                            st.warning("No hay OTs asociadas a este contrato.")
+                        else:
+                            ots = ots[ots["SOL_Ref"] != sel_eli_con].reset_index(drop=True)
+                            save_ots(ots)
+                            st.success(f"✅ {len(ots_del_con)} OT(s) eliminadas.")
+                            st.rerun()
+                with c_del2:
+                    if st.button("🗑️ Eliminar contrato y sus OTs", type="secondary",
+                                 use_container_width=True, key="btn_del_con_y_ots"):
+                        ots = ots[ots["SOL_Ref"] != sel_eli_con].reset_index(drop=True)
+                        contratos = contratos[contratos["ID_Contrato"] != sel_eli_con].reset_index(drop=True)
+                        save_ots(ots)
+                        save_contratos(contratos)
+                        st.success(f"✅ Contrato y OTs eliminados.")
+                        st.rerun()
 
             st.divider()
             st.markdown("**✏️ Editar contrato**")
