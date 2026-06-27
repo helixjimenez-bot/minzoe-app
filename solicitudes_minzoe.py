@@ -1884,10 +1884,17 @@ with st.sidebar:
         st.metric("🛠️ Mis OTs Activas", ots_activas)
         st.metric("📅 Visitas hoy",     ots_hoy)
     else:
-        pendientes  = int((_df_sidebar["Estado"] == "Pendiente").sum()) if not _df_sidebar.empty else 0
-        ots_activas = int((_ots_sidebar["Estado"].isin(["Programada","En ejecución"])).sum()) if not _ots_sidebar.empty else 0
+        pendientes   = int((_df_sidebar["Estado"] == "Pendiente").sum()) if not _df_sidebar.empty else 0
+        ots_activas  = int((_ots_sidebar["Estado"].isin(["Programada","En ejecución"])).sum()) if not _ots_sidebar.empty else 0
+        en_revision  = int((_ots_sidebar["Estado"] == "En revisión").sum()) if not _ots_sidebar.empty else 0
         st.metric("🟡 Sol. Pendientes", pendientes)
         st.metric("🛠️ OTs Activas",    ots_activas)
+        if en_revision > 0:
+            st.markdown(f"""
+            <div style='background:#4c1d95;color:#ede9fe;border-radius:8px;
+                        padding:8px 12px;text-align:center;font-weight:700'>
+              🔔 {en_revision} OT(s) en revisión
+            </div>""", unsafe_allow_html=True)
     st.divider()
 
     # Usuario actual
@@ -3072,9 +3079,18 @@ elif pagina == "ots":
 
     c_tit_ot, c_ref_ot = st.columns([5,1])
     c_tit_ot.subheader("🛠️ Mis OTs" if _es_tec_ots else "🛠️ Órdenes de Trabajo")
-    if c_ref_ot.button("🔄 Actualizar", use_container_width=True, key="ref_ots"):
+    if c_ref_ot.button("🔄 Actualizar", use_container_width=True, key="ref_ots", type="primary"):
         _invalidar_cache("ordenes_trabajo")
         st.rerun()
+
+    # Aviso automático cuando hay OTs en revisión (solo para admin/usuario)
+    if not _es_tec_ots:
+        _ots_revision = ots[ots["Estado"] == "En revisión"] if not ots.empty else pd.DataFrame()
+        if not _ots_revision.empty:
+            st.warning(
+                f"🔔 **{len(_ots_revision)} OT(s) en revisión** esperando tu cierre. "
+                f"Si no las ves actualiza con el botón 🔄"
+            )
 
     # Mantener selección después de guardar reporte
     if st.session_state.get("_ot_volver_ver"):
