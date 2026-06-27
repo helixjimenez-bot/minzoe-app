@@ -3993,20 +3993,40 @@ elif pagina == "ots":
                                 }
 
                             st.divider()
-                            # ── Tiempo, calificación y firmas ─────────────
-                            st.markdown("**⏱️ Tiempo de servicio y calificación**")
-                            fc1, fc2, fc3, fc4 = st.columns(4)
-                            with fc1:
-                                r_hora_lleg = st.text_input("Hora de llegada", value=fila_ot.get("Hora_Inicio",""))
-                                r_hora_sal  = st.text_input("Hora de salida",  value=fila_ot.get("Hora_Final",""))
-                            with fc2:
-                                r_calif = st.selectbox("Calificación", ["0-5 Malo","6-8 Medio","9-10 Bueno"])
-                            with fc3:
-                                r_pend = st.radio("Trabajo pendiente", ["Sí","No"], horizontal=True)
-                            with fc4:
-                                r_oper = st.radio("Equipo en operación", ["Sí","No"], horizontal=True)
+                            # ── Observaciones generales del técnico ────────
+                            st.markdown("**📝 Observaciones generales del técnico**")
+                            r_obs = st.text_area("Describe lo que evidenciaste durante el mantenimiento",
+                                                  value=fila_ot.get("Observaciones",""), height=100)
 
-                            r_obs = st.text_area("Observaciones adicionales", value=fila_ot.get("Observaciones",""))
+                            st.divider()
+                            # ── Encuesta de satisfacción (la llena el cliente) ──
+                            st.markdown("**📋 Encuesta de satisfacción del servicio** *(la llena el cliente)*")
+                            st.caption("Puntaje de 0 a 20 por concepto — Total máximo: 100 puntos")
+                            enc1, enc2, enc3, enc4, enc5 = st.columns(5)
+                            enc_exp = enc1.number_input("Experiencia técnicos", 0, 20, 0, key="enc_exp")
+                            enc_cal = enc2.number_input("Calidad servicio",     0, 20, 0, key="enc_cal")
+                            enc_cum = enc3.number_input("Cumplimiento",         0, 20, 0, key="enc_cum")
+                            enc_pre = enc4.number_input("Presentación personal",0, 20, 0, key="enc_pre")
+                            enc_com = enc5.number_input("Comunicación",         0, 20, 0, key="enc_com")
+                            enc_total = enc_exp + enc_cal + enc_cum + enc_pre + enc_com
+                            if enc_total > 0:
+                                nivel = "Bueno ✅" if enc_total >= 85 else ("Regular ⚠️" if enc_total >= 51 else "Malo ❌")
+                                st.info(f"**Total: {enc_total}/100 — {nivel}**")
+                            enc_obs_cli = st.text_input("Observaciones del cliente sobre el servicio")
+
+                            st.divider()
+                            # ── Tiempo de servicio ──────────────────────────
+                            st.markdown("**⏱️ Tiempo de servicio**")
+                            fc1, fc2, fc3 = st.columns(3)
+                            with fc1:
+                                _ini_idx = HORAS_12.index(fila_ot.get("Hora_Inicio","08:00 AM")) if fila_ot.get("Hora_Inicio","") in HORAS_12 else 16
+                                r_hora_lleg = st.selectbox("Hora de llegada", HORAS_12, index=_ini_idx, key="r_hlleg")
+                                _sal_idx = HORAS_12.index(fila_ot.get("Hora_Final","05:00 PM")) if fila_ot.get("Hora_Final","") in HORAS_12 else 34
+                                r_hora_sal  = st.selectbox("Hora de salida",  HORAS_12, index=_sal_idx, key="r_hsal")
+                            with fc2:
+                                r_pend = st.radio("Trabajo pendiente",   ["Sí","No"], horizontal=True)
+                            with fc3:
+                                r_oper = st.radio("Equipo en operación", ["Sí","No"], horizontal=True)
 
                             st.markdown("**✍️ Firmas**")
                             sc1, sc2, sc3 = st.columns(3)
@@ -4251,14 +4271,35 @@ elif pagina == "ots":
          for i,(k,v) in enumerate(ck_tub.items()))}
 </table>
 
-<div class="section">OBSERVACIONES ADICIONALES</div>
-<table><tr><td style="min-height:40px">{r_obs}</td></tr></table>
+<div class="section">OBSERVACIONES GENERALES DEL TÉCNICO</div>
+<table><tr><td style="min-height:50px">{r_obs}</td></tr></table>
 
-<table style="margin-top:8px"><tr>
-  <th>TIEMPO DE SERVICIO</th><th>CALIFICACIÓN</th><th>TRABAJO PENDIENTE</th><th>EQ. EN OPERACIÓN</th>
+<div class="section">ENCUESTA DE SATISFACCIÓN DEL SERVICIO</div>
+<table>
+<tr>
+  <th style="width:22%">TÉCNICOS</th>
+  <th>CONCEPTO</th>
+  <th style="width:8%;text-align:center">PESO</th>
+  <th style="width:10%;text-align:center">PUNTAJE</th>
+  <th style="width:28%">OBSERVACIONES DEL SERVICIO</th>
+</tr>
+<tr>
+  <td rowspan="5" style="vertical-align:middle;text-align:center">{r_nom_tec}</td>
+  <td>Experiencia de los Técnicos</td><td style="text-align:center">20</td><td style="text-align:center">{enc_exp if enc_exp else ""}</td>
+  <td rowspan="5" style="vertical-align:top">{enc_obs_cli}</td>
+</tr>
+<tr><td>Calidad de Servicio y Bienes</td><td style="text-align:center">20</td><td style="text-align:center">{enc_cal if enc_cal else ""}</td></tr>
+<tr><td>Cumplimiento</td><td style="text-align:center">20</td><td style="text-align:center">{enc_cum if enc_cum else ""}</td></tr>
+<tr><td>Presentación Personal</td><td style="text-align:center">20</td><td style="text-align:center">{enc_pre if enc_pre else ""}</td></tr>
+<tr><td>Comunicación</td><td style="text-align:center">20</td><td style="text-align:center">{enc_com if enc_com else ""}</td></tr>
+<tr><td></td><td><b>TOTAL</b></td><td style="text-align:center"><b>100</b></td><td style="text-align:center"><b>{enc_total if enc_total else ""}</b></td><td></td></tr>
+</table>
+<p style="font-size:7.5px;margin:3px 0">*La suma de los conceptos determinará la continuidad del personal: 0-50 Puntos: Malo &nbsp;|&nbsp; 51-84 Puntos: Regular &nbsp;|&nbsp; 85-100 Puntos: Bueno</p>
+
+<table style="margin-top:6px"><tr>
+  <th>TIEMPO DE SERVICIO</th><th>TRABAJO PENDIENTE</th><th>EQ. EN OPERACIÓN</th>
 </tr><tr>
   <td>Llegada: {r_hora_lleg}<br>Salida: {r_hora_sal}</td>
-  <td>{r_calif}</td>
   <td>{r_pend}</td>
   <td>{r_oper}</td>
 </tr></table>
