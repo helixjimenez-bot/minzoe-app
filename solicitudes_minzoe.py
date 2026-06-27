@@ -3818,7 +3818,7 @@ elif pagina == "ots":
                             st.markdown("**🔧 Datos del equipo**")
                             dc1, dc2 = st.columns(2)
                             with dc1:
-                                r_tipo_eq   = st.text_input("Tipo de equipo",      value=datos_ocr.get("tipo_eq",  _eq_tipo  or eq_data.get("Servicio","")))
+                                r_tipo_eq   = st.text_input("Tipo de equipo",      value=datos_ocr.get("tipo_eq", ""))
                                 r_marca     = st.text_input("Marca",               value=datos_ocr.get("marca",    eq_data.get("Marca","")))
                                 r_modelo    = st.text_input("Modelo",              value=datos_ocr.get("modelo",   eq_data.get("Modelo","")))
                                 r_ser_cond  = st.text_input("Serial Condensadora", value=datos_ocr.get("ser_cond", _eq_ser_cond))
