@@ -3179,8 +3179,8 @@ elif pagina == "ots":
                 with c_btn:
                     if st.button("→ Ver OT", key=f"vtec_{row['ID']}",
                                  use_container_width=True):
-                        st.session_state["ot_preselect"]    = row["ID"]
                         st.session_state["_tec_en_reporte"] = True
+                        st.session_state["_tec_viewing_ot"] = row["ID"]
                         st.rerun()
 
             # OTs finalizadas
@@ -3240,8 +3240,8 @@ elif pagina == "ots":
                         st.info(f"Haz clic para abrir el formulario de reporte de **{srv}**.")
                         if st.button("📄 Abrir formulario de reporte", type="primary",
                                      key=f"btn_rep_tec_{_tec_ot_sel}", use_container_width=True):
-                            st.session_state["ot_preselect"]    = _tec_ot_sel
                             st.session_state["_tec_en_reporte"] = True
+                            st.session_state["_tec_viewing_ot"] = _tec_ot_sel
                             st.session_state.pop("tec_ot_sel", None)
                             st.rerun()
                     else:
@@ -3258,17 +3258,19 @@ elif pagina == "ots":
             if st.session_state.get("_tec_en_reporte"):
                 if st.button("← Volver a Mis OTs", key="tec_volver_ots",
                              use_container_width=False):
-                    st.session_state.pop("_tec_en_reporte", None)
-                    st.session_state.pop("ot_preselect", None)
+                    for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect"]:
+                        st.session_state.pop(_k, None)
                     st.rerun()
                 st.divider()
 
             # ── Técnico en modo reporte: saltar tabla/filtros, ir directo al detalle ──
             _tec_modo_rep = st.session_state.get("_tec_en_reporte")
-            ot_pre = st.session_state.pop("ot_preselect", None)
+            # _tec_viewing_ot es persistente (no se hace pop), sobrevive reruns del canvas
+            _tec_ot_id    = st.session_state.get("_tec_viewing_ot")
+            ot_pre        = st.session_state.pop("ot_preselect", None) or _tec_ot_id
 
-            if _tec_modo_rep and ot_pre and ot_pre in ots["ID"].values:
-                id_ot_sel = ot_pre
+            if _tec_modo_rep and _tec_ot_id and _tec_ot_id in ots["ID"].values:
+                id_ot_sel = _tec_ot_id
             else:
                 ORIGENES  = ["Solicitud", "Manual", "Contrato Mantenimiento"]
                 c1, c2, c3, c4 = st.columns(4)
