@@ -503,12 +503,23 @@ def get_sb():
     return create_client(st.secrets["supabase_url"], st.secrets["supabase_key"])
 
 def sb_load(table_name, cols):
-    """Carga datos desde Supabase."""
+    """Carga datos desde Supabase paginando de 1000 en 1000 (sin límite)."""
     try:
-        sb   = get_sb()
-        resp = sb.table(table_name).select("*").execute()
-        if resp.data:
-            df = pd.DataFrame(resp.data).fillna("").astype(str)
+        sb       = get_sb()
+        all_data = []
+        PAGE     = 1000
+        offset   = 0
+        while True:
+            resp = sb.table(table_name).select("*").range(offset, offset + PAGE - 1).execute()
+            if resp.data:
+                all_data.extend(resp.data)
+                if len(resp.data) < PAGE:
+                    break
+                offset += PAGE
+            else:
+                break
+        if all_data:
+            df = pd.DataFrame(all_data).fillna("").astype(str)
             for c in list(cols):
                 if c not in df.columns:
                     df[c] = ""
@@ -518,15 +529,14 @@ def sb_load(table_name, cols):
         return pd.DataFrame(columns=list(cols))
 
 def sb_save(table_name, df):
-    """Guarda dataframe en Supabase (truncate + upsert)."""
+    """Guarda dataframe en Supabase (truncate + insert por lotes de 200)."""
     try:
         sb = get_sb()
-        # Truncar tabla y reinsertar
         sb.rpc("truncate_table", {"table_name": table_name}).execute()
         if not df.empty:
             records = df.fillna("").astype(str).to_dict("records")
-            for i in range(0, len(records), 100):
-                sb.table(table_name).upsert(records[i:i+100]).execute()
+            for i in range(0, len(records), 200):
+                sb.table(table_name).insert(records[i:i+200]).execute()
         return True
     except Exception as e:
         st.error(f"❌ Error Supabase '{table_name}': {e}")
