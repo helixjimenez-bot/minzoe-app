@@ -3468,19 +3468,35 @@ elif pagina == "ots":
                     "Finalizada":   ("#d1fae5", "#064e3b"),
                     "Cancelada":    ("#fee2e2", "#7f1d1d"),
                 }
-                tabla_html(vista_ot_ord[cols_vis_ot].reset_index(drop=True),
+                # Paginación de 50 OTs
+                _POR_PAG_OT = 50
+                _total_ots  = len(vista_ot_ord)
+                _total_pags_ot = max(1, -(-_total_ots // _POR_PAG_OT))
+                _pag_ot = st.session_state.get("pag_ot", 1)
+                _ini_ot = (_pag_ot - 1) * _POR_PAG_OT
+                _fin_ot = _ini_ot + _POR_PAG_OT
+
+                tabla_html(vista_ot_ord[cols_vis_ot].iloc[_ini_ot:_fin_ot].reset_index(drop=True),
                            color_col="Estado", colores_estado=COLORES_OT,
                            fmt_cols=["Valor_COP"])
 
-                c1, c2 = st.columns([3, 1])
+                c1, c2, c3, c4, c5 = st.columns([1, 1, 3, 1, 1])
                 with c1:
-                    st.caption(f"Mostrando {len(vista_ot_ord)} de {len(ots)} órdenes.")
+                    if st.button("◀ Anterior", key="ot_prev", disabled=_pag_ot <= 1):
+                        st.session_state["pag_ot"] = _pag_ot - 1
+                        st.rerun()
                 with c2:
+                    if st.button("▶ Siguiente", key="ot_next", disabled=_pag_ot >= _total_pags_ot):
+                        st.session_state["pag_ot"] = _pag_ot + 1
+                        st.rerun()
+                with c3:
+                    st.caption(f"Página {_pag_ot} de {_total_pags_ot} — Mostrando {min(_fin_ot,_total_ots)-_ini_ot} de {_total_ots} OTs")
+                with c4:
                     buf_ot = io.BytesIO()
                     with pd.ExcelWriter(buf_ot, engine="openpyxl") as w:
                         vista_ot_ord.to_excel(w, index=False, sheet_name="OTs")
                     st.download_button(
-                        "⬇️ Exportar Excel", data=buf_ot.getvalue(),
+                        "⬇️ Excel", data=buf_ot.getvalue(),
                         file_name=f"OTs_minzoe_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True,
