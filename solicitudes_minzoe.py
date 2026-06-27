@@ -4489,8 +4489,62 @@ elif pagina == "contratos_mto":
         if not contratos.empty:
             f_srv_con = st.multiselect("Filtrar por servicio", SERVICIOS, default=SERVICIOS, key="f_srv_con")
             vista_con = contratos[contratos["Servicio"].isin(f_srv_con)] if f_srv_con else contratos
-            st.dataframe(vista_con, use_container_width=True, hide_index=True)
+            tabla_html(vista_con[["ID_Contrato","Cliente","Sede","Servicio","Frecuencia",
+                                   "Fecha_Inicio","Fecha_Fin","Tecnico","Estado_Contrato"]].reset_index(drop=True))
             st.caption(f"{len(contratos)} contrato(s) registrado(s).")
+
+            # ── Editar contrato ───────────────────────────────────────────
+            st.divider()
+            st.markdown("**✏️ Editar contrato**")
+            ids_con = contratos["ID_Contrato"].tolist()
+            sel_con_edit = st.selectbox("Selecciona el contrato a editar", ids_con, key="sel_con_edit")
+            if sel_con_edit:
+                idx_con = contratos[contratos["ID_Contrato"] == sel_con_edit].index[0]
+                fc = contratos.loc[idx_con]
+                with st.form("form_editar_contrato"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        ec_cliente  = st.text_input("Cliente",   value=fc.get("Cliente",""))
+                        ec_nit      = st.text_input("NIT",       value=fc.get("NIT",""))
+                        ec_sede     = st.text_input("Sede",      value=fc.get("Sede",""))
+                        ec_contacto = st.text_input("Contacto",  value=fc.get("Nombre_Contacto",""))
+                        ec_celular  = st.text_input("Celular",   value=fc.get("Celular_Contacto",""))
+                        ec_tecnico  = st.text_input("Técnico",   value=fc.get("Tecnico",""))
+                    with c2:
+                        ec_servicio = st.selectbox("Servicio", SERVICIOS,
+                                        index=SERVICIOS.index(fc["Servicio"]) if fc["Servicio"] in SERVICIOS else 0)
+                        ec_freq     = st.selectbox("Frecuencia", FRECUENCIAS,
+                                        index=FRECUENCIAS.index(fc["Frecuencia"]) if fc["Frecuencia"] in FRECUENCIAS else 0)
+                        ec_valor    = st.text_input("Valor COP",  value=fc.get("Valor_Contrato",""))
+                        try:
+                            ec_inicio = st.date_input("Fecha inicio",
+                                            value=datetime.strptime(fc["Fecha_Inicio"], "%Y-%m-%d").date()
+                                            if fc.get("Fecha_Inicio") else ahora_colombia().date())
+                            ec_fin    = st.date_input("Fecha fin",
+                                            value=datetime.strptime(fc["Fecha_Fin"], "%Y-%m-%d").date()
+                                            if fc.get("Fecha_Fin") else ahora_colombia().date())
+                        except Exception:
+                            ec_inicio = st.date_input("Fecha inicio", value=ahora_colombia().date())
+                            ec_fin    = st.date_input("Fecha fin",    value=ahora_colombia().date())
+                        ec_estado   = st.selectbox("Estado", ["Activo","Inactivo"],
+                                        index=0 if fc.get("Estado_Contrato","Activo")=="Activo" else 1)
+
+                    if st.form_submit_button("💾 Guardar cambios", type="primary", use_container_width=True):
+                        contratos.loc[idx_con, "Cliente"]          = ec_cliente
+                        contratos.loc[idx_con, "NIT"]              = ec_nit
+                        contratos.loc[idx_con, "Sede"]             = ec_sede
+                        contratos.loc[idx_con, "Nombre_Contacto"]  = ec_contacto
+                        contratos.loc[idx_con, "Celular_Contacto"] = ec_celular
+                        contratos.loc[idx_con, "Tecnico"]          = ec_tecnico
+                        contratos.loc[idx_con, "Servicio"]         = ec_servicio
+                        contratos.loc[idx_con, "Frecuencia"]       = ec_freq
+                        contratos.loc[idx_con, "Valor_Contrato"]   = ec_valor
+                        contratos.loc[idx_con, "Fecha_Inicio"]     = ec_inicio.strftime("%Y-%m-%d")
+                        contratos.loc[idx_con, "Fecha_Fin"]        = ec_fin.strftime("%Y-%m-%d")
+                        contratos.loc[idx_con, "Estado_Contrato"]  = ec_estado
+                        save_contratos(contratos)
+                        st.success(f"✅ Contrato **{sel_con_edit}** actualizado.")
+                        st.rerun()
         else:
             st.info("No hay contratos registrados aún.")
 
