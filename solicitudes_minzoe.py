@@ -3522,6 +3522,22 @@ elif pagina == "ots":
                                 eq_data = eq_match.iloc[0].to_dict()
 
                         st.markdown(f"### 📄 Reporte HVAC — {id_ot_sel}")
+
+                        # ── Firma digital cliente (fuera del form) ────────────
+                        st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
+                        _canvas_hvac = None
+                        try:
+                            from streamlit_drawable_canvas import st_canvas as _st_canvas
+                            _canvas_hvac = _st_canvas(
+                                stroke_width=2, stroke_color="#000000",
+                                background_color="#FFFFFF", height=120, width=420,
+                                drawing_mode="freedraw",
+                                key=f"canvas_hvac_{id_ot_sel}",
+                            )
+                        except Exception:
+                            st.info("Instala streamlit-drawable-canvas para habilitar firma digital.")
+                        st.divider()
+
                         with st.form(f"form_reporte_aires_{id_ot_sel}", clear_on_submit=False):
 
                             # ── Tipo de mantenimiento ─────────────────────
@@ -3704,6 +3720,27 @@ elif pagina == "ots":
                                 _logo_b64 = get_logo_base64()
                                 _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
 
+                                # ── Firma digital cliente ──────────────────────
+                                _firma_hvac_b64 = ""
+                                try:
+                                    if _canvas_hvac is not None and _canvas_hvac.image_data is not None:
+                                        import numpy as _np
+                                        from PIL import Image as _PILImg
+                                        import io as _io, base64 as _b64m
+                                        _arr = _canvas_hvac.image_data
+                                        if _arr[:,:,3].any():  # hay trazos
+                                            _img = _PILImg.fromarray(_arr.astype('uint8'), 'RGBA')
+                                            _buf = _io.BytesIO()
+                                            _img.save(_buf, format='PNG')
+                                            _firma_hvac_b64 = f"data:image/png;base64,{_b64m.b64encode(_buf.getvalue()).decode()}"
+                                except Exception:
+                                    pass
+                                _firma_hvac_html = (
+                                    f'<img src="{_firma_hvac_b64}" style="width:220px;height:80px;object-fit:contain;display:block;border-bottom:1px solid #333">'
+                                    if _firma_hvac_b64 else
+                                    '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
+                                )
+
                                 # ── Filas dinámicas cliente/equipo (solo campos con valor) ──
                                 _cli_rows = []
                                 if fila_ot.get('Cliente',''): _cli_rows.append(("Cliente:", fila_ot['Cliente']))
@@ -3861,9 +3898,12 @@ elif pagina == "ots":
     <div style="font-size:9px">Supervisor: {r_superv}</div>
   </div>
   <div>
-    <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA Y SELLO CLIENTE</div>
-    <div style="font-size:9px;margin-top:3px">Nombre: {r_nom_cli}</div>
-    <div style="font-size:9px">Fecha: {r_fec_firma}</div>
+    <div>
+      {_firma_hvac_html}
+      <div style="font-size:9px;margin-top:2px;font-weight:600">FIRMA Y SELLO CLIENTE</div>
+      <div style="font-size:9px;margin-top:2px">Nombre: {r_nom_cli}</div>
+      <div style="font-size:9px">Fecha: {r_fec_firma}</div>
+    </div>
   </div>
 </div>
 
@@ -3930,6 +3970,22 @@ elif pagina == "ots":
                     else:
                         # ── FORMATO LOCATIVOS ─────────────────────────────
                         st.markdown(f"### 📄 Reporte Locativos — {id_ot_sel}")
+
+                        # ── Firma digital cliente (fuera del form) ────────────
+                        st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
+                        _canvas_loc = None
+                        try:
+                            from streamlit_drawable_canvas import st_canvas as _st_canvas
+                            _canvas_loc = _st_canvas(
+                                stroke_width=2, stroke_color="#000000",
+                                background_color="#FFFFFF", height=120, width=420,
+                                drawing_mode="freedraw",
+                                key=f"canvas_loc_{id_ot_sel}",
+                            )
+                        except Exception:
+                            st.info("Instala streamlit-drawable-canvas para habilitar firma digital.")
+                        st.divider()
+
                         with st.form(f"form_reporte_loc_{id_ot_sel}", clear_on_submit=False):
 
                             # Tipo de mantenimiento
@@ -4039,6 +4095,28 @@ elif pagina == "ots":
                                 )
                                 _logo_b64 = get_logo_base64()
                                 _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
+
+                                # ── Firma digital cliente ──────────────────────
+                                _firma_loc_b64 = ""
+                                try:
+                                    if _canvas_loc is not None and _canvas_loc.image_data is not None:
+                                        import numpy as _np
+                                        from PIL import Image as _PILImg
+                                        import io as _io, base64 as _b64m
+                                        _arr = _canvas_loc.image_data
+                                        if _arr[:,:,3].any():
+                                            _img = _PILImg.fromarray(_arr.astype('uint8'), 'RGBA')
+                                            _buf = _io.BytesIO()
+                                            _img.save(_buf, format='PNG')
+                                            _firma_loc_b64 = f"data:image/png;base64,{_b64m.b64encode(_buf.getvalue()).decode()}"
+                                except Exception:
+                                    pass
+                                _firma_loc_html = (
+                                    f'<img src="{_firma_loc_b64}" style="width:220px;height:80px;object-fit:contain;display:block;border-bottom:1px solid #333">'
+                                    if _firma_loc_b64 else
+                                    '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
+                                )
+
                                 html_loc = f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
 <title>Reporte Locativos {id_ot_sel}</title>
@@ -4127,9 +4205,12 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
     <div style="font-size:9px">Supervisor: {l_superv}</div>
   </div>
   <div>
-    <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA Y SELLO CLIENTE</div>
-    <div style="font-size:9px;margin-top:3px">Nombre: {l_nom_cli}</div>
-    <div style="font-size:9px">Fecha: {l_fec_fir}</div>
+    <div>
+      {_firma_loc_html}
+      <div style="font-size:9px;margin-top:2px;font-weight:600">FIRMA Y SELLO CLIENTE</div>
+      <div style="font-size:9px;margin-top:2px">Nombre: {l_nom_cli}</div>
+      <div style="font-size:9px">Fecha: {l_fec_fir}</div>
+    </div>
   </div>
 </div>
 

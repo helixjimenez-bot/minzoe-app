@@ -8,3 +8,4 @@ google-cloud-vision
 PyMuPDF
 plotly
 supabase
+streamlit-drawable-canvas
