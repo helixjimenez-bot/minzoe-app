@@ -980,9 +980,9 @@ def get_logo_base64():
 
 
 def css_formato_carta():
-    """CSS estándar para formatos en tamaño carta con márgenes ICONTEC."""
+    """CSS estándar para formatos de mantenimiento en tamaño carta."""
     return """
-  @page { size: letter; margin: 3cm 2cm 3cm 4cm; }
+  @page { size: letter; margin: 10mm 8mm 10mm 8mm; }
   * { box-sizing: border-box; }
 
   /* Pantalla: simula hoja blanca sobre fondo gris */
@@ -993,11 +993,11 @@ def css_formato_carta():
       width: 216mm;
       min-height: 279mm;
       margin: 0 auto;
-      padding: 3cm 2cm 3cm 4cm;
+      padding: 10mm 8mm;
       box-shadow: 0 4px 16px rgba(0,0,0,0.35);
     }
   }
-  /* Impresión: márgenes ICONTEC, sin fondo gris */
+  /* Impresión/PDF: márgenes compactos */
   @media print {
     body { background: white; margin: 0; padding: 0; }
     .pagina { padding: 0; box-shadow: none; width: auto; }
@@ -1017,6 +1017,15 @@ def css_formato_carta():
   .firma-box { border-top:0.5pt solid #000; margin-top:12pt;
                font-size:7pt; text-align:center; padding-top:2pt; }
 """
+
+
+def html_to_pdf(html: str) -> bytes | None:
+    """Convierte HTML a PDF usando weasyprint. Retorna bytes del PDF o None si falla."""
+    try:
+        from weasyprint import HTML as WP_HTML
+        return WP_HTML(string=html).write_pdf()
+    except Exception:
+        return None
 
 
 def ocr_documento(file_bytes, mime_type):
@@ -4455,29 +4464,33 @@ elif pagina == "ots":
                             ok_h, res_h = guardar_reporte_local(_html, _cli, _sede, id_ot_sel, _fec)
                             msg_fin = _finalizar_ot_y_sol(id_ot_sel)
                             del st.session_state[_html_key]
-                            if ok_h:
-                                st.success(f"✅ Guardado en: `{res_h}`\n\n{msg_fin}")
-                            else:
-                                st.info(msg_fin)
-                                fmt_h = st.radio("Formato de descarga",
-                                    ["📄 HTML", "📕 PDF (imprimir desde el archivo)", "🖼️ PNG/TIFF (captura)"],
-                                    horizontal=True, key="fmt_hvac")
+                            st.success(f"✅ {msg_fin}")
+                            # ── Botones de descarga ──
+                            _pdf_bytes = html_to_pdf(_html)
+                            dc1, dc2 = st.columns(2)
+                            with dc1:
+                                if _pdf_bytes:
+                                    st.download_button(
+                                        "⬇️ Descargar PDF",
+                                        data=_pdf_bytes,
+                                        file_name=f"Reporte_HVAC_{id_ot_sel}.pdf",
+                                        mime="application/pdf",
+                                        use_container_width=True,
+                                        type="primary",
+                                    )
+                                else:
+                                    st.info("PDF no disponible — descarga el HTML")
+                            with dc2:
                                 st.download_button(
-                                    "⬇️ Descargar Reporte",
+                                    "⬇️ Descargar HTML",
                                     data=_html,
                                     file_name=f"Reporte_HVAC_{id_ot_sel}.html",
                                     mime="text/html",
                                     use_container_width=True,
-                                    type="primary"
                                 )
-                                if fmt_h == "📕 PDF (imprimir desde el archivo)":
-                                    st.info("💡 Abre el archivo HTML descargado → clic en **🖨️ Imprimir / Guardar como PDF** → elige destino **Guardar como PDF**.")
-                                elif fmt_h == "🖼️ PNG/TIFF (captura)":
-                                    st.info("💡 Abre el archivo HTML → presiona **Ctrl+P** → cambia el destino a **Microsoft Print to PDF** o toma una captura con la herramienta de recorte de Windows.")
-                                if st.button("✅ Listo, cerrar", key="cerrar_hvac"):
-                                    st.rerun()
                             if ok_h:
-                                st.rerun()
+                                st.caption(f"✅ También guardado en: `{res_h}`")
+                            st.rerun()
 
                     else:
                         # ── FORMATO LOCATIVOS ─────────────────────────────
@@ -4845,29 +4858,32 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             ots.loc[ots["ID"] == id_ot_sel, "Estado"] = "En revisión"
                             save_ots(ots)
                             del st.session_state[_loc_key]
-                            if ok_h:
-                                st.success(f"✅ Guardado en: `{res_h}`\n\nOT **{id_ot_sel}** enviada a revisión.")
-                            else:
-                                st.info(f"OT **{id_ot_sel}** enviada a revisión.")
-                                fmt_l = st.radio("Formato de descarga",
-                                    ["📄 HTML", "📕 PDF (imprimir desde el archivo)", "🖼️ PNG/TIFF (captura)"],
-                                    horizontal=True, key="fmt_loc")
+                            st.success(f"✅ OT **{id_ot_sel}** enviada a revisión.")
+                            _pdf_bytes_l = html_to_pdf(_html_l)
+                            dl1, dl2 = st.columns(2)
+                            with dl1:
+                                if _pdf_bytes_l:
+                                    st.download_button(
+                                        "⬇️ Descargar PDF",
+                                        data=_pdf_bytes_l,
+                                        file_name=f"Reporte_Locativos_{id_ot_sel}.pdf",
+                                        mime="application/pdf",
+                                        use_container_width=True,
+                                        type="primary",
+                                    )
+                                else:
+                                    st.info("PDF no disponible — descarga el HTML")
+                            with dl2:
                                 st.download_button(
-                                    "⬇️ Descargar Reporte",
+                                    "⬇️ Descargar HTML",
                                     data=_html_l,
                                     file_name=f"Reporte_Locativos_{id_ot_sel}.html",
                                     mime="text/html",
                                     use_container_width=True,
-                                    type="primary"
                                 )
-                                if fmt_l == "📕 PDF (imprimir desde el archivo)":
-                                    st.info("💡 Abre el archivo HTML → clic en **🖨️ Imprimir / Guardar como PDF** → elige destino **Guardar como PDF**.")
-                                elif fmt_l == "🖼️ PNG/TIFF (captura)":
-                                    st.info("💡 Abre el archivo HTML → **Ctrl+P** → destino **Microsoft Print to PDF**, o usa la herramienta de recorte de Windows.")
-                                if st.button("✅ Listo, cerrar", key="cerrar_loc"):
-                                    st.rerun()
                             if ok_h:
-                                st.rerun()
+                                st.caption(f"✅ También guardado en: `{res_h}`")
+                            st.rerun()
 
                 with ot_com:
                     st.markdown(f"**💬 Comentarios internos — {id_ot_sel}**")
