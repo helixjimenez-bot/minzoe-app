@@ -4539,72 +4539,189 @@ elif pagina == "contratos_mto":
 
     # ── TAB 1: CONTRATOS ─────────────────────────────────────────────────────
     with tab_con:
-        st.subheader("Registrar contrato de mantenimiento")
+        st.subheader("Nuevo contrato de mantenimiento")
 
-        # Selector empresa fuera del form para auto-relleno reactivo
+        # ── PASO 1: Empresa y Servicio ────────────────────────────────────
         empresas_con = sorted(cli["Empresa"].unique().tolist()) if not cli.empty else []
-        emp_ant_con  = st.session_state.get("_emp_ant_con")
-        con_cliente  = st.selectbox("Empresa *", empresas_con + ["✏️ Ingresar manualmente"],
-                                    index=None, placeholder="Escribe el nombre de la empresa...",
-                                    key="con_cli_sel")
-        if con_cliente != emp_ant_con:
-            st.session_state["_emp_ant_con"] = con_cliente
+        c1, c2 = st.columns(2)
+        with c1:
+            con_cliente = st.selectbox("Empresa *", empresas_con,
+                                       index=None, placeholder="Escribe la empresa...",
+                                       key="con_cli_sel")
+        with c2:
+            con_servicio = st.selectbox("Tipo de servicio *", SERVICIOS, key="con_serv_sel")
 
-        # Auto-relleno desde clientes
         con_nit_v = con_contacto_v = con_celular_v = ""
-        if con_cliente and con_cliente != "✏️ Ingresar manualmente" and not cli.empty:
+        if con_cliente and not cli.empty:
             filas_c = cli[cli["Empresa"].str.strip().str.lower() == con_cliente.strip().lower()]
             if not filas_c.empty:
                 primera_c = filas_c.iloc[0]
-                con_nit_v       = primera_c.get("NIT","")
-                con_contacto_v  = primera_c.get("Nombre_Contacto","")
-                con_celular_v   = primera_c.get("Celular_Contacto","")
+                con_nit_v      = primera_c.get("NIT","")
+                con_contacto_v = primera_c.get("Nombre_Contacto","")
+                con_celular_v  = primera_c.get("Celular_Contacto","")
                 c1d, c2d, c3d = st.columns(3)
                 c1d.text_input("NIT",             value=con_nit_v,      disabled=True, key="con_nit_dis")
                 c2d.text_input("Nombre contacto", value=con_contacto_v, disabled=True, key="con_nom_dis")
                 c3d.text_input("Celular contacto",value=con_celular_v,  disabled=True, key="con_cel_dis")
 
-        with st.form("form_contrato", clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                con_sede     = st.text_input("Sede / Sucursal")
-            with c2:
-                con_servicio = st.selectbox("Servicio *", SERVICIOS)
-                con_freq     = st.selectbox("Frecuencia", FRECUENCIAS)
-                con_tecnico  = st.text_input("Técnico responsable")
-                con_valor    = st.text_input("Valor del contrato (COP)", placeholder="Ej: 1200000")
-                con_inicio   = st.date_input("Fecha inicio", value=ahora_colombia().date())
-                con_fin      = st.date_input("Fecha fin")
-                con_estado   = st.selectbox("Estado", ["Activo", "Inactivo"])
+        if con_cliente and con_servicio:
+            st.divider()
 
-            if st.form_submit_button("💾 Guardar contrato", type="primary", use_container_width=True):
-                if not con_cliente or con_cliente == "✏️ Ingresar manualmente":
-                    st.error("Selecciona la empresa.")
+            # ── PASO 2: Sedes con equipos del servicio ────────────────────
+            if con_servicio in SERVICIOS_CON_EQUIPOS:
+                eq_cli_srv = pd.DataFrame()
+                if not equipos.empty:
+                    eq_cli_srv = equipos[
+                        (equipos["Cliente"].str.strip().str.lower() == con_cliente.strip().lower()) &
+                        (equipos["Servicio"] == con_servicio)
+                    ]
+
+                if eq_cli_srv.empty:
+                    st.warning(f"No hay equipos de **{con_servicio}** registrados para **{con_cliente}**. "
+                               f"Registra los equipos primero en la pestaña 🔧 Equipos / Ítems.")
                 else:
-                    nuevo_con = {
-                        "ID_Contrato":      gen_contrato_id(contratos),
-                        "Fecha_Inicio":     con_inicio.strftime("%Y-%m-%d"),
-                        "Fecha_Fin":        con_fin.strftime("%Y-%m-%d"),
-                        "Cliente":          con_cliente,
-                        "NIT":              con_nit_v,
-                        "Sede":             con_sede,
-                        "Nombre_Contacto":  con_contacto_v,
-                        "Celular_Contacto": con_celular_v,
-                        "Servicio":         con_servicio,
-                        "Frecuencia":       con_freq,
-                        "Tecnico":          con_tecnico,
-                        "Valor_Contrato":   con_valor,
-                        "Estado_Contrato":  con_estado,
-                    }
-                    contratos = pd.concat([contratos, pd.DataFrame([nuevo_con])], ignore_index=True)
-                    save_contratos(contratos)
-                    requiere_items = con_servicio in SERVICIOS_CON_EQUIPOS
-                    msg = f"✅ Contrato **{nuevo_con['ID_Contrato']}** registrado."
-                    if requiere_items:
-                        msg += " Registra los equipos en la pestaña 🔧 Equipos / Ítems."
-                    st.success(msg)
+                    sedes_disponibles = sorted(eq_cli_srv["Sede"].unique().tolist())
+                    st.success(f"✅ Se encontraron **{len(sedes_disponibles)} sede(s)** con equipos de {con_servicio}")
 
+                    # ── PASO 3: Asignar fecha de mantenimiento por sede ───
+                    st.markdown("**📅 Asigna la fecha de mantenimiento a cada sede:**")
+                    st.caption("Puedes asignar diferentes fechas a diferentes sedes. Desmarca las que no van en este contrato.")
+
+                    sede_fechas = {}
+                    for _sede in sedes_disponibles:
+                        _n_eq = len(eq_cli_srv[eq_cli_srv["Sede"] == _sede])
+                        c_chk, c_nom, c_dat = st.columns([1, 4, 3])
+                        with c_chk:
+                            _inc = st.checkbox("", value=True, key=f"inc_{_sede}")
+                        with c_nom:
+                            st.markdown(f"**{_sede}** — {_n_eq} equipo(s)")
+                        with c_dat:
+                            _fecha = st.date_input("Fecha mtto", key=f"fmto_{_sede}",
+                                                   value=ahora_colombia().date(),
+                                                   label_visibility="collapsed")
+                        if _inc:
+                            sede_fechas[_sede] = _fecha
+
+                    st.divider()
+
+                    # ── PASO 4: Datos comunes ─────────────────────────────
+                    st.markdown("**⚙️ Datos del contrato**")
+                    with st.form("form_contrato_wizard"):
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            con_tecnico = st.text_input("Técnico responsable")
+                            con_freq    = st.selectbox("Frecuencia", FRECUENCIAS)
+                        with c2:
+                            con_valor   = st.text_input("Valor contrato (COP)", placeholder="Ej: 1200000")
+                            con_estado  = st.selectbox("Estado", ["Activo","Inactivo"])
+                        with c3:
+                            con_inicio  = st.date_input("Fecha inicio contrato", value=ahora_colombia().date())
+                            con_fin     = st.date_input("Fecha fin contrato")
+
+                        crear = st.form_submit_button(
+                            f"🚀 Crear contrato y OTs para {len(sede_fechas)} sede(s)",
+                            type="primary", use_container_width=True
+                        )
+
+                        if crear:
+                            if not sede_fechas:
+                                st.error("Selecciona al menos una sede.")
+                            else:
+                                nuevos_cons = []
+                                nuevas_ots  = []
+                                for _sede, _fecha_mto in sede_fechas.items():
+                                    _filas_s = cli[
+                                        (cli["Empresa"].str.strip().str.lower() == con_cliente.strip().lower()) &
+                                        (cli["Sede"] == _sede)
+                                    ]
+                                    _cont_c = _filas_s.iloc[0].get("Nombre_Contacto","") if not _filas_s.empty else ""
+                                    _cont_cel = _filas_s.iloc[0].get("Celular_Contacto","") if not _filas_s.empty else ""
+                                    _id_con = gen_contrato_id(
+                                        pd.concat([contratos, pd.DataFrame(nuevos_cons)]) if nuevos_cons else contratos
+                                    )
+                                    nuevos_cons.append({
+                                        "ID_Contrato":      _id_con,
+                                        "Fecha_Inicio":     con_inicio.strftime("%Y-%m-%d"),
+                                        "Fecha_Fin":        con_fin.strftime("%Y-%m-%d"),
+                                        "Cliente":          con_cliente,
+                                        "NIT":              con_nit_v,
+                                        "Sede":             _sede,
+                                        "Nombre_Contacto":  _cont_c,
+                                        "Celular_Contacto": _cont_cel,
+                                        "Servicio":         con_servicio,
+                                        "Frecuencia":       con_freq,
+                                        "Tecnico":          con_tecnico,
+                                        "Valor_Contrato":   con_valor,
+                                        "Estado_Contrato":  con_estado,
+                                    })
+                                    nuevas_ots.append({
+                                        "ID":               generate_ot_id(
+                                            pd.concat([ots, pd.DataFrame(nuevas_ots)]) if nuevas_ots else ots
+                                        ),
+                                        "Origen":           "Contrato Mantenimiento",
+                                        "Creado_Por":       st.session_state.get("user_nombre",""),
+                                        "SOL_Ref":          _id_con,
+                                        "Fecha_Creacion":   ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+                                        "Fecha_Limite":     _fecha_mto.strftime("%Y-%m-%d") + " 18:00",
+                                        "Cliente":          con_cliente,
+                                        "NIT":              con_nit_v,
+                                        "Sede":             _sede,
+                                        "Nombre_Contacto":  _cont_c,
+                                        "Celular_Contacto": _cont_cel,
+                                        "Servicio":         con_servicio,
+                                        "Descripcion":      f"Mantenimiento {con_freq.lower()} de {con_servicio}",
+                                        "SLA":              "Programado",
+                                        "Zona":             "Z0",
+                                        "Tecnico":          con_tecnico,
+                                        "Celular_Tecnico":  "",
+                                        "Fecha_Ejecucion":  _fecha_mto.strftime("%Y-%m-%d"),
+                                        "Hora_Inicio":      "", "Hora_Final":  "",
+                                        "Horas_Laboradas":  "", "Materiales":  "",
+                                        "Valor_COP":        con_valor,
+                                        "Estado":           "Programada",
+                                        "Observaciones":    "",
+                                    })
+
+                                contratos = pd.concat([contratos, pd.DataFrame(nuevos_cons)], ignore_index=True)
+                                ots       = pd.concat([ots,       pd.DataFrame(nuevas_ots)],  ignore_index=True)
+                                save_contratos(contratos)
+                                save_ots(ots)
+                                st.success(f"✅ Se crearon **{len(nuevos_cons)} contratos** y "
+                                           f"**{len(nuevas_ots)} OTs** de mantenimiento.")
+                                st.rerun()
+
+            else:
+                # Servicio sin equipos: formulario simple
+                with st.form("form_contrato_simple"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        con_sede    = st.text_input("Sede / Sucursal")
+                        con_tecnico = st.text_input("Técnico responsable")
+                        con_freq    = st.selectbox("Frecuencia", FRECUENCIAS)
+                    with c2:
+                        con_valor   = st.text_input("Valor del contrato (COP)")
+                        con_inicio  = st.date_input("Fecha inicio", value=ahora_colombia().date())
+                        con_fin     = st.date_input("Fecha fin")
+                        con_estado  = st.selectbox("Estado", ["Activo", "Inactivo"])
+                    if st.form_submit_button("💾 Guardar contrato", type="primary", use_container_width=True):
+                        nuevo_con = {
+                            "ID_Contrato":      gen_contrato_id(contratos),
+                            "Fecha_Inicio":     con_inicio.strftime("%Y-%m-%d"),
+                            "Fecha_Fin":        con_fin.strftime("%Y-%m-%d"),
+                            "Cliente":          con_cliente, "NIT": con_nit_v,
+                            "Sede":             con_sede,
+                            "Nombre_Contacto":  con_contacto_v, "Celular_Contacto": con_celular_v,
+                            "Servicio":         con_servicio, "Frecuencia": con_freq,
+                            "Tecnico":          con_tecnico, "Valor_Contrato": con_valor,
+                            "Estado_Contrato":  con_estado,
+                        }
+                        contratos = pd.concat([contratos, pd.DataFrame([nuevo_con])], ignore_index=True)
+                        save_contratos(contratos)
+                        st.success(f"✅ Contrato **{nuevo_con['ID_Contrato']}** registrado.")
+
+        # ── Ver y editar contratos existentes ─────────────────────────────
         st.divider()
+        st.markdown("**📋 Contratos registrados**")
         if not contratos.empty:
             f_srv_con = st.multiselect("Filtrar por servicio", SERVICIOS, default=SERVICIOS, key="f_srv_con")
             vista_con = contratos[contratos["Servicio"].isin(f_srv_con)] if f_srv_con else contratos
@@ -4612,7 +4729,6 @@ elif pagina == "contratos_mto":
                                    "Fecha_Inicio","Fecha_Fin","Tecnico","Estado_Contrato"]].reset_index(drop=True))
             st.caption(f"{len(contratos)} contrato(s) registrado(s).")
 
-            # ── Editar contrato ───────────────────────────────────────────
             st.divider()
             st.markdown("**✏️ Editar contrato**")
             ids_con = contratos["ID_Contrato"].tolist()
@@ -4623,31 +4739,28 @@ elif pagina == "contratos_mto":
                 with st.form("form_editar_contrato"):
                     c1, c2 = st.columns(2)
                     with c1:
-                        ec_cliente  = st.text_input("Cliente",   value=fc.get("Cliente",""))
-                        ec_nit      = st.text_input("NIT",       value=fc.get("NIT",""))
-                        ec_sede     = st.text_input("Sede",      value=fc.get("Sede",""))
-                        ec_contacto = st.text_input("Contacto",  value=fc.get("Nombre_Contacto",""))
-                        ec_celular  = st.text_input("Celular",   value=fc.get("Celular_Contacto",""))
-                        ec_tecnico  = st.text_input("Técnico",   value=fc.get("Tecnico",""))
+                        ec_cliente  = st.text_input("Cliente",  value=fc.get("Cliente",""))
+                        ec_nit      = st.text_input("NIT",      value=fc.get("NIT",""))
+                        ec_sede     = st.text_input("Sede",     value=fc.get("Sede",""))
+                        ec_contacto = st.text_input("Contacto", value=fc.get("Nombre_Contacto",""))
+                        ec_celular  = st.text_input("Celular",  value=fc.get("Celular_Contacto",""))
+                        ec_tecnico  = st.text_input("Técnico",  value=fc.get("Tecnico",""))
                     with c2:
                         ec_servicio = st.selectbox("Servicio", SERVICIOS,
                                         index=SERVICIOS.index(fc["Servicio"]) if fc["Servicio"] in SERVICIOS else 0)
                         ec_freq     = st.selectbox("Frecuencia", FRECUENCIAS,
                                         index=FRECUENCIAS.index(fc["Frecuencia"]) if fc["Frecuencia"] in FRECUENCIAS else 0)
-                        ec_valor    = st.text_input("Valor COP",  value=fc.get("Valor_Contrato",""))
+                        ec_valor    = st.text_input("Valor COP", value=fc.get("Valor_Contrato",""))
                         try:
                             ec_inicio = st.date_input("Fecha inicio",
-                                            value=datetime.strptime(fc["Fecha_Inicio"], "%Y-%m-%d").date()
-                                            if fc.get("Fecha_Inicio") else ahora_colombia().date())
-                            ec_fin    = st.date_input("Fecha fin",
-                                            value=datetime.strptime(fc["Fecha_Fin"], "%Y-%m-%d").date()
-                                            if fc.get("Fecha_Fin") else ahora_colombia().date())
+                                value=datetime.strptime(fc["Fecha_Inicio"],"%Y-%m-%d").date() if fc.get("Fecha_Inicio") else ahora_colombia().date())
+                            ec_fin = st.date_input("Fecha fin",
+                                value=datetime.strptime(fc["Fecha_Fin"],"%Y-%m-%d").date() if fc.get("Fecha_Fin") else ahora_colombia().date())
                         except Exception:
                             ec_inicio = st.date_input("Fecha inicio", value=ahora_colombia().date())
                             ec_fin    = st.date_input("Fecha fin",    value=ahora_colombia().date())
-                        ec_estado   = st.selectbox("Estado", ["Activo","Inactivo"],
+                        ec_estado = st.selectbox("Estado", ["Activo","Inactivo"],
                                         index=0 if fc.get("Estado_Contrato","Activo")=="Activo" else 1)
-
                     if st.form_submit_button("💾 Guardar cambios", type="primary", use_container_width=True):
                         contratos.loc[idx_con, "Cliente"]          = ec_cliente
                         contratos.loc[idx_con, "NIT"]              = ec_nit
