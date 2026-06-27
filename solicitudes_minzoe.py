@@ -64,7 +64,7 @@ COLS_CLI = [
     "Nombre_Contacto", "Correo_Contacto", "Celular_Contacto",
 ]
 
-ESTADOS_OT   = ["Programada", "En ejecución", "Finalizada", "Cancelada"]
+ESTADOS_OT   = ["Programada", "En ejecución", "En revisión", "Finalizada", "Cancelada"]
 FRECUENCIAS  = ["Mensual", "Bimestral (2 meses)", "Cada 4 meses", "Trimestral (3 meses)", "Semestral (6 meses)"]
 FREQ_MESES   = {"Mensual": 1, "Bimestral (2 meses)": 2, "Cada 4 meses": 4, "Trimestral (3 meses)": 3, "Semestral (6 meses)": 6}
 REFRIGERANTES = ["R-22", "R-410A", "R-32", "R-407C", "R-134A", "Otro"]
@@ -3260,7 +3260,7 @@ elif pagina == "ots":
 
         # ── VISTA ESPECIAL TÉCNICO ────────────────────────────────────────────
         elif _es_tec_ots:
-            ots_activas = ots[~ots["Estado"].isin(["Finalizada", "Cancelada"])].copy()
+            ots_activas = ots[~ots["Estado"].isin(["Finalizada", "En revisión", "Cancelada"])].copy()
             ots_todas   = ots.copy()
 
             # Clasificar por urgencia según fecha límite
@@ -3334,10 +3334,10 @@ elif pagina == "ots":
                         st.session_state["_tec_viewing_ot"] = row["ID"]
                         st.rerun()
 
-            # OTs finalizadas
-            ots_fin = ots_todas[ots_todas["Estado"].isin(["Finalizada", "Cancelada"])]
+            # OTs entregadas (En revisión, Finalizada, Cancelada)
+            ots_fin = ots_todas[ots_todas["Estado"].isin(["En revisión", "Finalizada", "Cancelada"])]
             if not ots_fin.empty:
-                with st.expander(f"📁 Historial ({len(ots_fin)} OTs finalizadas / canceladas)"):
+                with st.expander(f"📁 Historial ({len(ots_fin)} OTs entregadas / finalizadas)"):
                     tabla_html(ots_fin[["ID","Fecha_Creacion","Cliente","Servicio","Estado","Fecha_Ejecucion"]].reset_index(drop=True))
 
             # Detalle de la OT seleccionada
@@ -3465,6 +3465,7 @@ elif pagina == "ots":
                 COLORES_OT = {
                     "Programada":   ("#e0e7ff", "#1e3a8a"),
                     "En ejecución": ("#fef3c7", "#78350f"),
+                    "En revisión":  ("#ede9fe", "#4c1d95"),
                     "Finalizada":   ("#d1fae5", "#064e3b"),
                     "Cancelada":    ("#fee2e2", "#7f1d1d"),
                 }
@@ -4442,15 +4443,10 @@ elif pagina == "ots":
                             _sede = st.session_state.get(f"hvac_sede_{id_ot_sel}","")
                             _fec  = st.session_state.get(f"hvac_fec_{id_ot_sel}","")
                             def _finalizar_ot_y_sol(ot_id):
-                                """Marca OT como Finalizada y cierra la SOL asociada."""
-                                ots.loc[ots["ID"] == ot_id, "Estado"] = "Finalizada"
+                                """Técnico entregó reporte: pasa a En revisión (admin la cierra después)."""
+                                ots.loc[ots["ID"] == ot_id, "Estado"] = "En revisión"
                                 save_ots(ots)
-                                ot_row = ots[ots["ID"] == ot_id].iloc[0]
-                                df_upd, cerrada = cerrar_sol_si_aplica(ot_row, df)
-                                if cerrada:
-                                    save_sol(df_upd)
-                                    return f"OT **{ot_id}** finalizada y solicitud **{ot_row['SOL_Ref']}** cerrada."
-                                return f"OT **{ot_id}** finalizada."
+                                return f"OT **{ot_id}** enviada a revisión. El administrador la cerrará definitivamente."
 
                             ok_h, res_h = guardar_reporte_local(_html, _cli, _sede, id_ot_sel, _fec)
                             msg_fin = _finalizar_ot_y_sol(id_ot_sel)
@@ -4831,17 +4827,13 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             _sede_l = st.session_state.get(f"loc_sede_{id_ot_sel}","")
                             _fec_l  = st.session_state.get(f"loc_fec_{id_ot_sel}","")
                             ok_h, res_h = guardar_reporte_local(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
-                            ots.loc[ots["ID"] == id_ot_sel, "Estado"] = "Finalizada"
+                            ots.loc[ots["ID"] == id_ot_sel, "Estado"] = "En revisión"
                             save_ots(ots)
-                            ot_row_l = ots[ots["ID"] == id_ot_sel].iloc[0]
-                            df_upd_l, cerrada_l = cerrar_sol_si_aplica(ot_row_l, df)
-                            if cerrada_l:
-                                save_sol(df_upd_l)
                             del st.session_state[_loc_key]
                             if ok_h:
-                                st.success(f"✅ Guardado en: `{res_h}`\n\nOT **{id_ot_sel}** finalizada." + (f" SOL **{ot_row_l['SOL_Ref']}** cerrada." if cerrada_l else ""))
+                                st.success(f"✅ Guardado en: `{res_h}`\n\nOT **{id_ot_sel}** enviada a revisión.")
                             else:
-                                st.info(f"OT **{id_ot_sel}** finalizada." + (f" SOL cerrada." if cerrada_l else ""))
+                                st.info(f"OT **{id_ot_sel}** enviada a revisión.")
                                 fmt_l = st.radio("Formato de descarga",
                                     ["📄 HTML", "📕 PDF (imprimir desde el archivo)", "🖼️ PNG/TIFF (captura)"],
                                     horizontal=True, key="fmt_loc")
