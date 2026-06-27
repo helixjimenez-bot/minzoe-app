@@ -1723,7 +1723,9 @@ if not st.session_state.get("logged_in", False):
     st.stop()
 
 # ── Usuario autenticado: carga lazy por página ───────────────────────────────
-pagina = st.session_state.get("pagina", "resumen")
+# Técnico entra directo a sus OTs, no al dashboard
+_pagina_default = "ots" if st.session_state.get("user_rol") == "tecnico" else "resumen"
+pagina = st.session_state.get("pagina", _pagina_default)
 
 # Solo carga lo mínimo para el sidebar
 _df_sidebar  = load_sol()
@@ -1764,9 +1766,10 @@ with st.sidebar:
     _es_tecnico = _rol_actual == "tecnico"
 
     # ── GENERAL ──────────────────────────────────────────────────────────────
-    if st.button("📊 Dashboard", use_container_width=True):
-        st.session_state["pagina"] = "resumen"
-        st.rerun()
+    if not _es_tecnico:
+        if st.button("📊 Dashboard", use_container_width=True):
+            st.session_state["pagina"] = "resumen"
+            st.rerun()
 
     if not _es_tecnico:
         st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>BASE DE DATOS</p>", unsafe_allow_html=True)
@@ -2341,6 +2344,9 @@ elif pagina == "ver":
 # PÁGINA: DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "resumen":
+    if st.session_state.get("user_rol") == "tecnico":
+        st.session_state["pagina"] = "ots"
+        st.rerun()
     import plotly.express as px
     import plotly.graph_objects as go
     df = get_df(); ots = get_ots(); cv = get_cv(); ventas = get_ventas(); costos = get_costos(); contratos = get_contratos()
