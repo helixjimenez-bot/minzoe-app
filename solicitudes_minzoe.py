@@ -4496,19 +4496,39 @@ elif pagina == "ots":
                                 l_act[item] = {"buen":buen,"mal":mal,"req":req,"inst":inst,"obs":obs}
 
                             st.divider()
-                            l_obs = st.text_area("Observaciones generales", value=fila_ot.get("Observaciones",""), key="l_obs")
+                            # ── Observaciones generales del técnico ────────
+                            st.markdown("**📝 Observaciones generales del técnico**")
+                            l_obs = st.text_area("Describe lo que evidenciaste durante el trabajo",
+                                                  value=fila_ot.get("Observaciones",""), height=100, key="l_obs")
 
-                            st.markdown("**⏱️ Tiempo, calificación y firmas**")
-                            fc1, fc2, fc3, fc4 = st.columns(4)
+                            st.divider()
+                            # ── Encuesta de satisfacción (la llena el cliente) ──
+                            st.markdown("**📋 Encuesta de satisfacción del servicio** *(la llena el cliente)*")
+                            st.caption("Puntaje de 0 a 20 por concepto — Total máximo: 100 puntos")
+                            lenc1, lenc2, lenc3, lenc4, lenc5 = st.columns(5)
+                            l_enc_exp = lenc1.number_input("Experiencia técnicos", 0, 20, 0, key="l_enc_exp")
+                            l_enc_cal = lenc2.number_input("Calidad servicio",     0, 20, 0, key="l_enc_cal")
+                            l_enc_cum = lenc3.number_input("Cumplimiento",         0, 20, 0, key="l_enc_cum")
+                            l_enc_pre = lenc4.number_input("Presentación personal",0, 20, 0, key="l_enc_pre")
+                            l_enc_com = lenc5.number_input("Comunicación",         0, 20, 0, key="l_enc_com")
+                            l_enc_total = l_enc_exp + l_enc_cal + l_enc_cum + l_enc_pre + l_enc_com
+                            if l_enc_total > 0:
+                                l_nivel = "Bueno ✅" if l_enc_total >= 85 else ("Regular ⚠️" if l_enc_total >= 51 else "Malo ❌")
+                                st.info(f"**Total: {l_enc_total}/100 — {l_nivel}**")
+                            l_enc_obs = st.text_input("Observaciones del cliente sobre el servicio", key="l_enc_obs")
+
+                            st.divider()
+                            st.markdown("**⏱️ Tiempo de servicio**")
+                            fc1, fc2, fc3 = st.columns(3)
                             with fc1:
-                                l_lleg = st.text_input("Hora llegada", value=fila_ot.get("Hora_Inicio",""), key="l_lleg")
-                                l_sal  = st.text_input("Hora salida",  value=fila_ot.get("Hora_Final",""),  key="l_sal")
+                                _l_ini_idx = HORAS_12.index(fila_ot.get("Hora_Inicio","08:00 AM")) if fila_ot.get("Hora_Inicio","") in HORAS_12 else 16
+                                l_lleg = st.selectbox("Hora llegada", HORAS_12, index=_l_ini_idx, key="l_lleg")
+                                _l_sal_idx = HORAS_12.index(fila_ot.get("Hora_Final","05:00 PM")) if fila_ot.get("Hora_Final","") in HORAS_12 else 34
+                                l_sal  = st.selectbox("Hora salida",  HORAS_12, index=_l_sal_idx,  key="l_sal")
                             with fc2:
-                                l_cal  = st.selectbox("Calificación", ["0-5 Malo","6-8 Medio","9-10 Bueno"], key="l_cal")
+                                l_pend = st.radio("Trabajo pendiente",   ["Sí","No"], horizontal=True, key="l_pend")
                             with fc3:
-                                l_pend = st.radio("Trabajo pendiente",  ["Sí","No"], horizontal=True, key="l_pend")
-                            with fc4:
-                                l_oper = st.radio("Equipo en operación",["Sí","No"], horizontal=True, key="l_oper")
+                                l_oper = st.radio("Equipo en operación", ["Sí","No"], horizontal=True, key="l_oper")
 
                             sc1, sc2, sc3 = st.columns(3)
                             l_nom_tec  = sc1.text_input("Nombre técnico",  value=fila_ot.get("Tecnico",""), key="l_ntec")
@@ -4618,14 +4638,35 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 {filas_act}
 </table>
 
-<div class="section">OBSERVACIONES GENERALES</div>
-<table><tr><td style="min-height:35px">{l_obs}</td></tr></table>
+<div class="section">OBSERVACIONES GENERALES DEL TÉCNICO</div>
+<table><tr><td style="min-height:50px">{l_obs}</td></tr></table>
+
+<div class="section">ENCUESTA DE SATISFACCIÓN DEL SERVICIO</div>
+<table>
+<tr>
+  <th style="width:22%">TÉCNICOS</th>
+  <th>CONCEPTO</th>
+  <th style="width:8%;text-align:center">PESO</th>
+  <th style="width:10%;text-align:center">PUNTAJE</th>
+  <th style="width:28%">OBSERVACIONES DEL SERVICIO</th>
+</tr>
+<tr>
+  <td rowspan="5" style="vertical-align:middle;text-align:center">{l_nom_tec}</td>
+  <td>Experiencia de los Técnicos</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_exp if l_enc_exp else ""}</td>
+  <td rowspan="5" style="vertical-align:top">{l_enc_obs}</td>
+</tr>
+<tr><td>Calidad de Servicio y Bienes</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_cal if l_enc_cal else ""}</td></tr>
+<tr><td>Cumplimiento</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_cum if l_enc_cum else ""}</td></tr>
+<tr><td>Presentación Personal</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_pre if l_enc_pre else ""}</td></tr>
+<tr><td>Comunicación</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_com if l_enc_com else ""}</td></tr>
+<tr><td></td><td><b>TOTAL</b></td><td style="text-align:center"><b>100</b></td><td style="text-align:center"><b>{l_enc_total if l_enc_total else ""}</b></td><td></td></tr>
+</table>
+<p style="font-size:7.5px;margin:3px 0">*La suma de los conceptos determinará la continuidad del personal: 0-50 Puntos: Malo &nbsp;|&nbsp; 51-84 Puntos: Regular &nbsp;|&nbsp; 85-100 Puntos: Bueno</p>
 
 <table style="margin-top:6px"><tr>
-  <th>TIEMPO DE SERVICIO</th><th>CALIFICACIÓN</th><th>TRABAJO PENDIENTE</th><th>EQ EN OPERACIÓN</th>
+  <th>TIEMPO DE SERVICIO</th><th>TRABAJO PENDIENTE</th><th>EQ EN OPERACIÓN</th>
 </tr><tr>
   <td>Llegada: {l_lleg}<br>Salida: {l_sal}</td>
-  <td>{l_cal}</td>
   <td>{l_pend}</td>
   <td>{l_oper}</td>
 </tr></table>
