@@ -202,6 +202,44 @@ def _sb_insert(tabla, registro):
     except Exception:
         return False
 
+def guardar_reporte_sb(ot_id, tipo, cliente, fecha, html):
+    """Guarda el reporte en Supabase sin el logo embebido (ahorra espacio)."""
+    import re
+    html_sin_logo = re.sub(
+        r'<img src="data:image/[^"]+base64,[^""]+"[^>]*style="height:60px[^"]*"[^>]*>',
+        '<span style="font-size:1.1rem;font-weight:900;color:#dc2626">CONSTRUCCIONES MINZOE SAS</span>',
+        html
+    )
+    try:
+        get_sb().table("reportes_ot").upsert({
+            "ot_id":   ot_id,
+            "tipo":    tipo,
+            "fecha":   fecha,
+            "cliente": cliente,
+            "html":    html_sin_logo,
+        }).execute()
+        return True
+    except Exception:
+        return False
+
+def cargar_reporte_sb(ot_id):
+    """Carga el reporte guardado y restaura el logo actual."""
+    try:
+        resp = get_sb().table("reportes_ot").select("*").eq("ot_id", ot_id).execute()
+        if resp.data:
+            html = resp.data[0]["html"]
+            logo_b64 = get_logo_base64()
+            if logo_b64:
+                logo_tag = f'<img src="{logo_b64}" style="height:60px;object-fit:contain">'
+                html = html.replace(
+                    '<span style="font-size:1.1rem;font-weight:900;color:#dc2626">CONSTRUCCIONES MINZOE SAS</span>',
+                    logo_tag
+                )
+            return html, resp.data[0]
+        return None, None
+    except Exception:
+        return None, None
+
 def registrar_cambio(entidad, entidad_id, campo, val_ant, val_nuevo):
     """Registra un cambio en el historial de auditoría."""
     _sb_insert("historial", {
@@ -3467,6 +3505,22 @@ elif pagina == "ots":
                 with rep:
                     servicio_ot = fila_ot.get("Servicio", "")
 
+                    # ── Reporte guardado en Supabase ──────────────────────
+                    _rep_sb_html, _rep_sb_meta = cargar_reporte_sb(id_ot_sel)
+                    if _rep_sb_html:
+                        st.success(f"✅ Reporte guardado — {_rep_sb_meta.get('tipo','')} | {_rep_sb_meta.get('fecha','')}")
+                        st.download_button(
+                            "📥 Descargar reporte guardado",
+                            data=_rep_sb_html.encode("utf-8"),
+                            file_name=f"Reporte_{id_ot_sel}.html",
+                            mime="text/html",
+                            use_container_width=True,
+                            key=f"dl_rep_sb_{id_ot_sel}",
+                        )
+                        st.divider()
+                        if not st.checkbox("Generar nuevo reporte (sobreescribe el anterior)", key=f"nuevo_rep_{id_ot_sel}"):
+                            st.stop()
+
                     # ── Selector Automático / Manual ─────────────────────
                     modo = st.radio("¿Cómo quieres llenar el informe?",
                                     ["✏️ Manual", "🤖 Automático (leer documento)"],
@@ -3549,6 +3603,14 @@ elif pagina == "ots":
                                         _firma_img = '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
                                     _html_final = st.session_state[_hvac_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_img)
                                     st.session_state[f"hvac_html_{id_ot_sel}"] = _html_final
+                                    # Guardar en Supabase permanentemente
+                                    guardar_reporte_sb(
+                                        ot_id   = id_ot_sel,
+                                        tipo    = "HVAC",
+                                        cliente = st.session_state.get(f"hvac_cli_{id_ot_sel}", fila_ot.get("Cliente","")),
+                                        fecha   = st.session_state.get(f"hvac_fec_{id_ot_sel}", ""),
+                                        html    = _html_final,
+                                    )
                                     del st.session_state[_hvac_raw_key]
                                     st.rerun()
                             with c_gen2:
@@ -4008,6 +4070,14 @@ elif pagina == "ots":
                                         _firma_loc = '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
                                     _html_loc_final = st.session_state[_loc_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_loc)
                                     st.session_state[f"loc_html_{id_ot_sel}"] = _html_loc_final
+                                    # Guardar en Supabase permanentemente
+                                    guardar_reporte_sb(
+                                        ot_id   = id_ot_sel,
+                                        tipo    = "Locativos",
+                                        cliente = st.session_state.get(f"loc_cli_{id_ot_sel}", fila_ot.get("Cliente","")),
+                                        fecha   = st.session_state.get(f"loc_fec_{id_ot_sel}", ""),
+                                        html    = _html_loc_final,
+                                    )
                                     del st.session_state[_loc_raw_key]
                                     st.rerun()
                             with c_loc2:
