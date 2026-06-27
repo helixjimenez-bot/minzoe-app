@@ -3685,13 +3685,68 @@ elif pagina == "ots":
                                     modo = "✏️ Manual"
 
                     if servicio_ot == "Aires Acondicionados":
-                        # Buscar datos del equipo si viene de contrato
+                        # Buscar datos del equipo: primero por contrato, luego por cliente+sede
                         equipos = get_equipos()
                         eq_data = {}
                         if not equipos.empty:
+                            # Intento 1: por ID_Contrato == SOL_Ref
                             eq_match = equipos[equipos["ID_Contrato"] == fila_ot.get("SOL_Ref","")]
+                            # Intento 2: por Cliente + Sede si el 1 falla
+                            if eq_match.empty:
+                                eq_match = equipos[
+                                    (equipos["Cliente"].str.strip().str.lower() == fila_ot.get("Cliente","").strip().lower()) &
+                                    (equipos["Sede"].str.strip().str.lower()    == fila_ot.get("Sede","").strip().lower()) &
+                                    (equipos["Servicio"] == "Aires Acondicionados")
+                                ]
                             if not eq_match.empty:
                                 eq_data = eq_match.iloc[0].to_dict()
+
+                        # Parsear campos combinados del equipo
+                        def _parse_serial(s):
+                            """'Cond: ABC | Evap: XYZ' → (cond, evap)"""
+                            cond = evap = s
+                            if "|" in str(s):
+                                partes = [p.strip() for p in str(s).split("|")]
+                                for p in partes:
+                                    if p.upper().startswith("COND"):
+                                        cond = p.split(":",1)[-1].strip()
+                                    elif p.upper().startswith("EVAP"):
+                                        evap = p.split(":",1)[-1].strip()
+                            return cond, evap
+
+                        def _parse_ubicacion(u):
+                            """'Evap: HALL | Cond: EXTERIOR' → (evap, cond)"""
+                            evap = cond = u
+                            if "|" in str(u):
+                                partes = [p.strip() for p in str(u).split("|")]
+                                for p in partes:
+                                    if p.upper().startswith("EVAP"):
+                                        evap = p.split(":",1)[-1].strip()
+                                    elif p.upper().startswith("COND"):
+                                        cond = p.split(":",1)[-1].strip()
+                            return evap, cond
+
+                        def _parse_specs(e):
+                            """'MINISPLIT 18.000 BTU | R-410A' → (tipo, btu, refrig)"""
+                            tipo = btu = refrig = ""
+                            if "|" in str(e):
+                                partes = [p.strip() for p in str(e).split("|")]
+                                tipo_btu = partes[0]
+                                refrig   = partes[1] if len(partes) > 1 else ""
+                                # Separar tipo y BTU
+                                if "BTU" in tipo_btu.upper():
+                                    idx = tipo_btu.upper().find("BTU")
+                                    btu  = tipo_btu[:idx].strip().split()[-1] + " BTU"
+                                    tipo = " ".join(tipo_btu[:idx].strip().split()[:-1])
+                                else:
+                                    tipo = tipo_btu
+                            else:
+                                tipo = str(e)
+                            return tipo.strip(), btu.strip(), refrig.strip()
+
+                        _eq_ser_cond, _eq_ser_evap  = _parse_serial(eq_data.get("Numero_Serie",""))
+                        _eq_ubic_evap, _eq_ubic_cond = _parse_ubicacion(eq_data.get("Ubicacion",""))
+                        _eq_tipo, _eq_btu, _eq_refrig = _parse_specs(eq_data.get("Especificaciones",""))
 
                         st.markdown(f"### 📄 Reporte HVAC — {id_ot_sel}")
 
@@ -3763,16 +3818,16 @@ elif pagina == "ots":
                             st.markdown("**🔧 Datos del equipo**")
                             dc1, dc2 = st.columns(2)
                             with dc1:
-                                r_tipo_eq   = st.text_input("Tipo de equipo",      value=datos_ocr.get("marca", eq_data.get("Servicio","")))
-                                r_marca     = st.text_input("Marca",               value=datos_ocr.get("marca",   eq_data.get("Marca","")))
-                                r_modelo    = st.text_input("Modelo",              value=datos_ocr.get("modelo",  eq_data.get("Modelo","")))
-                                r_ser_cond  = st.text_input("Serial Condensadora", value=datos_ocr.get("ser_cond",eq_data.get("Numero_Serie","")))
-                                r_ser_evap  = st.text_input("Serial Evaporadora",  value=datos_ocr.get("ser_evap",""))
+                                r_tipo_eq   = st.text_input("Tipo de equipo",      value=datos_ocr.get("tipo_eq",  _eq_tipo  or eq_data.get("Servicio","")))
+                                r_marca     = st.text_input("Marca",               value=datos_ocr.get("marca",    eq_data.get("Marca","")))
+                                r_modelo    = st.text_input("Modelo",              value=datos_ocr.get("modelo",   eq_data.get("Modelo","")))
+                                r_ser_cond  = st.text_input("Serial Condensadora", value=datos_ocr.get("ser_cond", _eq_ser_cond))
+                                r_ser_evap  = st.text_input("Serial Evaporadora",  value=datos_ocr.get("ser_evap", _eq_ser_evap))
                             with dc2:
-                                r_btu       = st.text_input("Capacidad BTU/CFM",   value=datos_ocr.get("btu",     eq_data.get("Especificaciones","")))
-                                r_refrig    = st.text_input("Tipo de refrigerante", value=datos_ocr.get("refrig", eq_data.get("Tipo_Refrigerante","")))
-                                r_ubic_evap = st.text_input("Ubicación Evaporadora", value=datos_ocr.get("ubic_evap", eq_data.get("Ubicacion","")))
-                                r_ubic_cond = st.text_input("Ubicación Condensadora", value=datos_ocr.get("ubic_cond",""))
+                                r_btu       = st.text_input("Capacidad BTU/CFM",   value=datos_ocr.get("btu",      _eq_btu))
+                                r_refrig    = st.text_input("Tipo de refrigerante", value=datos_ocr.get("refrig",   _eq_refrig))
+                                r_ubic_evap = st.text_input("Ubicación Evaporadora", value=datos_ocr.get("ubic_evap", _eq_ubic_evap))
+                                r_ubic_cond = st.text_input("Ubicación Condensadora", value=datos_ocr.get("ubic_cond", _eq_ubic_cond))
 
                             st.divider()
                             # ── Datos de medición ─────────────────────────
