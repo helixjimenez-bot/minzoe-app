@@ -3176,7 +3176,8 @@ elif pagina == "ots":
                 with c_btn:
                     if st.button("→ Ver OT", key=f"vtec_{row['ID']}",
                                  use_container_width=True):
-                        st.session_state["tec_ot_sel"] = row["ID"]
+                        st.session_state["ot_preselect"]    = row["ID"]
+                        st.session_state["_tec_en_reporte"] = True
                         st.rerun()
 
             # OTs finalizadas
@@ -3252,7 +3253,8 @@ elif pagina == "ots":
         else:
             # Botón volver si el técnico está en modo reporte
             if st.session_state.get("_tec_en_reporte"):
-                if st.button("← Volver a Mis OTs", key="tec_volver_ots"):
+                if st.button("← Volver a Mis OTs", key="tec_volver_ots",
+                             use_container_width=False):
                     st.session_state.pop("_tec_en_reporte", None)
                     st.session_state.pop("ot_preselect", None)
                     st.rerun()
@@ -3335,7 +3337,11 @@ elif pagina == "ots":
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
                 # Si viene del dashboard abrir directamente en Editar
                 tab_ini = 1 if ot_pre else 0
-                det, edi, rep, ot_com, ot_hist, eli = st.tabs(["🔍 Ver detalle", "✏️ Editar", "📄 Reportar", "💬 Comentarios", "📜 Historial", "🗑️ Eliminar"])
+                if st.session_state.get("_tec_en_reporte"):
+                    det, rep, ot_com, ot_hist = st.tabs(["🔍 Ver detalle", "📄 Reportar", "💬 Comentarios", "📜 Historial"])
+                    edi = None; eli = None
+                else:
+                    det, edi, rep, ot_com, ot_hist, eli = st.tabs(["🔍 Ver detalle", "✏️ Editar", "📄 Reportar", "💬 Comentarios", "📜 Historial", "🗑️ Eliminar"])
 
                 with det:
                     c1, c2 = st.columns(2)
@@ -3400,7 +3406,8 @@ elif pagina == "ots":
                         st.caption("Agrega el celular del técnico en ✏️ Editar para tenerlo a la mano.")
                     st.text_area("Copia este mensaje y pégalo en WhatsApp:", value=mensaje_wa, height=300, key="msg_wa")
 
-                with edi:
+                if edi is not None:
+                 with edi:
                     with st.form("form_editar_ot"):
                         c1, c2 = st.columns(2)
                         with c1:
@@ -4211,7 +4218,8 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                     else:
                         tabla_html(hist_ot[["Fecha","Usuario","Campo","Valor_Anterior","Valor_Nuevo"]].sort_values("Fecha", ascending=False).reset_index(drop=True))
 
-                with eli:
+                if eli is not None:
+                 with eli:
                     st.warning(f"¿Eliminar la OT **{id_ot_sel}** de **{fila_ot['Cliente']}**? No se puede deshacer.")
                     c1, c2 = st.columns(2)
                     with c1:
