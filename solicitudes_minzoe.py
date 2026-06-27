@@ -4752,6 +4752,27 @@ elif pagina == "contratos_mto":
                         save_contratos(contratos)
                         st.success(f"✅ Contrato **{nuevo_con['ID_Contrato']}** registrado.")
 
+        # ── Eliminar OTs por ID de contrato (siempre visible) ────────────
+        st.divider()
+        st.markdown("**🗑️ Eliminar OTs mal generadas**")
+        if not ots.empty:
+            ots_mto = ots[ots["Origen"] == "Contrato Mantenimiento"] if "Origen" in ots.columns else pd.DataFrame()
+            if not ots_mto.empty:
+                ids_con_ref = sorted(ots_mto["SOL_Ref"].unique().tolist())
+                sel_con_ref = st.selectbox("Contrato (SOL_Ref de las OTs)", ids_con_ref, key="sel_con_ref_del")
+                ots_a_borrar = ots_mto[ots_mto["SOL_Ref"] == sel_con_ref]
+                st.caption(f"{len(ots_a_borrar)} OT(s) asociadas a este contrato")
+                if not ots_a_borrar.empty:
+                    tabla_html(ots_a_borrar[["ID","Sede","Servicio","Descripcion","Tecnico","Estado"]].reset_index(drop=True))
+                if st.button("🗑️ Eliminar estas OTs", type="secondary",
+                             use_container_width=True, key="btn_del_ots_ref"):
+                    ots = ots[ots["SOL_Ref"] != sel_con_ref].reset_index(drop=True)
+                    save_ots(ots)
+                    st.success(f"✅ {len(ots_a_borrar)} OT(s) eliminadas.")
+                    st.rerun()
+            else:
+                st.info("No hay OTs de contratos de mantenimiento registradas.")
+
         # ── Ver y editar contratos existentes ─────────────────────────────
         st.divider()
         st.markdown("**📋 Contratos registrados**")
