@@ -5470,10 +5470,16 @@ elif pagina == "usuarios":
                                 if c not in df_gs.columns:
                                     df_gs[c] = ""
                             df_gs = df_gs[cols]
-                            # Eliminar duplicados por la primera columna (PK)
-                            pk_col = cols[0]
+                            # Eliminar duplicados
+                            # clientes: deduplicar por (Empresa, Sede) porque un cliente tiene muchas sedes
+                            # otras tablas: deduplicar por la primera columna (ID)
                             antes = len(df_gs)
-                            df_gs = df_gs.drop_duplicates(subset=[pk_col]).reset_index(drop=True)
+                            if tab == "clientes":
+                                pk_cols = ["Empresa", "Sede"]
+                                pk_cols = [c for c in pk_cols if c in df_gs.columns]
+                            else:
+                                pk_cols = [cols[0]]
+                            df_gs = df_gs.drop_duplicates(subset=pk_cols).reset_index(drop=True)
                             if len(df_gs) < antes:
                                 st.warning(f"⚠️ **{tab}**: {antes - len(df_gs)} duplicado(s) eliminado(s)")
                             ok = sb_save(tab, df_gs)
