@@ -3525,20 +3525,49 @@ elif pagina == "ots":
 
                         st.markdown(f"### 📄 Reporte HVAC — {id_ot_sel}")
 
-                        # ── Firma digital cliente (fuera del form) ────────────
-                        st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
-                        _canvas_hvac = None
-                        try:
-                            from streamlit_drawable_canvas import st_canvas as _st_canvas
-                            _canvas_hvac = _st_canvas(
-                                stroke_width=2, stroke_color="#000000",
-                                background_color="#FFFFFF", height=120, width=420,
-                                drawing_mode="freedraw",
-                                key=f"canvas_hvac_{id_ot_sel}",
-                            )
-                        except Exception:
-                            st.info("Instala streamlit-drawable-canvas para habilitar firma digital.")
-                        st.divider()
+                        # ── Fase 2: canvas de firma (aparece después de guardar el form) ──
+                        _hvac_raw_key = f"hvac_html_raw_{id_ot_sel}"
+                        if _hvac_raw_key in st.session_state:
+                            st.success("✅ Datos guardados. Solicite al cliente que firme a continuación.")
+                            st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
+                            _canvas_hvac2 = None
+                            try:
+                                from streamlit_drawable_canvas import st_canvas as _st_canvas2
+                                _canvas_hvac2 = _st_canvas2(
+                                    stroke_width=2, stroke_color="#000000",
+                                    background_color="#FFFFFF", height=130, width=450,
+                                    drawing_mode="freedraw",
+                                    key=f"canvas_hvac2_{id_ot_sel}",
+                                )
+                            except Exception:
+                                st.info("Librería de firma no disponible.")
+                            c_gen1, c_gen2 = st.columns([1, 1])
+                            with c_gen1:
+                                if st.button("📄 Generar Reporte PDF", type="primary",
+                                             use_container_width=True, key=f"gen_hvac_pdf_{id_ot_sel}"):
+                                    _firma_img = ""
+                                    try:
+                                        if _canvas_hvac2 is not None and _canvas_hvac2.image_data is not None:
+                                            from PIL import Image as _PI; import io as _io2, base64 as _b2
+                                            _arr2 = _canvas_hvac2.image_data
+                                            if _arr2[:,:,3].any():
+                                                _im2 = _PI.fromarray(_arr2.astype('uint8'), 'RGBA')
+                                                _bf2 = _io2.BytesIO(); _im2.save(_bf2, format='PNG')
+                                                _firma_img = f'<img src="data:image/png;base64,{_b2.b64encode(_bf2.getvalue()).decode()}" style="width:220px;height:80px;object-fit:contain;display:block;border-bottom:1px solid #333">'
+                                    except Exception:
+                                        pass
+                                    if not _firma_img:
+                                        _firma_img = '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
+                                    _html_final = st.session_state[_hvac_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_img)
+                                    st.session_state[f"hvac_html_{id_ot_sel}"] = _html_final
+                                    del st.session_state[_hvac_raw_key]
+                                    st.rerun()
+                            with c_gen2:
+                                if st.button("✏️ Editar datos del reporte", use_container_width=True,
+                                             key=f"editar_hvac_{id_ot_sel}"):
+                                    del st.session_state[_hvac_raw_key]
+                                    st.rerun()
+                            st.stop()
 
                         with st.form(f"form_reporte_aires_{id_ot_sel}", clear_on_submit=False):
 
@@ -3722,26 +3751,8 @@ elif pagina == "ots":
                                 _logo_b64 = get_logo_base64()
                                 _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
 
-                                # ── Firma digital cliente ──────────────────────
-                                _firma_hvac_b64 = ""
-                                try:
-                                    if _canvas_hvac is not None and _canvas_hvac.image_data is not None:
-                                        import numpy as _np
-                                        from PIL import Image as _PILImg
-                                        import io as _io, base64 as _b64m
-                                        _arr = _canvas_hvac.image_data
-                                        if _arr[:,:,3].any():  # hay trazos
-                                            _img = _PILImg.fromarray(_arr.astype('uint8'), 'RGBA')
-                                            _buf = _io.BytesIO()
-                                            _img.save(_buf, format='PNG')
-                                            _firma_hvac_b64 = f"data:image/png;base64,{_b64m.b64encode(_buf.getvalue()).decode()}"
-                                except Exception:
-                                    pass
-                                _firma_hvac_html = (
-                                    f'<img src="{_firma_hvac_b64}" style="width:220px;height:80px;object-fit:contain;display:block;border-bottom:1px solid #333">'
-                                    if _firma_hvac_b64 else
-                                    '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
-                                )
+                                # La firma se agrega en fase 2 (después del form)
+                                _firma_hvac_html = "<!--FIRMA_CLIENTE-->"
 
                                 # ── Filas dinámicas cliente/equipo (solo campos con valor) ──
                                 _cli_rows = []
@@ -3917,8 +3928,8 @@ elif pagina == "ots":
 </div>
 </body></html>"""
 
-                                # Guardar html en session_state para procesar FUERA del form
-                                st.session_state[f"hvac_html_{id_ot_sel}"] = html
+                                # Guardar HTML con placeholder — la firma se agrega en fase 2
+                                st.session_state[f"hvac_html_raw_{id_ot_sel}"] = html
                                 st.session_state[f"hvac_cli_{id_ot_sel}"]  = fila_ot["Cliente"]
                                 st.session_state[f"hvac_sede_{id_ot_sel}"] = fila_ot.get("Sede","")
                                 st.session_state[f"hvac_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
@@ -3973,20 +3984,49 @@ elif pagina == "ots":
                         # ── FORMATO LOCATIVOS ─────────────────────────────
                         st.markdown(f"### 📄 Reporte Locativos — {id_ot_sel}")
 
-                        # ── Firma digital cliente (fuera del form) ────────────
-                        st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
-                        _canvas_loc = None
-                        try:
-                            from streamlit_drawable_canvas import st_canvas as _st_canvas
-                            _canvas_loc = _st_canvas(
-                                stroke_width=2, stroke_color="#000000",
-                                background_color="#FFFFFF", height=120, width=420,
-                                drawing_mode="freedraw",
-                                key=f"canvas_loc_{id_ot_sel}",
-                            )
-                        except Exception:
-                            st.info("Instala streamlit-drawable-canvas para habilitar firma digital.")
-                        st.divider()
+                        # ── Fase 2: canvas de firma (aparece después de guardar el form) ──
+                        _loc_raw_key = f"loc_html_raw_{id_ot_sel}"
+                        if _loc_raw_key in st.session_state:
+                            st.success("✅ Datos guardados. Solicite al cliente que firme a continuación.")
+                            st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
+                            _canvas_loc2 = None
+                            try:
+                                from streamlit_drawable_canvas import st_canvas as _st_canvas3
+                                _canvas_loc2 = _st_canvas3(
+                                    stroke_width=2, stroke_color="#000000",
+                                    background_color="#FFFFFF", height=130, width=450,
+                                    drawing_mode="freedraw",
+                                    key=f"canvas_loc2_{id_ot_sel}",
+                                )
+                            except Exception:
+                                st.info("Librería de firma no disponible.")
+                            c_loc1, c_loc2 = st.columns([1, 1])
+                            with c_loc1:
+                                if st.button("📄 Generar Reporte PDF", type="primary",
+                                             use_container_width=True, key=f"gen_loc_pdf_{id_ot_sel}"):
+                                    _firma_loc = ""
+                                    try:
+                                        if _canvas_loc2 is not None and _canvas_loc2.image_data is not None:
+                                            from PIL import Image as _PI3; import io as _io3, base64 as _b3
+                                            _arr3 = _canvas_loc2.image_data
+                                            if _arr3[:,:,3].any():
+                                                _im3 = _PI3.fromarray(_arr3.astype('uint8'), 'RGBA')
+                                                _bf3 = _io3.BytesIO(); _im3.save(_bf3, format='PNG')
+                                                _firma_loc = f'<img src="data:image/png;base64,{_b3.b64encode(_bf3.getvalue()).decode()}" style="width:220px;height:80px;object-fit:contain;display:block;border-bottom:1px solid #333">'
+                                    except Exception:
+                                        pass
+                                    if not _firma_loc:
+                                        _firma_loc = '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
+                                    _html_loc_final = st.session_state[_loc_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_loc)
+                                    st.session_state[f"loc_html_{id_ot_sel}"] = _html_loc_final
+                                    del st.session_state[_loc_raw_key]
+                                    st.rerun()
+                            with c_loc2:
+                                if st.button("✏️ Editar datos del reporte", use_container_width=True,
+                                             key=f"editar_loc_{id_ot_sel}"):
+                                    del st.session_state[_loc_raw_key]
+                                    st.rerun()
+                            st.stop()
 
                         with st.form(f"form_reporte_loc_{id_ot_sel}", clear_on_submit=False):
 
@@ -4098,26 +4138,8 @@ elif pagina == "ots":
                                 _logo_b64 = get_logo_base64()
                                 _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
 
-                                # ── Firma digital cliente ──────────────────────
-                                _firma_loc_b64 = ""
-                                try:
-                                    if _canvas_loc is not None and _canvas_loc.image_data is not None:
-                                        import numpy as _np
-                                        from PIL import Image as _PILImg
-                                        import io as _io, base64 as _b64m
-                                        _arr = _canvas_loc.image_data
-                                        if _arr[:,:,3].any():
-                                            _img = _PILImg.fromarray(_arr.astype('uint8'), 'RGBA')
-                                            _buf = _io.BytesIO()
-                                            _img.save(_buf, format='PNG')
-                                            _firma_loc_b64 = f"data:image/png;base64,{_b64m.b64encode(_buf.getvalue()).decode()}"
-                                except Exception:
-                                    pass
-                                _firma_loc_html = (
-                                    f'<img src="{_firma_loc_b64}" style="width:220px;height:80px;object-fit:contain;display:block;border-bottom:1px solid #333">'
-                                    if _firma_loc_b64 else
-                                    '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
-                                )
+                                # La firma se agrega en fase 2 (después del form)
+                                _firma_loc_html = "<!--FIRMA_CLIENTE-->"
 
                                 html_loc = f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
@@ -4225,7 +4247,7 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 </div>
 </body></html>"""
 
-                                st.session_state[f"loc_html_{id_ot_sel}"] = html_loc
+                                st.session_state[f"loc_html_raw_{id_ot_sel}"] = html_loc
                                 st.session_state[f"loc_cli_{id_ot_sel}"]  = fila_ot["Cliente"]
                                 st.session_state[f"loc_sede_{id_ot_sel}"] = fila_ot.get("Sede","")
                                 st.session_state[f"loc_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
