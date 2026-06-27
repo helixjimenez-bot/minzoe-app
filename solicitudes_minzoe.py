@@ -3288,10 +3288,11 @@ elif pagina == "ots":
                         padding:5px 16px;font-size:0.76rem;font-weight:700;
                         gap:0;border-bottom:2px solid #dc2626'>
               <span style='flex:0 0 18px'></span>
-              <span style='flex:1 1 130px;padding-left:4px'>ID</span>
-              <span style='flex:1 1 140px'>Vencimiento</span>
-              <span style='flex:1 1 170px'>Cliente</span>
-              <span style='flex:1 1 140px'>Servicio</span>
+              <span style='flex:1 1 120px;padding-left:4px'>ID</span>
+              <span style='flex:1 1 130px'>Vencimiento</span>
+              <span style='flex:1 1 150px'>Cliente</span>
+              <span style='flex:1 1 150px'>Sede</span>
+              <span style='flex:1 1 130px'>Servicio</span>
               <span style='flex:0 0 95px;text-align:center'>Acción</span>
             </div>
             """, unsafe_allow_html=True)
@@ -3307,9 +3308,10 @@ elif pagina == "ots":
                 else:
                     dot, bg, brd = "#9ca3af", "#ffffff", "#e5e7eb"
 
-                cli_txt = str(row.get("Cliente", ""))[:22]
-                srv_txt = str(row.get("Servicio", ""))[:18]
-                fl_txt  = str(row.get("Fecha_Limite", ""))
+                cli_txt  = str(row.get("Cliente", ""))[:20]
+                sede_txt = str(row.get("Sede", ""))[:20]
+                srv_txt  = str(row.get("Servicio", ""))[:16]
+                fl_txt   = str(row.get("Fecha_Limite", ""))
 
                 c_row, c_btn = st.columns([6, 1])
                 with c_row:
@@ -3319,10 +3321,11 @@ elif pagina == "ots":
                                 display:flex;align-items:center;gap:10px;margin:2px 0;
                                 border-radius:0 4px 4px 0'>
                       <span style='color:{dot};font-size:1.1rem;flex:0 0 14px'>●</span>
-                      <span style='font-weight:700;font-size:0.83rem;flex:1 1 130px;color:#111'>{row['ID']}</span>
-                      <span style='font-size:0.81rem;flex:1 1 140px;color:#555'>{fl_txt}</span>
-                      <span style='font-size:0.81rem;flex:1 1 170px;color:#333'>{cli_txt}</span>
-                      <span style='font-size:0.81rem;flex:1 1 140px;color:#333'>{srv_txt}</span>
+                      <span style='font-weight:700;font-size:0.83rem;flex:1 1 120px;color:#111'>{row['ID']}</span>
+                      <span style='font-size:0.81rem;flex:1 1 130px;color:#555'>{fl_txt}</span>
+                      <span style='font-size:0.81rem;flex:1 1 150px;color:#333'>{cli_txt}</span>
+                      <span style='font-size:0.81rem;flex:1 1 150px;color:#333;font-weight:600'>{sede_txt}</span>
+                      <span style='font-size:0.81rem;flex:1 1 130px;color:#333'>{srv_txt}</span>
                     </div>""", unsafe_allow_html=True)
                 with c_btn:
                     if st.button("→ Ver OT", key=f"vtec_{row['ID']}",
