@@ -2894,43 +2894,118 @@ elif pagina == "clientes":
 
         st.divider()
 
-        buscar_cli = st.text_input("Buscar empresa", key="buscar_cli")
+        buscar_cli = st.text_input("🔍 Buscar empresa", key="buscar_cli")
         vista_cli  = cli if not buscar_cli else cli[cli["Empresa"].str.contains(buscar_cli, case=False, na=False)]
 
-        # Paginación de 5 registros
-        POR_PAG = 5
-        total_cli = len(vista_cli)
-        total_pags = max(1, -(-total_cli // POR_PAG))  # ceil division
-        pag_cli = st.session_state.get("pag_cli", 1)
-        inicio = (pag_cli - 1) * POR_PAG
-        fin    = inicio + POR_PAG
-        tabla_html(vista_cli.iloc[inicio:fin].reset_index(drop=True))
-
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c1:
-            if st.button("◀ Anterior", key="cli_prev", disabled=pag_cli <= 1):
-                st.session_state["pag_cli"] = pag_cli - 1
-                st.rerun()
-        with c2:
-            st.caption(f"Página {pag_cli} de {total_pags} — {total_cli} registro(s)")
-        with c3:
-            if st.button("Siguiente ▶", key="cli_next", disabled=pag_cli >= total_pags):
-                st.session_state["pag_cli"] = pag_cli + 1
-                st.rerun()
+        # Resumen por empresa
+        resumen_emp = (vista_cli.groupby("Empresa")
+                       .agg(NIT=("NIT","first"), Sedes=("Sede","count"))
+                       .reset_index())
+        tabla_html(resumen_emp.reset_index(drop=True))
+        st.caption(f"{len(resumen_emp)} empresa(s) — {len(vista_cli)} sede(s) en total")
 
         st.divider()
-        st.subheader("Eliminar una empresa / sede específica")
-        opciones_eli = [
-            f"{r['Empresa']} — {r['Sede']} (fila {i})"
-            for i, r in cli.iterrows()
-        ]
-        sel_eli = st.selectbox("Selecciona la fila a eliminar", opciones_eli)
-        if st.button("🗑️ Eliminar esta fila", type="secondary"):
-            idx_eli = int(sel_eli.split("fila ")[-1].replace(")", ""))
-            cli = cli.drop(index=idx_eli).reset_index(drop=True)
-            save_cli(cli)
-            st.success("Registro eliminado.")
-            st.rerun()
+
+        # ── Ver sedes y editar ────────────────────────────────────────────
+        st.subheader("🏢 Ver sedes y editar cliente")
+        empresas_lista = sorted(cli["Empresa"].unique().tolist())
+        emp_sel = st.selectbox("Selecciona la empresa", empresas_lista, key="emp_sel_edit")
+
+        if emp_sel:
+            sedes_emp = cli[cli["Empresa"].str.strip().str.lower() == emp_sel.strip().lower()].copy()
+            st.markdown(f"**{len(sedes_emp)} sede(s) registradas para {emp_sel}:**")
+            tabla_html(sedes_emp[["Sede","Direccion_Sede","Nombre_Contacto",
+                                   "Correo_Contacto","Celular_Contacto"]].reset_index(drop=True))
+
+            st.markdown("**✏️ Editar sede**")
+            sedes_lista = sedes_emp["Sede"].tolist()
+            sede_sel_edit = st.selectbox("Selecciona la sede a editar", sedes_lista, key="sede_sel_edit")
+
+            if sede_sel_edit:
+                idx_sede = sedes_emp[sedes_emp["Sede"] == sede_sel_edit].index[0]
+                fs = cli.loc[idx_sede]
+
+                with st.form("form_editar_cliente"):
+                    st.markdown("**Datos de la empresa**")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        ee_empresa = st.text_input("Nombre empresa",    value=fs.get("Empresa",""))
+                        ee_nit     = st.text_input("NIT",               value=fs.get("NIT",""))
+                    with c2:
+                        ee_dir_emp = st.text_input("Dirección empresa", value=fs.get("Direccion_Empresa",""))
+
+                    st.markdown("**Datos de la sede**")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        ee_sede  = st.text_input("Nombre sede",     value=fs.get("Sede",""))
+                    with c2:
+                        ee_dir_s = st.text_input("Dirección sede",  value=fs.get("Direccion_Sede",""))
+
+                    st.markdown("**Contacto**")
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        ee_nom_c = st.text_input("Nombre contacto",  value=fs.get("Nombre_Contacto",""))
+                    with c2:
+                        ee_cor_c = st.text_input("Correo contacto",  value=fs.get("Correo_Contacto",""))
+                    with c3:
+                        ee_cel_c = st.text_input("Celular contacto", value=fs.get("Celular_Contacto",""))
+
+                    c_grd, c_eli = st.columns(2)
+                    with c_grd:
+                        guardar_edit = st.form_submit_button("💾 Guardar cambios", type="primary", use_container_width=True)
+                    with c_eli:
+                        eliminar_sede = st.form_submit_button("🗑️ Eliminar esta sede", use_container_width=True)
+
+                    if guardar_edit:
+                        cli.loc[idx_sede, "Empresa"]           = ee_empresa.strip()
+                        cli.loc[idx_sede, "NIT"]               = ee_nit.strip()
+                        cli.loc[idx_sede, "Direccion_Empresa"] = ee_dir_emp.strip()
+                        cli.loc[idx_sede, "Sede"]              = ee_sede.strip()
+                        cli.loc[idx_sede, "Direccion_Sede"]    = ee_dir_s.strip()
+                        cli.loc[idx_sede, "Nombre_Contacto"]   = ee_nom_c.strip()
+                        cli.loc[idx_sede, "Correo_Contacto"]   = ee_cor_c.strip()
+                        cli.loc[idx_sede, "Celular_Contacto"]  = ee_cel_c.strip()
+                        save_cli(cli)
+                        st.success(f"✅ Sede **{sede_sel_edit}** actualizada.")
+                        st.rerun()
+
+                    if eliminar_sede:
+                        cli = cli.drop(index=idx_sede).reset_index(drop=True)
+                        save_cli(cli)
+                        st.success(f"✅ Sede **{sede_sel_edit}** eliminada.")
+                        st.rerun()
+
+            # Agregar nueva sede a esta empresa
+            st.divider()
+            with st.expander("➕ Agregar nueva sede a esta empresa"):
+                with st.form("form_nueva_sede"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        ns_sede  = st.text_input("Nombre de la sede *")
+                        ns_dir   = st.text_input("Dirección de la sede")
+                        ns_nom_c = st.text_input("Nombre contacto")
+                    with c2:
+                        ns_cor_c = st.text_input("Correo contacto")
+                        ns_cel_c = st.text_input("Celular contacto")
+                    if st.form_submit_button("➕ Agregar sede", type="primary", use_container_width=True):
+                        if not ns_sede.strip():
+                            st.error("El nombre de la sede es obligatorio.")
+                        else:
+                            fila_ref = cli[cli["Empresa"].str.strip().str.lower() == emp_sel.strip().lower()].iloc[0]
+                            nueva_sede = {
+                                "Empresa":           emp_sel,
+                                "NIT":               fila_ref.get("NIT",""),
+                                "Direccion_Empresa": fila_ref.get("Direccion_Empresa",""),
+                                "Sede":              ns_sede.strip(),
+                                "Direccion_Sede":    ns_dir.strip(),
+                                "Nombre_Contacto":   ns_nom_c.strip(),
+                                "Correo_Contacto":   ns_cor_c.strip(),
+                                "Celular_Contacto":  ns_cel_c.strip(),
+                            }
+                            cli = pd.concat([cli, pd.DataFrame([nueva_sede])], ignore_index=True)
+                            save_cli(cli)
+                            st.success(f"✅ Sede **{ns_sede}** agregada a {emp_sel}.")
+                            st.rerun()
     else:
         st.info("Aún no hay empresas registradas.")
 
