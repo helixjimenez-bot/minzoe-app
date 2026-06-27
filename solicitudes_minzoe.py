@@ -1847,6 +1847,9 @@ with st.sidebar:
     if st.session_state.get("user_rol") == "admin":
         st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>ADMINISTRACIÓN</p>", unsafe_allow_html=True)
         if st.button("👥 Gestionar usuarios", use_container_width=True):
+            st.session_state["pagina"] = "gestion_usuarios"
+            st.rerun()
+        if st.button("🔄 Migración", use_container_width=True):
             st.session_state["pagina"] = "usuarios"
             st.rerun()
         with st.expander("⚙️ Subir logo"):
@@ -4866,7 +4869,91 @@ elif pagina == "calendario":
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PÁGINA: GESTIÓN DE USUARIOS (solo admin)
+# PÁGINA: GESTIÓN DE USUARIOS (solo admin) — limpia, sin migración
+# ══════════════════════════════════════════════════════════════════════════════
+elif pagina == "gestion_usuarios":
+    if st.session_state.get("user_rol") != "admin":
+        st.error("Acceso restringido.")
+        st.stop()
+    st.subheader("👥 Gestión de Usuarios")
+    usuarios = load_usuarios()
+
+    with st.form("form_nuevo_usuario"):
+        st.markdown("**Agregar nuevo usuario**")
+        c1, c2 = st.columns(2)
+        with c1:
+            nu_nombre = st.text_input("Nombre completo")
+            nu_correo = st.text_input("Correo electrónico")
+        with c2:
+            nu_pwd  = st.text_input("Contraseña", type="password")
+            nu_rol  = st.selectbox("Rol", ["usuario", "tecnico", "admin"])
+        if st.form_submit_button("➕ Agregar usuario", type="primary", use_container_width=True):
+            if not nu_nombre or not nu_correo or not nu_pwd:
+                st.error("Todos los campos son obligatorios.")
+            elif nu_correo.lower() in usuarios["correo"].str.lower().values:
+                st.error("Ese correo ya está registrado.")
+            else:
+                nuevo_u = {
+                    "nombre":        nu_nombre,
+                    "correo":        nu_correo,
+                    "password_hash": hash_pwd(nu_pwd),
+                    "rol":           nu_rol,
+                }
+                usuarios = pd.concat([usuarios, pd.DataFrame([nuevo_u])], ignore_index=True)
+                save_usuarios(usuarios)
+                st.success(f"✅ Usuario **{nu_nombre}** creado.")
+                st.rerun()
+
+    st.divider()
+    st.subheader("Usuarios registrados")
+    usuarios = load_usuarios()
+    if not usuarios.empty:
+        vista_u = usuarios[["nombre", "correo", "rol"]].copy()
+        tabla_html(vista_u.reset_index(drop=True))
+        st.caption(f"{len(usuarios)} usuario(s) registrado(s).")
+
+        st.divider()
+        st.subheader("Eliminar usuario")
+        mi_correo = st.session_state.get("user_correo", "")
+        otros = usuarios[usuarios["correo"].str.lower() != mi_correo.lower()]
+        if otros.empty:
+            st.info("No hay otros usuarios para eliminar.")
+        else:
+            ops = {f"{r['nombre']} — {r['correo']} ({r['rol']})": r['correo']
+                   for _, r in otros.iterrows()}
+            sel = st.selectbox("Selecciona el usuario a eliminar", list(ops.keys()))
+            if st.button("🗑️ Eliminar usuario", type="secondary", use_container_width=True):
+                correo_eli = ops[sel]
+                usuarios = usuarios[usuarios["correo"].str.lower() != correo_eli.lower()].reset_index(drop=True)
+                save_usuarios(usuarios)
+                st.success(f"✅ Usuario eliminado.")
+                st.rerun()
+
+    st.divider()
+    st.subheader("Cambiar mi contraseña")
+    with st.form("form_cambiar_pwd_gu"):
+        pwd_act  = st.text_input("Contraseña actual", type="password")
+        pwd_new  = st.text_input("Nueva contraseña", type="password")
+        pwd_new2 = st.text_input("Confirmar nueva contraseña", type="password")
+        if st.form_submit_button("🔐 Cambiar contraseña", type="primary"):
+            mi_correo2 = st.session_state.get("user_correo", "")
+            usuarios = load_usuarios()
+            idx_u = usuarios[usuarios["correo"].str.lower() == mi_correo2.lower()].index
+            if idx_u.empty:
+                st.error("Usuario no encontrado.")
+            elif usuarios.loc[idx_u[0], "password_hash"] != hash_pwd(pwd_act):
+                st.error("Contraseña actual incorrecta.")
+            elif pwd_new != pwd_new2:
+                st.error("Las contraseñas nuevas no coinciden.")
+            elif len(pwd_new) < 6:
+                st.error("La contraseña debe tener al menos 6 caracteres.")
+            else:
+                usuarios.loc[idx_u[0], "password_hash"] = hash_pwd(pwd_new)
+                save_usuarios(usuarios)
+                st.success("✅ Contraseña actualizada.")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PÁGINA: MIGRACIÓN (solo admin)
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "usuarios":
     usuarios = load_usuarios()
