@@ -3105,6 +3105,132 @@ elif pagina == "ots":
     else:
         if ots.empty:
             st.info("Aún no hay órdenes de trabajo registradas.")
+
+        # ── VISTA ESPECIAL TÉCNICO ────────────────────────────────────────────
+        elif _es_tec_ots:
+            ots_activas = ots[~ots["Estado"].isin(["Finalizada", "Cancelada"])].copy()
+            ots_todas   = ots.copy()
+
+            # Clasificar por urgencia según fecha límite
+            def _urgencia(fl_str):
+                try:
+                    fl = datetime.strptime(fl_str, "%Y-%m-%d %H:%M")
+                    h  = (fl - ahora_colombia()).total_seconds() / 3600
+                    if h < 0:    return 0   # vencida
+                    elif h <= 24: return 1  # próxima
+                    else:         return 2  # ok
+                except Exception:
+                    return 2
+
+            ots_activas["_urg"] = ots_activas["Fecha_Limite"].apply(_urgencia)
+            ots_activas = ots_activas.sort_values("_urg")
+
+            # Encabezado
+            st.markdown("""
+            <div style='background:#dc2626;color:#fff;padding:9px 16px;
+                        border-radius:8px 8px 0 0;font-weight:700;font-size:0.95rem;
+                        margin-bottom:0'>
+              ⚠&nbsp;&nbsp;OTs que requieren atención
+            </div>
+            <div style='display:flex;background:#b91c1c;color:#fca5a5;
+                        padding:5px 16px;font-size:0.76rem;font-weight:700;
+                        gap:0;border-bottom:2px solid #dc2626'>
+              <span style='flex:0 0 18px'></span>
+              <span style='flex:1 1 130px;padding-left:4px'>ID</span>
+              <span style='flex:1 1 140px'>Vencimiento</span>
+              <span style='flex:1 1 170px'>Cliente</span>
+              <span style='flex:1 1 140px'>Servicio</span>
+              <span style='flex:0 0 95px;text-align:center'>Acción</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Filas
+            _tec_ot_sel = st.session_state.get("tec_ot_sel", None)
+            for _, row in ots_activas.iterrows():
+                urg = row["_urg"]
+                if urg == 0:
+                    dot, bg, brd = "#dc2626", "#fff5f5", "#dc2626"
+                elif urg == 1:
+                    dot, bg, brd = "#f59e0b", "#fffbeb", "#f59e0b"
+                else:
+                    dot, bg, brd = "#9ca3af", "#ffffff", "#e5e7eb"
+
+                cli_txt = str(row.get("Cliente", ""))[:22]
+                srv_txt = str(row.get("Servicio", ""))[:18]
+                fl_txt  = str(row.get("Fecha_Limite", ""))
+
+                c_row, c_btn = st.columns([6, 1])
+                with c_row:
+                    st.markdown(f"""
+                    <div style='background:{bg};border:1px solid {brd};
+                                border-left:5px solid {brd};padding:9px 14px;
+                                display:flex;align-items:center;gap:10px;margin:2px 0;
+                                border-radius:0 4px 4px 0'>
+                      <span style='color:{dot};font-size:1.1rem;flex:0 0 14px'>●</span>
+                      <span style='font-weight:700;font-size:0.83rem;flex:1 1 130px;color:#111'>{row['ID']}</span>
+                      <span style='font-size:0.81rem;flex:1 1 140px;color:#555'>{fl_txt}</span>
+                      <span style='font-size:0.81rem;flex:1 1 170px;color:#333'>{cli_txt}</span>
+                      <span style='font-size:0.81rem;flex:1 1 140px;color:#333'>{srv_txt}</span>
+                    </div>""", unsafe_allow_html=True)
+                with c_btn:
+                    if st.button("→ Ver OT", key=f"vtec_{row['ID']}",
+                                 use_container_width=True):
+                        st.session_state["tec_ot_sel"] = row["ID"]
+                        st.rerun()
+
+            # OTs finalizadas
+            ots_fin = ots_todas[ots_todas["Estado"].isin(["Finalizada", "Cancelada"])]
+            if not ots_fin.empty:
+                with st.expander(f"📁 Historial ({len(ots_fin)} OTs finalizadas / canceladas)"):
+                    tabla_html(ots_fin[["ID","Fecha_Creacion","Cliente","Servicio","Estado","Fecha_Ejecucion"]].reset_index(drop=True))
+
+            # Detalle de la OT seleccionada
+            if _tec_ot_sel and _tec_ot_sel in ots["ID"].values:
+                st.divider()
+                fila_ot = ots[ots["ID"] == _tec_ot_sel].iloc[0]
+                st.markdown(f"### 📋 Detalle — {_tec_ot_sel}")
+                d1, d2 = st.columns(2)
+                with d1:
+                    st.markdown(f"**Cliente:** {fila_ot.get('Cliente','')}")
+                    st.markdown(f"**Sede:** {fila_ot.get('Sede','')}")
+                    st.markdown(f"**Servicio:** {fila_ot.get('Servicio','')}")
+                    st.markdown(f"**Descripción:** {fila_ot.get('Descripcion','')}")
+                with d2:
+                    st.markdown(f"**Estado:** {fila_ot.get('Estado','')}")
+                    st.markdown(f"**Fecha límite:** {fila_ot.get('Fecha_Limite','')}")
+                    st.markdown(f"**Fecha ejecución:** {fila_ot.get('Fecha_Ejecucion','')}")
+                    st.markdown(f"**Observaciones:** {fila_ot.get('Observaciones','')}")
+
+                # Actualizar estado
+                with st.form(f"form_tec_ot_{_tec_ot_sel}"):
+                    st.markdown("**Actualizar esta OT**")
+                    fc1, fc2 = st.columns(2)
+                    with fc1:
+                        nuevo_est = st.selectbox("Estado", ESTADOS_OT,
+                            index=ESTADOS_OT.index(fila_ot["Estado"]) if fila_ot["Estado"] in ESTADOS_OT else 0)
+                        fecha_ej  = st.text_input("Fecha ejecución", value=fila_ot.get("Fecha_Ejecucion",""))
+                    with fc2:
+                        hora_ini  = st.text_input("Hora inicio", value=fila_ot.get("Hora_Inicio",""))
+                        hora_fin  = st.text_input("Hora fin",    value=fila_ot.get("Hora_Final",""))
+                    obs_tec = st.text_area("Observaciones", value=fila_ot.get("Observaciones",""))
+                    if st.form_submit_button("💾 Guardar", type="primary", use_container_width=True):
+                        ots_all = get_ots()
+                        idx_tec = ots_all[ots_all["ID"] == _tec_ot_sel].index[0]
+                        ots_all.loc[idx_tec, "Estado"]         = nuevo_est
+                        ots_all.loc[idx_tec, "Fecha_Ejecucion"]= fecha_ej
+                        ots_all.loc[idx_tec, "Hora_Inicio"]    = hora_ini
+                        ots_all.loc[idx_tec, "Hora_Final"]     = hora_fin
+                        ots_all.loc[idx_tec, "Observaciones"]  = obs_tec
+                        sb_save("ordenes_trabajo", ots_all)
+                        _invalidar_cache("ordenes_trabajo")
+                        st.success("✅ OT actualizada.")
+                        st.rerun()
+
+                if st.button("✖ Cerrar detalle", key="cerrar_det_tec"):
+                    st.session_state.pop("tec_ot_sel", None)
+                    st.rerun()
+
+        # ── VISTA NORMAL (admin / usuario) ───────────────────────────────────
         else:
             ORIGENES  = ["Solicitud", "Manual", "Contrato Mantenimiento"]
             c1, c2, c3, c4 = st.columns(4)
