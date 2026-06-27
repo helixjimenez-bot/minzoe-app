@@ -3811,17 +3811,39 @@ elif pagina == "ots":
                             )
                             if not _foto_firma_h:
                                 st.warning("⚠️ Debes tomar la foto de la firma del cliente para continuar")
+                            else:
+                                # Rotación de la imagen
+                                _rot_key_h = f"rot_h_{id_ot_sel}"
+                                if _rot_key_h not in st.session_state:
+                                    st.session_state[_rot_key_h] = 0
+                                rc1, rc2, rc3 = st.columns([1,1,3])
+                                if rc1.button("↺ Rotar izq.", key=f"rot_l_h_{id_ot_sel}"):
+                                    st.session_state[_rot_key_h] = (st.session_state[_rot_key_h] + 90) % 360
+                                    st.rerun()
+                                if rc2.button("↻ Rotar der.", key=f"rot_r_h_{id_ot_sel}"):
+                                    st.session_state[_rot_key_h] = (st.session_state[_rot_key_h] - 90) % 360
+                                    st.rerun()
+                                if st.session_state[_rot_key_h] != 0:
+                                    from PIL import Image as _PILr; import io as _ior
+                                    _img_r = _PILr.open(_foto_firma_h).rotate(st.session_state[_rot_key_h], expand=True)
+                                    _buf_r = _ior.BytesIO(); _img_r.save(_buf_r, format="PNG")
+                                    st.image(_buf_r.getvalue(), caption=f"Vista previa (rotada {st.session_state[_rot_key_h]}°)", width=300)
 
                             c_g1, c_g2 = st.columns([2, 1])
                             with c_g1:
                                 if st.button("✅ Enviar a revisión", type="primary",
                                              use_container_width=True, key=f"enviar_hvac_{id_ot_sel}"):
                                     if not _foto_firma_h:
-                                        st.error("📸 Debes subir la foto de la firma del cliente antes de enviar.")
+                                        st.error("📸 Debes tomar la foto de la firma del cliente antes de enviar.")
                                     else:
-                                        # Convertir foto a base64
-                                        import base64 as _b64f
-                                        _firma_b64f = f"data:{_foto_firma_h.type};base64,{_b64f.b64encode(_foto_firma_h.read()).decode()}"
+                                        # Aplicar rotación si corresponde
+                                        from PIL import Image as _PILs; import io as _ios, base64 as _b64f
+                                        _img_s = _PILs.open(_foto_firma_h)
+                                        _rot_ang = st.session_state.get(f"rot_h_{id_ot_sel}", 0)
+                                        if _rot_ang:
+                                            _img_s = _img_s.rotate(_rot_ang, expand=True)
+                                        _buf_s = _ios.BytesIO(); _img_s.save(_buf_s, format="PNG")
+                                        _firma_b64f = f"data:image/png;base64,{_b64f.b64encode(_buf_s.getvalue()).decode()}"
                                         _firma_img_h = f'<img src="{_firma_b64f}" style="width:220px;height:100px;object-fit:contain;display:block;border-bottom:1px solid #333">'
                                         _html_final = st.session_state[_hvac_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_img_h)
                                         guardar_reporte_sb(
@@ -4504,16 +4526,37 @@ elif pagina == "ots":
                             )
                             if not _foto_firma_l:
                                 st.warning("⚠️ Debes tomar la foto de la firma del cliente para continuar")
+                            else:
+                                _rot_key_l = f"rot_l_{id_ot_sel}"
+                                if _rot_key_l not in st.session_state:
+                                    st.session_state[_rot_key_l] = 0
+                                rl1, rl2, rl3 = st.columns([1,1,3])
+                                if rl1.button("↺ Rotar izq.", key=f"rot_li_{id_ot_sel}"):
+                                    st.session_state[_rot_key_l] = (st.session_state[_rot_key_l] + 90) % 360
+                                    st.rerun()
+                                if rl2.button("↻ Rotar der.", key=f"rot_ri_{id_ot_sel}"):
+                                    st.session_state[_rot_key_l] = (st.session_state[_rot_key_l] - 90) % 360
+                                    st.rerun()
+                                if st.session_state[_rot_key_l] != 0:
+                                    from PIL import Image as _PILrl; import io as _iorl
+                                    _img_rl = _PILrl.open(_foto_firma_l).rotate(st.session_state[_rot_key_l], expand=True)
+                                    _buf_rl = _iorl.BytesIO(); _img_rl.save(_buf_rl, format="PNG")
+                                    st.image(_buf_rl.getvalue(), caption=f"Vista previa (rotada {st.session_state[_rot_key_l]}°)", width=300)
 
                             c_l1, c_l2 = st.columns([2, 1])
                             with c_l1:
                                 if st.button("✅ Enviar a revisión", type="primary",
                                              use_container_width=True, key=f"enviar_loc_{id_ot_sel}"):
                                     if not _foto_firma_l:
-                                        st.error("📸 Debes subir la foto de la firma del cliente antes de enviar.")
+                                        st.error("📸 Debes tomar la foto de la firma del cliente antes de enviar.")
                                     else:
-                                        import base64 as _b64fl
-                                        _firma_b64fl = f"data:{_foto_firma_l.type};base64,{_b64fl.b64encode(_foto_firma_l.read()).decode()}"
+                                        from PIL import Image as _PILsl; import io as _iosl, base64 as _b64fl
+                                        _img_sl = _PILsl.open(_foto_firma_l)
+                                        _rot_ang_l = st.session_state.get(f"rot_l_{id_ot_sel}", 0)
+                                        if _rot_ang_l:
+                                            _img_sl = _img_sl.rotate(_rot_ang_l, expand=True)
+                                        _buf_sl = _iosl.BytesIO(); _img_sl.save(_buf_sl, format="PNG")
+                                        _firma_b64fl = f"data:image/png;base64,{_b64fl.b64encode(_buf_sl.getvalue()).decode()}"
                                         _firma_img_l = f'<img src="{_firma_b64fl}" style="width:220px;height:100px;object-fit:contain;display:block;border-bottom:1px solid #333">'
                                         _html_loc_final = st.session_state[_loc_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_img_l)
                                         guardar_reporte_sb(
