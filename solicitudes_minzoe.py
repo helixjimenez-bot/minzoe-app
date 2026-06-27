@@ -2935,6 +2935,9 @@ elif pagina == "ots":
         # Filtrar OTs por técnico
         if not ots.empty and "Tecnico" in ots.columns:
             ots = ots[ots["Tecnico"].str.strip().str.lower() == _nom_tec_ots.strip().lower()].copy()
+    elif _rol_ots == "tecnico":
+        # Técnico en modo reporte: solo ver OTs, sin crear
+        accion_ot = "📋 Ver OTs"
     else:
         accion_ot = st.radio("", ["➕ Nueva OT", "📋 Ver OTs"], horizontal=True,
                              label_visibility="collapsed", key="accion_ot_radio")
