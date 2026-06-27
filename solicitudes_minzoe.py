@@ -3769,7 +3769,37 @@ elif pagina == "ots":
                         # ── Fase 2: canvas de firma (aparece después de guardar el form) ──
                         _hvac_raw_key = f"hvac_html_raw_{id_ot_sel}"
                         if _hvac_raw_key in st.session_state:
-                            st.success("✅ Datos guardados. Solicite al cliente que firme a continuación.")
+                            st.success("✅ Datos técnicos guardados. Ahora el cliente llena la encuesta y firma.")
+
+                            # ── Encuesta de satisfacción (FASE 2 — la llena el cliente) ──
+                            st.markdown("""
+                            <div style='background:#dc2626;color:#fff;padding:10px 16px;
+                                        border-radius:8px 8px 0 0;font-weight:700;font-size:0.95rem'>
+                              📋 Encuesta de satisfacción del servicio
+                              <span style='font-size:0.78rem;font-weight:400;color:#fca5a5'>
+                                &nbsp;— la llena el cliente
+                              </span>
+                            </div>""", unsafe_allow_html=True)
+                            enc1, enc2, enc3, enc4, enc5, enc6 = st.columns(6)
+                            enc_exp = enc1.number_input("Experiencia técnicos", 0, 20, 0, key=f"enc_exp_{id_ot_sel}")
+                            enc_cal = enc2.number_input("Calidad servicio",     0, 20, 0, key=f"enc_cal_{id_ot_sel}")
+                            enc_cum = enc3.number_input("Cumplimiento",         0, 20, 0, key=f"enc_cum_{id_ot_sel}")
+                            enc_pre = enc4.number_input("Presentación personal",0, 20, 0, key=f"enc_pre_{id_ot_sel}")
+                            enc_com = enc5.number_input("Comunicación",         0, 20, 0, key=f"enc_com_{id_ot_sel}")
+                            enc_total = enc_exp + enc_cal + enc_cum + enc_pre + enc_com
+                            _enivel = "Bueno ✅" if enc_total >= 85 else ("Regular ⚠️" if enc_total >= 51 else "Malo ❌")
+                            _ecol = "#166534" if enc_total >= 85 else ("#92400e" if enc_total >= 51 else "#7f1d1d")
+                            _ebg  = "#dcfce7" if enc_total >= 85 else ("#fef3c7" if enc_total >= 51 else "#fee2e2")
+                            enc6.markdown(f"""
+                            <div style='background:{_ebg};border:2px solid {_ecol};border-radius:8px;
+                                        padding:8px;text-align:center;margin-top:20px'>
+                              <div style='font-size:1.6rem;font-weight:900;color:{_ecol}'>{enc_total}</div>
+                              <div style='font-size:0.7rem;color:{_ecol}'>/ 100</div>
+                              <div style='font-size:0.75rem;font-weight:700;color:{_ecol}'>{_enivel}</div>
+                            </div>""", unsafe_allow_html=True)
+                            enc_obs_cli = st.text_input("Observaciones del cliente", key=f"enc_obs_{id_ot_sel}")
+                            st.divider()
+
                             st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
                             _canvas_hvac2 = None
                             try:
@@ -4045,42 +4075,6 @@ elif pagina == "ots":
                                                   value=fila_ot.get("Observaciones",""), height=100)
 
                             st.divider()
-                            # ── Encuesta de satisfacción (la llena el cliente) ──
-                            st.markdown("""
-                            <div style='background:#dc2626;color:#fff;padding:10px 16px;
-                                        border-radius:8px 8px 0 0;font-weight:700;font-size:0.95rem'>
-                              📋 Encuesta de satisfacción del servicio
-                              <span style='font-size:0.78rem;font-weight:400;color:#fca5a5'>
-                                &nbsp;— la llena el cliente
-                              </span>
-                            </div>
-                            <div style='background:#fff5f5;border:2px solid #dc2626;
-                                        border-top:none;border-radius:0 0 8px 8px;
-                                        padding:12px 16px 4px;margin-bottom:8px'>
-                              <p style='color:#666;font-size:0.8rem;margin:0 0 8px'>
-                                Puntaje de 0 a 20 por concepto — Total máximo: 100 puntos
-                              </p>
-                            </div>""", unsafe_allow_html=True)
-                            enc1, enc2, enc3, enc4, enc5, enc6 = st.columns(6)
-                            enc_exp = enc1.number_input("Experiencia técnicos", 0, 20, 0, key="enc_exp")
-                            enc_cal = enc2.number_input("Calidad servicio",     0, 20, 0, key="enc_cal")
-                            enc_cum = enc3.number_input("Cumplimiento",         0, 20, 0, key="enc_cum")
-                            enc_pre = enc4.number_input("Presentación personal",0, 20, 0, key="enc_pre")
-                            enc_com = enc5.number_input("Comunicación",         0, 20, 0, key="enc_com")
-                            enc_total = enc_exp + enc_cal + enc_cum + enc_pre + enc_com
-                            nivel = "Bueno ✅" if enc_total >= 85 else ("Regular ⚠️" if enc_total >= 51 else "Malo ❌")
-                            _col = "#166534" if enc_total >= 85 else ("#92400e" if enc_total >= 51 else "#7f1d1d")
-                            _bg  = "#dcfce7" if enc_total >= 85 else ("#fef3c7" if enc_total >= 51 else "#fee2e2")
-                            enc6.markdown(f"""
-                            <div style='background:{_bg};border:2px solid {_col};border-radius:8px;
-                                        padding:8px;text-align:center;margin-top:20px'>
-                              <div style='font-size:1.3rem;font-weight:900;color:{_col}'>{enc_total}</div>
-                              <div style='font-size:0.7rem;color:{_col}'>/ 100</div>
-                              <div style='font-size:0.75rem;font-weight:700;color:{_col}'>{nivel}</div>
-                            </div>""", unsafe_allow_html=True)
-                            enc_obs_cli = st.text_input("Observaciones del cliente sobre el servicio")
-
-                            st.divider()
                             # ── Tiempo de servicio ──────────────────────────
                             st.markdown("**⏱️ Tiempo de servicio**")
                             fc1, fc2, fc3 = st.columns(3)
@@ -4113,6 +4107,14 @@ elif pagina == "ots":
                                 r_vis  = st.session_state.get(f"r_vis_{id_ot_sel}",  False)
                                 r_emer = st.session_state.get(f"r_emer_{id_ot_sel}", False)
                                 r_inst = st.session_state.get(f"r_inst_{id_ot_sel}", False)
+                                # Encuesta: se leerá en fase 2 desde session_state
+                                enc_exp = st.session_state.get(f"enc_exp_{id_ot_sel}", 0)
+                                enc_cal = st.session_state.get(f"enc_cal_{id_ot_sel}", 0)
+                                enc_cum = st.session_state.get(f"enc_cum_{id_ot_sel}", 0)
+                                enc_pre = st.session_state.get(f"enc_pre_{id_ot_sel}", 0)
+                                enc_com = st.session_state.get(f"enc_com_{id_ot_sel}", 0)
+                                enc_total = enc_exp + enc_cal + enc_cum + enc_pre + enc_com
+                                enc_obs_cli = st.session_state.get(f"enc_obs_{id_ot_sel}", "")
 
                                 # ── Validación campos obligatorios de medición ──
                                 _campos_vacios = []
@@ -4484,7 +4486,37 @@ elif pagina == "ots":
                         # ── Fase 2: canvas de firma (aparece después de guardar el form) ──
                         _loc_raw_key = f"loc_html_raw_{id_ot_sel}"
                         if _loc_raw_key in st.session_state:
-                            st.success("✅ Datos guardados. Solicite al cliente que firme a continuación.")
+                            st.success("✅ Datos técnicos guardados. Ahora el cliente llena la encuesta y firma.")
+
+                            # ── Encuesta satisfacción Locativos FASE 2 ────
+                            st.markdown("""
+                            <div style='background:#dc2626;color:#fff;padding:10px 16px;
+                                        border-radius:8px 8px 0 0;font-weight:700;font-size:0.95rem'>
+                              📋 Encuesta de satisfacción del servicio
+                              <span style='font-size:0.78rem;font-weight:400;color:#fca5a5'>
+                                &nbsp;— la llena el cliente
+                              </span>
+                            </div>""", unsafe_allow_html=True)
+                            lenc1, lenc2, lenc3, lenc4, lenc5, lenc6 = st.columns(6)
+                            l_enc_exp = lenc1.number_input("Experiencia técnicos", 0, 20, 0, key=f"l_enc_exp_{id_ot_sel}")
+                            l_enc_cal = lenc2.number_input("Calidad servicio",     0, 20, 0, key=f"l_enc_cal_{id_ot_sel}")
+                            l_enc_cum = lenc3.number_input("Cumplimiento",         0, 20, 0, key=f"l_enc_cum_{id_ot_sel}")
+                            l_enc_pre = lenc4.number_input("Presentación personal",0, 20, 0, key=f"l_enc_pre_{id_ot_sel}")
+                            l_enc_com = lenc5.number_input("Comunicación",         0, 20, 0, key=f"l_enc_com_{id_ot_sel}")
+                            l_enc_total = l_enc_exp + l_enc_cal + l_enc_cum + l_enc_pre + l_enc_com
+                            _lnivel = "Bueno ✅" if l_enc_total >= 85 else ("Regular ⚠️" if l_enc_total >= 51 else "Malo ❌")
+                            _lcol = "#166534" if l_enc_total >= 85 else ("#92400e" if l_enc_total >= 51 else "#7f1d1d")
+                            _lbg  = "#dcfce7" if l_enc_total >= 85 else ("#fef3c7" if l_enc_total >= 51 else "#fee2e2")
+                            lenc6.markdown(f"""
+                            <div style='background:{_lbg};border:2px solid {_lcol};border-radius:8px;
+                                        padding:8px;text-align:center;margin-top:20px'>
+                              <div style='font-size:1.6rem;font-weight:900;color:{_lcol}'>{l_enc_total}</div>
+                              <div style='font-size:0.7rem;color:{_lcol}'>/ 100</div>
+                              <div style='font-size:0.75rem;font-weight:700;color:{_lcol}'>{_lnivel}</div>
+                            </div>""", unsafe_allow_html=True)
+                            l_enc_obs = st.text_input("Observaciones del cliente", key=f"l_enc_obs_{id_ot_sel}")
+                            st.divider()
+
                             st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
                             _canvas_loc2 = None
                             try:
@@ -4599,42 +4631,6 @@ elif pagina == "ots":
                                                   value=fila_ot.get("Observaciones",""), height=100, key="l_obs")
 
                             st.divider()
-                            # ── Encuesta de satisfacción (la llena el cliente) ──
-                            st.markdown("""
-                            <div style='background:#dc2626;color:#fff;padding:10px 16px;
-                                        border-radius:8px 8px 0 0;font-weight:700;font-size:0.95rem'>
-                              📋 Encuesta de satisfacción del servicio
-                              <span style='font-size:0.78rem;font-weight:400;color:#fca5a5'>
-                                &nbsp;— la llena el cliente
-                              </span>
-                            </div>
-                            <div style='background:#fff5f5;border:2px solid #dc2626;
-                                        border-top:none;border-radius:0 0 8px 8px;
-                                        padding:12px 16px 4px;margin-bottom:8px'>
-                              <p style='color:#666;font-size:0.8rem;margin:0 0 8px'>
-                                Puntaje de 0 a 20 por concepto — Total máximo: 100 puntos
-                              </p>
-                            </div>""", unsafe_allow_html=True)
-                            lenc1, lenc2, lenc3, lenc4, lenc5, lenc6 = st.columns(6)
-                            l_enc_exp = lenc1.number_input("Experiencia técnicos", 0, 20, 0, key="l_enc_exp")
-                            l_enc_cal = lenc2.number_input("Calidad servicio",     0, 20, 0, key="l_enc_cal")
-                            l_enc_cum = lenc3.number_input("Cumplimiento",         0, 20, 0, key="l_enc_cum")
-                            l_enc_pre = lenc4.number_input("Presentación personal",0, 20, 0, key="l_enc_pre")
-                            l_enc_com = lenc5.number_input("Comunicación",         0, 20, 0, key="l_enc_com")
-                            l_enc_total = l_enc_exp + l_enc_cal + l_enc_cum + l_enc_pre + l_enc_com
-                            l_nivel = "Bueno ✅" if l_enc_total >= 85 else ("Regular ⚠️" if l_enc_total >= 51 else "Malo ❌")
-                            _l_col = "#166534" if l_enc_total >= 85 else ("#92400e" if l_enc_total >= 51 else "#7f1d1d")
-                            _l_bg  = "#dcfce7" if l_enc_total >= 85 else ("#fef3c7" if l_enc_total >= 51 else "#fee2e2")
-                            lenc6.markdown(f"""
-                            <div style='background:{_l_bg};border:2px solid {_l_col};border-radius:8px;
-                                        padding:8px;text-align:center;margin-top:20px'>
-                              <div style='font-size:1.3rem;font-weight:900;color:{_l_col}'>{l_enc_total}</div>
-                              <div style='font-size:0.7rem;color:{_l_col}'>/ 100</div>
-                              <div style='font-size:0.75rem;font-weight:700;color:{_l_col}'>{l_nivel}</div>
-                            </div>""", unsafe_allow_html=True)
-                            l_enc_obs = st.text_input("Observaciones del cliente sobre el servicio", key="l_enc_obs")
-
-                            st.divider()
                             st.markdown("**⏱️ Tiempo de servicio**")
                             fc1, fc2, fc3 = st.columns(3)
                             with fc1:
@@ -4657,6 +4653,14 @@ elif pagina == "ots":
 
                             if gen_loc:
                                 def ck(v): return "✔" if v else ""
+                                # Encuesta: se lee en fase 2 desde session_state
+                                l_enc_exp   = st.session_state.get(f"l_enc_exp_{id_ot_sel}", 0)
+                                l_enc_cal   = st.session_state.get(f"l_enc_cal_{id_ot_sel}", 0)
+                                l_enc_cum   = st.session_state.get(f"l_enc_cum_{id_ot_sel}", 0)
+                                l_enc_pre   = st.session_state.get(f"l_enc_pre_{id_ot_sel}", 0)
+                                l_enc_com   = st.session_state.get(f"l_enc_com_{id_ot_sel}", 0)
+                                l_enc_total = l_enc_exp + l_enc_cal + l_enc_cum + l_enc_pre + l_enc_com
+                                l_enc_obs   = st.session_state.get(f"l_enc_obs_{id_ot_sel}", "")
                                 tipo_mto = " | ".join(filter(None,[
                                     "Preventivo" if l_prev else "",
                                     "Correctivo" if l_corr else "",
