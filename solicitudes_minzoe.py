@@ -3884,11 +3884,18 @@ elif pagina == "ots":
                         TIPOS_PORT = ["Portátil"]
                         TIPOS_VENT = ["Ventilador", "Extractor"]
                         _tipos_hvac = TIPOS_AC + TIPOS_PORT + TIPOS_VENT
-                        _tipo_eq_sel = st.selectbox(
-                            "Tipo de equipo *",
-                            _tipos_hvac,
-                            key=f"tipo_eq_sel_{id_ot_sel}",
-                        )
+                        _t1, _t2 = st.columns([4, 1])
+                        with _t1:
+                            _tipo_eq_sel = st.selectbox(
+                                "Tipo de equipo *",
+                                _tipos_hvac,
+                                key=f"tipo_eq_sel_{id_ot_sel}",
+                            )
+                        with _t2:
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            if st.button("✅ Aplicar", key=f"aplicar_tipo_{id_ot_sel}",
+                                         use_container_width=True, help="Toca aquí después de seleccionar el tipo"):
+                                st.rerun()
                         _es_vent_ext = _tipo_eq_sel in TIPOS_VENT
                         _es_portatil = _tipo_eq_sel in TIPOS_PORT
 
@@ -4028,7 +4035,7 @@ elif pagina == "ots":
                             cc1, cc2, cc3 = st.columns(3)
 
                             with cc1:
-                                st.markdown("*EVAPORADORA*")
+                                st.markdown("*UNIDAD MANEJADORA*")
                                 ck_ev = {
                                     "Ajuste de Prisioneros y Rotores":        st.checkbox("Ajuste de Prisioneros y Rotores",     key="e1"),
                                     "Ajuste General de Tornillos":            st.checkbox("Ajuste General de Tornillos",         key="e2"),
@@ -4056,7 +4063,7 @@ elif pagina == "ots":
                                 }
 
                             with cc2:
-                                st.markdown("*CONDENSADORA*")
+                                st.markdown("*UNIDAD CONDENSADORA*")
                                 ck_co = {
                                     "Ajuste de Motores Ventiladores":         st.checkbox("Ajuste de Motores Ventiladores",      key="c1"),
                                     "Ajuste General de Tornillos":            st.checkbox("Ajuste General de Tornillos",         key="c2"),
@@ -4075,7 +4082,7 @@ elif pagina == "ots":
                                 }
 
                             with cc3:
-                                st.markdown("*VENTILADORES Y EXTRACTORES*")
+                                st.markdown("*MOTORES Y VENTILADORES*")
                                 ck_vent = {
                                     "Verificación de Vibraciones":            st.checkbox("Verificación de Vibraciones",         key="v1"),
                                     "Revisión de Correas":                    st.checkbox("Revisión de Correas",                 key="v2"),
@@ -4370,9 +4377,9 @@ elif pagina == "ots":
 
 <div class="section">LISTA DE CHEQUEO</div>
 <table><tr>
-  <th colspan="3">EVAPORADORA</th>
-  <th colspan="3">CONDENSADORA</th>
-  <th colspan="3">VENTILADORES Y EXTRACTORES</th>
+  <th colspan="3">UNIDAD MANEJADORA</th>
+  <th colspan="3">UNIDAD CONDENSADORA</th>
+  <th colspan="3">MOTORES Y VENTILADORES</th>
 </tr>
 {''.join(f"<tr><td class='ck'>{ck(v)}</td><td>{k}</td><td></td>" +
          (f"<td class='ck'>{ck(list(ck_co.values())[i])}</td><td>{list(ck_co.keys())[i]}</td><td></td>" if i < len(ck_co) else "<td></td><td></td><td></td>") +
