@@ -2914,9 +2914,10 @@ elif pagina == "clientes":
 elif pagina == "ots":
     import io
     df = get_df(); ots = get_ots(); cli = get_cli()
-    _rol_ots    = st.session_state.get("user_rol", "usuario")
-    _es_tec_ots = _rol_ots == "tecnico"
+    _rol_ots     = st.session_state.get("user_rol", "usuario")
     _nom_tec_ots = st.session_state.get("user_nombre", "")
+    # _tec_en_reporte: técnico abrió el formulario de reporte → mostrar vista completa
+    _es_tec_ots  = _rol_ots == "tecnico" and not st.session_state.get("_tec_en_reporte")
 
     c_tit_ot, c_ref_ot = st.columns([5,1])
     c_tit_ot.subheader("🛠️ Mis OTs" if _es_tec_ots else "🛠️ Órdenes de Trabajo")
@@ -3188,50 +3189,75 @@ elif pagina == "ots":
             if _tec_ot_sel and _tec_ot_sel in ots["ID"].values:
                 st.divider()
                 fila_ot = ots[ots["ID"] == _tec_ot_sel].iloc[0]
-                st.markdown(f"### 📋 Detalle — {_tec_ot_sel}")
-                d1, d2 = st.columns(2)
-                with d1:
-                    st.markdown(f"**Cliente:** {fila_ot.get('Cliente','')}")
-                    st.markdown(f"**Sede:** {fila_ot.get('Sede','')}")
-                    st.markdown(f"**Servicio:** {fila_ot.get('Servicio','')}")
-                    st.markdown(f"**Descripción:** {fila_ot.get('Descripcion','')}")
-                with d2:
-                    st.markdown(f"**Estado:** {fila_ot.get('Estado','')}")
-                    st.markdown(f"**Fecha límite:** {fila_ot.get('Fecha_Limite','')}")
-                    st.markdown(f"**Fecha ejecución:** {fila_ot.get('Fecha_Ejecucion','')}")
-                    st.markdown(f"**Observaciones:** {fila_ot.get('Observaciones','')}")
+                st.markdown(f"### 📋 {_tec_ot_sel} — {fila_ot.get('Cliente','')}")
 
-                # Actualizar estado
-                with st.form(f"form_tec_ot_{_tec_ot_sel}"):
-                    st.markdown("**Actualizar esta OT**")
-                    fc1, fc2 = st.columns(2)
-                    with fc1:
-                        nuevo_est = st.selectbox("Estado", ESTADOS_OT,
-                            index=ESTADOS_OT.index(fila_ot["Estado"]) if fila_ot["Estado"] in ESTADOS_OT else 0)
-                        fecha_ej  = st.text_input("Fecha ejecución", value=fila_ot.get("Fecha_Ejecucion",""))
-                    with fc2:
-                        hora_ini  = st.text_input("Hora inicio", value=fila_ot.get("Hora_Inicio",""))
-                        hora_fin  = st.text_input("Hora fin",    value=fila_ot.get("Hora_Final",""))
-                    obs_tec = st.text_area("Observaciones", value=fila_ot.get("Observaciones",""))
-                    if st.form_submit_button("💾 Guardar", type="primary", use_container_width=True):
-                        ots_all = get_ots()
-                        idx_tec = ots_all[ots_all["ID"] == _tec_ot_sel].index[0]
-                        ots_all.loc[idx_tec, "Estado"]         = nuevo_est
-                        ots_all.loc[idx_tec, "Fecha_Ejecucion"]= fecha_ej
-                        ots_all.loc[idx_tec, "Hora_Inicio"]    = hora_ini
-                        ots_all.loc[idx_tec, "Hora_Final"]     = hora_fin
-                        ots_all.loc[idx_tec, "Observaciones"]  = obs_tec
-                        sb_save("ordenes_trabajo", ots_all)
-                        _invalidar_cache("ordenes_trabajo")
-                        st.success("✅ OT actualizada.")
-                        st.rerun()
+                tab_act, tab_rep = st.tabs(["📋 Actualizar", "📄 Reportar"])
+
+                with tab_act:
+                    d1, d2 = st.columns(2)
+                    with d1:
+                        st.markdown(f"**Cliente:** {fila_ot.get('Cliente','')}")
+                        st.markdown(f"**Sede:** {fila_ot.get('Sede','')}")
+                        st.markdown(f"**Servicio:** {fila_ot.get('Servicio','')}")
+                        st.markdown(f"**Descripción:** {fila_ot.get('Descripcion','')}")
+                    with d2:
+                        st.markdown(f"**Estado:** {fila_ot.get('Estado','')}")
+                        st.markdown(f"**Fecha límite:** {fila_ot.get('Fecha_Limite','')}")
+                        st.markdown(f"**Fecha ejecución:** {fila_ot.get('Fecha_Ejecucion','')}")
+                        st.markdown(f"**Observaciones:** {fila_ot.get('Observaciones','')}")
+                    st.divider()
+                    with st.form(f"form_tec_ot_{_tec_ot_sel}"):
+                        st.markdown("**Actualizar esta OT**")
+                        fc1, fc2 = st.columns(2)
+                        with fc1:
+                            nuevo_est = st.selectbox("Estado", ESTADOS_OT,
+                                index=ESTADOS_OT.index(fila_ot["Estado"]) if fila_ot["Estado"] in ESTADOS_OT else 0)
+                            fecha_ej  = st.text_input("Fecha ejecución", value=fila_ot.get("Fecha_Ejecucion",""))
+                        with fc2:
+                            hora_ini  = st.text_input("Hora inicio", value=fila_ot.get("Hora_Inicio",""))
+                            hora_fin  = st.text_input("Hora fin",    value=fila_ot.get("Hora_Final",""))
+                        obs_tec = st.text_area("Observaciones", value=fila_ot.get("Observaciones",""))
+                        if st.form_submit_button("💾 Guardar", type="primary", use_container_width=True):
+                            ots_all = get_ots()
+                            idx_tec = ots_all[ots_all["ID"] == _tec_ot_sel].index[0]
+                            ots_all.loc[idx_tec, "Estado"]          = nuevo_est
+                            ots_all.loc[idx_tec, "Fecha_Ejecucion"] = fecha_ej
+                            ots_all.loc[idx_tec, "Hora_Inicio"]     = hora_ini
+                            ots_all.loc[idx_tec, "Hora_Final"]      = hora_fin
+                            ots_all.loc[idx_tec, "Observaciones"]   = obs_tec
+                            sb_save("ordenes_trabajo", ots_all)
+                            _invalidar_cache("ordenes_trabajo")
+                            st.success("✅ OT actualizada.")
+                            st.rerun()
+
+                with tab_rep:
+                    srv = fila_ot.get("Servicio", "")
+                    if srv in ["Aires Acondicionados", "Arreglos Locativos"]:
+                        st.info(f"Haz clic para abrir el formulario de reporte de **{srv}**.")
+                        if st.button("📄 Abrir formulario de reporte", type="primary",
+                                     key=f"btn_rep_tec_{_tec_ot_sel}", use_container_width=True):
+                            st.session_state["ot_preselect"]    = _tec_ot_sel
+                            st.session_state["_tec_en_reporte"] = True
+                            st.session_state.pop("tec_ot_sel", None)
+                            st.rerun()
+                    else:
+                        st.info(f"El reporte de formato para **{srv}** no está disponible aún.\n\n"
+                                "Usa la pestaña **Actualizar** para registrar observaciones.")
 
                 if st.button("✖ Cerrar detalle", key="cerrar_det_tec"):
                     st.session_state.pop("tec_ot_sel", None)
                     st.rerun()
 
-        # ── VISTA NORMAL (admin / usuario) ───────────────────────────────────
+        # ── VISTA NORMAL (admin / usuario / técnico en modo reporte) ─────────
         else:
+            # Botón volver si el técnico está en modo reporte
+            if st.session_state.get("_tec_en_reporte"):
+                if st.button("← Volver a Mis OTs", key="tec_volver_ots"):
+                    st.session_state.pop("_tec_en_reporte", None)
+                    st.session_state.pop("ot_preselect", None)
+                    st.rerun()
+                st.divider()
+
             ORIGENES  = ["Solicitud", "Manual", "Contrato Mantenimiento"]
             c1, c2, c3, c4 = st.columns(4)
             with c1:
