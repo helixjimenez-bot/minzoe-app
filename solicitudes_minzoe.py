@@ -3260,78 +3260,81 @@ elif pagina == "ots":
                     st.rerun()
                 st.divider()
 
-            ORIGENES  = ["Solicitud", "Manual", "Contrato Mantenimiento"]
-            c1, c2, c3, c4 = st.columns(4)
-            with c1:
-                f_est_ot  = st.multiselect("Estado",   ESTADOS_OT, default=ESTADOS_OT, key="f_est_ot")
-            with c2:
-                f_ser_ot  = st.multiselect("Servicio", SERVICIOS,  default=SERVICIOS,  key="f_ser_ot")
-            with c3:
-                f_orig_ot = st.multiselect("Origen",   ORIGENES,   default=ORIGENES,   key="f_orig_ot")
-            with c4:
-                buscar_ot = st.text_input("Buscar empresa", key="buscar_ot")
-
-            vista_ot = ots.copy()
-            if f_est_ot:
-                vista_ot = vista_ot[vista_ot["Estado"].isin(f_est_ot)]
-            if f_ser_ot:
-                vista_ot = vista_ot[vista_ot["Servicio"].isin(f_ser_ot)]
-            if f_orig_ot and "Origen" in vista_ot.columns:
-                vista_ot = vista_ot[vista_ot["Origen"].isin(f_orig_ot)]
-            if buscar_ot:
-                vista_ot = vista_ot[vista_ot["Cliente"].str.contains(buscar_ot, case=False, na=False)]
-
-            vista_ot_ord = vista_ot.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))
-
-            COLS_TABLA_OT = ["ID", "Origen", "Creado_Por", "Fecha_Creacion", "Fecha_Limite", "Cliente", "Sede",
-                             "Servicio", "SLA", "Zona", "Tecnico", "Fecha_Ejecucion", "Valor_COP", "Estado"]
-            cols_vis_ot = [c for c in COLS_TABLA_OT if c in vista_ot_ord.columns]
-
-            def color_limite(val):
-                try:
-                    limite = datetime.strptime(val, "%Y-%m-%d %H:%M")
-                    diff   = (limite - datetime.now()).total_seconds() / 3600
-                    if diff < 0:
-                        return "background-color:#f8d7da; color:#000"  # vencida — rojo
-                    elif diff <= 24:
-                        return "background-color:#fff3cd; color:#000"  # próxima — amarillo
-                    return "background-color:#d1e7dd; color:#000"       # ok — verde
-                except Exception:
-                    return ""
-
-            COLORES_OT = {
-                "Programada":   ("#e0e7ff", "#1e3a8a"),
-                "En ejecución": ("#fef3c7", "#78350f"),
-                "Finalizada":   ("#d1fae5", "#064e3b"),
-                "Cancelada":    ("#fee2e2", "#7f1d1d"),
-            }
-            tabla_html(vista_ot_ord[cols_vis_ot].reset_index(drop=True),
-                       color_col="Estado", colores_estado=COLORES_OT,
-                       fmt_cols=["Valor_COP"])
-
-            c1, c2 = st.columns([3, 1])
-            with c1:
-                st.caption(f"Mostrando {len(vista_ot_ord)} de {len(ots)} órdenes.")
-            with c2:
-                buf_ot = io.BytesIO()
-                with pd.ExcelWriter(buf_ot, engine="openpyxl") as w:
-                    vista_ot_ord.to_excel(w, index=False, sheet_name="OTs")
-                st.download_button(
-                    "⬇️ Exportar Excel", data=buf_ot.getvalue(),
-                    file_name=f"OTs_minzoe_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True,
-                )
-
-            st.divider()
-            ids_ot_lista = ots.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))["ID"].tolist()
-
-            # Pre-seleccionar si viene del dashboard
+            # ── Técnico en modo reporte: saltar tabla/filtros, ir directo al detalle ──
+            _tec_modo_rep = st.session_state.get("_tec_en_reporte")
             ot_pre = st.session_state.pop("ot_preselect", None)
-            idx_pre = ids_ot_lista.index(ot_pre) if ot_pre and ot_pre in ids_ot_lista else 0
 
-            id_ot_sel = st.selectbox("Selecciona una OT", ids_ot_lista,
-                                     index=idx_pre, key="id_ot_sel")
+            if _tec_modo_rep and ot_pre and ot_pre in ots["ID"].values:
+                id_ot_sel = ot_pre
+            else:
+                ORIGENES  = ["Solicitud", "Manual", "Contrato Mantenimiento"]
+                c1, c2, c3, c4 = st.columns(4)
+                with c1:
+                    f_est_ot  = st.multiselect("Estado",   ESTADOS_OT, default=ESTADOS_OT, key="f_est_ot")
+                with c2:
+                    f_ser_ot  = st.multiselect("Servicio", SERVICIOS,  default=SERVICIOS,  key="f_ser_ot")
+                with c3:
+                    f_orig_ot = st.multiselect("Origen",   ORIGENES,   default=ORIGENES,   key="f_orig_ot")
+                with c4:
+                    buscar_ot = st.text_input("Buscar empresa", key="buscar_ot")
+
+                vista_ot = ots.copy()
+                if f_est_ot:
+                    vista_ot = vista_ot[vista_ot["Estado"].isin(f_est_ot)]
+                if f_ser_ot:
+                    vista_ot = vista_ot[vista_ot["Servicio"].isin(f_ser_ot)]
+                if f_orig_ot and "Origen" in vista_ot.columns:
+                    vista_ot = vista_ot[vista_ot["Origen"].isin(f_orig_ot)]
+                if buscar_ot:
+                    vista_ot = vista_ot[vista_ot["Cliente"].str.contains(buscar_ot, case=False, na=False)]
+
+                vista_ot_ord = vista_ot.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))
+
+                COLS_TABLA_OT = ["ID", "Origen", "Creado_Por", "Fecha_Creacion", "Fecha_Limite", "Cliente", "Sede",
+                                 "Servicio", "SLA", "Zona", "Tecnico", "Fecha_Ejecucion", "Valor_COP", "Estado"]
+                cols_vis_ot = [c for c in COLS_TABLA_OT if c in vista_ot_ord.columns]
+
+                def color_limite(val):
+                    try:
+                        limite = datetime.strptime(val, "%Y-%m-%d %H:%M")
+                        diff   = (limite - datetime.now()).total_seconds() / 3600
+                        if diff < 0:
+                            return "background-color:#f8d7da; color:#000"
+                        elif diff <= 24:
+                            return "background-color:#fff3cd; color:#000"
+                        return "background-color:#d1e7dd; color:#000"
+                    except Exception:
+                        return ""
+
+                COLORES_OT = {
+                    "Programada":   ("#e0e7ff", "#1e3a8a"),
+                    "En ejecución": ("#fef3c7", "#78350f"),
+                    "Finalizada":   ("#d1fae5", "#064e3b"),
+                    "Cancelada":    ("#fee2e2", "#7f1d1d"),
+                }
+                tabla_html(vista_ot_ord[cols_vis_ot].reset_index(drop=True),
+                           color_col="Estado", colores_estado=COLORES_OT,
+                           fmt_cols=["Valor_COP"])
+
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    st.caption(f"Mostrando {len(vista_ot_ord)} de {len(ots)} órdenes.")
+                with c2:
+                    buf_ot = io.BytesIO()
+                    with pd.ExcelWriter(buf_ot, engine="openpyxl") as w:
+                        vista_ot_ord.to_excel(w, index=False, sheet_name="OTs")
+                    st.download_button(
+                        "⬇️ Exportar Excel", data=buf_ot.getvalue(),
+                        file_name=f"OTs_minzoe_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True,
+                    )
+
+                st.divider()
+                ids_ot_lista = ots.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))["ID"].tolist()
+                idx_pre = ids_ot_lista.index(ot_pre) if ot_pre and ot_pre in ids_ot_lista else 0
+                id_ot_sel = st.selectbox("Selecciona una OT", ids_ot_lista,
+                                         index=idx_pre, key="id_ot_sel")
 
             if id_ot_sel:
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
