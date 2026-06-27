@@ -3776,16 +3776,12 @@ elif pagina == "ots":
                         # ── Fase 2: canvas de firma (aparece después de guardar el form) ──
                         _hvac_raw_key = f"hvac_html_raw_{id_ot_sel}"
                         if _hvac_raw_key in st.session_state:
-                            st.success("✅ Datos técnicos guardados. Ahora el cliente llena la encuesta y firma.")
+                            st.success("✅ Datos técnicos guardados.")
 
-                            # ── Encuesta de satisfacción (FASE 2 — la llena el cliente) ──
-                            st.markdown("""
-                            <div style='background:#dc2626;color:#fff;padding:10px 16px;
+                            # ── Encuesta de satisfacción (la llena el cliente — sin canvas) ──
+                            st.markdown("""<div style='background:#dc2626;color:#fff;padding:10px 16px;
                                         border-radius:8px 8px 0 0;font-weight:700;font-size:0.95rem'>
-                              📋 Encuesta de satisfacción del servicio
-                              <span style='font-size:0.78rem;font-weight:400;color:#fca5a5'>
-                                &nbsp;— la llena el cliente
-                              </span>
+                              📋 Encuesta de satisfacción — la llena el cliente
                             </div>""", unsafe_allow_html=True)
                             enc1, enc2, enc3, enc4, enc5, enc6 = st.columns(6)
                             enc_exp = enc1.number_input("Experiencia técnicos", 0, 20, 0, key=f"enc_exp_{id_ot_sel}")
@@ -3797,59 +3793,36 @@ elif pagina == "ots":
                             _enivel = "Bueno ✅" if enc_total >= 85 else ("Regular ⚠️" if enc_total >= 51 else "Malo ❌")
                             _ecol = "#166534" if enc_total >= 85 else ("#92400e" if enc_total >= 51 else "#7f1d1d")
                             _ebg  = "#dcfce7" if enc_total >= 85 else ("#fef3c7" if enc_total >= 51 else "#fee2e2")
-                            enc6.markdown(f"""
-                            <div style='background:{_ebg};border:2px solid {_ecol};border-radius:8px;
+                            enc6.markdown(f"""<div style='background:{_ebg};border:2px solid {_ecol};border-radius:8px;
                                         padding:8px;text-align:center;margin-top:20px'>
                               <div style='font-size:1.6rem;font-weight:900;color:{_ecol}'>{enc_total}</div>
                               <div style='font-size:0.7rem;color:{_ecol}'>/ 100</div>
                               <div style='font-size:0.75rem;font-weight:700;color:{_ecol}'>{_enivel}</div>
                             </div>""", unsafe_allow_html=True)
                             enc_obs_cli = st.text_input("Observaciones del cliente", key=f"enc_obs_{id_ot_sel}")
+                            enc_nom_cli = st.text_input("Nombre del cliente (confirma recibido)", key=f"enc_nom_{id_ot_sel}")
                             st.divider()
 
-                            st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
-                            _canvas_hvac2 = None
-                            try:
-                                from streamlit_drawable_canvas import st_canvas as _st_canvas2
-                                _canvas_hvac2 = _st_canvas2(
-                                    stroke_width=2, stroke_color="#000000",
-                                    background_color="#FFFFFF", height=130, width=450,
-                                    drawing_mode="freedraw",
-                                    key=f"canvas_hvac2_{id_ot_sel}",
-                                )
-                            except Exception:
-                                st.info("Librería de firma no disponible.")
-                            c_gen1, c_gen2 = st.columns([1, 1])
-                            with c_gen1:
-                                if st.button("📄 Generar Reporte PDF", type="primary",
-                                             use_container_width=True, key=f"gen_hvac_pdf_{id_ot_sel}"):
-                                    _firma_img = ""
-                                    try:
-                                        if _canvas_hvac2 is not None and _canvas_hvac2.image_data is not None:
-                                            from PIL import Image as _PI; import io as _io2, base64 as _b2
-                                            _arr2 = _canvas_hvac2.image_data
-                                            if _arr2[:,:,3].any():
-                                                _im2 = _PI.fromarray(_arr2.astype('uint8'), 'RGBA')
-                                                _bf2 = _io2.BytesIO(); _im2.save(_bf2, format='PNG')
-                                                _firma_img = f'<img src="data:image/png;base64,{_b2.b64encode(_bf2.getvalue()).decode()}" style="width:220px;height:80px;object-fit:contain;display:block;border-bottom:1px solid #333">'
-                                    except Exception:
-                                        pass
-                                    if not _firma_img:
-                                        _firma_img = '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
-                                    _html_final = st.session_state[_hvac_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_img)
-                                    st.session_state[f"hvac_html_{id_ot_sel}"] = _html_final
-                                    # Guardar en Supabase permanentemente
+                            c_g1, c_g2 = st.columns([2, 1])
+                            with c_g1:
+                                if st.button("✅ Enviar a revisión", type="primary",
+                                             use_container_width=True, key=f"enviar_hvac_{id_ot_sel}"):
+                                    # Completar HTML con encuesta (sin firma de canvas)
+                                    _firma_box = f'<div style="width:220px;height:80px;border-bottom:1px solid #333;font-size:9px;padding-top:60px;text-align:center">{enc_nom_cli}</div>'
+                                    _html_final = st.session_state[_hvac_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_box)
+                                    # Guardar en Supabase
                                     guardar_reporte_sb(
                                         ot_id   = id_ot_sel,
                                         tipo    = "HVAC",
-                                        cliente = st.session_state.get(f"hvac_cli_{id_ot_sel}", fila_ot.get("Cliente","")),
-                                        fecha   = st.session_state.get(f"hvac_fec_{id_ot_sel}", ""),
+                                        cliente = fila_ot.get("Cliente",""),
+                                        fecha   = fila_ot.get("Fecha_Ejecucion",""),
                                         html    = _html_final,
                                     )
+                                    st.session_state[f"hvac_html_{id_ot_sel}"] = _html_final
                                     del st.session_state[_hvac_raw_key]
                                     st.rerun()
-                            with c_gen2:
-                                if st.button("✏️ Editar datos del reporte", use_container_width=True,
+                            with c_g2:
+                                if st.button("✏️ Editar", use_container_width=True,
                                              key=f"editar_hvac_{id_ot_sel}"):
                                     del st.session_state[_hvac_raw_key]
                                     st.rerun()
@@ -4507,51 +4480,27 @@ elif pagina == "ots":
                               <div style='font-size:0.75rem;font-weight:700;color:{_lcol}'>{_lnivel}</div>
                             </div>""", unsafe_allow_html=True)
                             l_enc_obs = st.text_input("Observaciones del cliente", key=f"l_enc_obs_{id_ot_sel}")
+                            l_enc_nom = st.text_input("Nombre del cliente (confirma recibido)", key=f"l_enc_nom_{id_ot_sel}")
                             st.divider()
 
-                            st.markdown("**✍️ Firma del cliente** — El cliente firma aquí con el dedo o el mouse")
-                            _canvas_loc2 = None
-                            try:
-                                from streamlit_drawable_canvas import st_canvas as _st_canvas3
-                                _canvas_loc2 = _st_canvas3(
-                                    stroke_width=2, stroke_color="#000000",
-                                    background_color="#FFFFFF", height=130, width=450,
-                                    drawing_mode="freedraw",
-                                    key=f"canvas_loc2_{id_ot_sel}",
-                                )
-                            except Exception:
-                                st.info("Librería de firma no disponible.")
-                            c_loc1, c_loc2 = st.columns([1, 1])
-                            with c_loc1:
-                                if st.button("📄 Generar Reporte PDF", type="primary",
-                                             use_container_width=True, key=f"gen_loc_pdf_{id_ot_sel}"):
-                                    _firma_loc = ""
-                                    try:
-                                        if _canvas_loc2 is not None and _canvas_loc2.image_data is not None:
-                                            from PIL import Image as _PI3; import io as _io3, base64 as _b3
-                                            _arr3 = _canvas_loc2.image_data
-                                            if _arr3[:,:,3].any():
-                                                _im3 = _PI3.fromarray(_arr3.astype('uint8'), 'RGBA')
-                                                _bf3 = _io3.BytesIO(); _im3.save(_bf3, format='PNG')
-                                                _firma_loc = f'<img src="data:image/png;base64,{_b3.b64encode(_bf3.getvalue()).decode()}" style="width:220px;height:80px;object-fit:contain;display:block;border-bottom:1px solid #333">'
-                                    except Exception:
-                                        pass
-                                    if not _firma_loc:
-                                        _firma_loc = '<div style="width:220px;height:80px;border-bottom:1px solid #333"></div>'
-                                    _html_loc_final = st.session_state[_loc_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_loc)
-                                    st.session_state[f"loc_html_{id_ot_sel}"] = _html_loc_final
-                                    # Guardar en Supabase permanentemente
+                            c_l1, c_l2 = st.columns([2, 1])
+                            with c_l1:
+                                if st.button("✅ Enviar a revisión", type="primary",
+                                             use_container_width=True, key=f"enviar_loc_{id_ot_sel}"):
+                                    _firma_box_l = f'<div style="width:220px;height:80px;border-bottom:1px solid #333;font-size:9px;padding-top:60px;text-align:center">{l_enc_nom}</div>'
+                                    _html_loc_final = st.session_state[_loc_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_box_l)
                                     guardar_reporte_sb(
                                         ot_id   = id_ot_sel,
                                         tipo    = "Locativos",
-                                        cliente = st.session_state.get(f"loc_cli_{id_ot_sel}", fila_ot.get("Cliente","")),
-                                        fecha   = st.session_state.get(f"loc_fec_{id_ot_sel}", ""),
+                                        cliente = fila_ot.get("Cliente",""),
+                                        fecha   = fila_ot.get("Fecha_Ejecucion",""),
                                         html    = _html_loc_final,
                                     )
+                                    st.session_state[f"loc_html_{id_ot_sel}"] = _html_loc_final
                                     del st.session_state[_loc_raw_key]
                                     st.rerun()
-                            with c_loc2:
-                                if st.button("✏️ Editar datos del reporte", use_container_width=True,
+                            with c_l2:
+                                if st.button("✏️ Editar", use_container_width=True,
                                              key=f"editar_loc_{id_ot_sel}"):
                                     del st.session_state[_loc_raw_key]
                                     st.rerun()
