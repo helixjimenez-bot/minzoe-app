@@ -1020,10 +1020,15 @@ def css_formato_carta():
 
 
 def html_to_pdf(html: str) -> bytes | None:
-    """Convierte HTML a PDF usando weasyprint. Retorna bytes del PDF o None si falla."""
+    """Convierte HTML a PDF usando xhtml2pdf. Retorna bytes del PDF o None si falla."""
     try:
-        from weasyprint import HTML as WP_HTML
-        return WP_HTML(string=html).write_pdf()
+        from xhtml2pdf import pisa
+        import io
+        buf = io.BytesIO()
+        status = pisa.pisaDocument(io.StringIO(html), buf, encoding="utf-8")
+        if not status.err:
+            return buf.getvalue()
+        return None
     except Exception:
         return None
 
