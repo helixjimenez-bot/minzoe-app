@@ -1918,7 +1918,7 @@ if pagina == "nueva":
     if st.session_state.get("user_rol") == "tecnico":
         st.warning("⛔ No tienes permiso para acceder a esta sección.")
         st.stop()
-    df = get_df(); cli = get_cli(); ots = get_ots()
+    df = get_df(); cli = get_cli(); ots = get_ots(); equipos = get_equipos()
     st.subheader("Registrar nueva solicitud")
 
     # ── SECCIÓN 1: INFORMACIÓN DE LA EMPRESA ─────────────────────────────────
@@ -1997,6 +1997,23 @@ if pagina == "nueva":
                     st.text_input("Correo del contacto", value=cor_c_v, disabled=True, key="cc_dis")
                 with c3:
                     st.text_input("Celular del contacto", value=cel_c_v, disabled=True, key="cel_dis")
+
+                # ── Equipos registrados en esta sede ──────────────────────
+                if not equipos.empty:
+                    _eq_sede = equipos[
+                        (equipos["Cliente"].str.strip().str.lower() == empresa_sel.strip().lower()) &
+                        (equipos["Sede"].str.strip().str.lower() == sede_sel.strip().lower())
+                    ]
+                    if not _eq_sede.empty:
+                        st.markdown("**🔧 Equipos en esta sede:**")
+                        _cols_eq = [c for c in ["ID_Item","Servicio","Marca","Modelo",
+                                                 "Numero_Serie","Ubicacion","Ultimo_Mantenimiento"]
+                                    if c in _eq_sede.columns]
+                        for _srv in SERVICIOS_CON_EQUIPOS:
+                            _eq_srv = _eq_sede[_eq_sede["Servicio"] == _srv]
+                            if not _eq_srv.empty:
+                                with st.expander(f"🔧 {_srv} — {len(_eq_srv)} equipo(s)"):
+                                    tabla_html(_eq_srv[_cols_eq].reset_index(drop=True))
 
     elif empresa_sel == opcion_nueva:
         # Entrada manual
@@ -3025,7 +3042,7 @@ elif pagina == "clientes":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "ots":
     import io
-    df = get_df(); ots = get_ots(); cli = get_cli()
+    df = get_df(); ots = get_ots(); cli = get_cli(); equipos = get_equipos()
     _rol_ots     = st.session_state.get("user_rol", "usuario")
     _nom_tec_ots = st.session_state.get("user_nombre", "")
     # _tec_en_reporte: técnico abrió el formulario de reporte → mostrar vista completa
@@ -3104,6 +3121,23 @@ elif pagina == "ots":
                     st.text_input("Nombre contacto", value=nom_c_ot, disabled=True, key="nc_ot_dis")
                 with c2:
                     st.text_input("Celular contacto", value=cel_c_ot, disabled=True, key="cel_ot_dis")
+
+                # ── Equipos registrados en esta sede ──────────────────────
+                if not equipos.empty and sede_ot_v:
+                    _eq_sede_ot = equipos[
+                        (equipos["Cliente"].str.strip().str.lower() == empresa_ot.strip().lower()) &
+                        (equipos["Sede"].str.strip().str.lower() == sede_ot_v.strip().lower())
+                    ]
+                    if not _eq_sede_ot.empty:
+                        st.markdown("**🔧 Equipos en esta sede:**")
+                        _cols_eq_ot = [c for c in ["ID_Item","Servicio","Marca","Modelo",
+                                                    "Numero_Serie","Ubicacion","Ultimo_Mantenimiento"]
+                                       if c in _eq_sede_ot.columns]
+                        for _srv in SERVICIOS_CON_EQUIPOS:
+                            _eq_srv_ot = _eq_sede_ot[_eq_sede_ot["Servicio"] == _srv]
+                            if not _eq_srv_ot.empty:
+                                with st.expander(f"🔧 {_srv} — {len(_eq_srv_ot)} equipo(s)"):
+                                    tabla_html(_eq_srv_ot[_cols_eq_ot].reset_index(drop=True))
             else:
                 st.warning(f"No se encontraron datos para '{empresa_ot}'.")
 
