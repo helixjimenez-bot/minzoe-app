@@ -3578,10 +3578,15 @@ elif pagina == "ots":
                     )
 
                 st.divider()
-                ids_ot_lista = ots.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))["ID"].tolist()
-                idx_pre = ids_ot_lista.index(ot_pre) if ot_pre and ot_pre in ids_ot_lista else 0
-                id_ot_sel = st.selectbox("Selecciona una OT", ids_ot_lista,
-                                         index=idx_pre, key="id_ot_sel")
+                if ot_pre and ot_pre in ots["ID"].values:
+                    # Viene de botón Ver OT — ir directo al detalle sin selectbox
+                    id_ot_sel = ot_pre
+                    if st.button("← Volver a la lista", key="volver_lista_ot"):
+                        st.session_state.pop("ot_preselect", None)
+                        st.rerun()
+                else:
+                    ids_ot_lista = ots.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))["ID"].tolist()
+                    id_ot_sel = st.selectbox("Selecciona una OT", ids_ot_lista, key="id_ot_sel")
 
             if id_ot_sel:
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
