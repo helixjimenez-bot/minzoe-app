@@ -6137,151 +6137,134 @@ elif pagina == "hojas_vida":
     st.subheader("🗂️ Hojas de Vida de Equipos")
 
     if equipos.empty:
-        st.info("No hay equipos registrados. Ve a 📄 Contratos de Mantenimiento → 🔧 Equipos / Ítems.")
+        st.info("No hay equipos registrados. Ve a Clientes → Ver sede → ➕ Crear equipo.")
     else:
-        # Solo equipos de servicios que tienen equipos individuales
-        eq_con_hv = equipos[equipos["Servicio"].isin(SERVICIOS_CON_EQUIPOS)] if "Servicio" in equipos.columns else equipos
+        eq_con_hv = equipos[equipos["Servicio"].isin(SERVICIOS_CON_EQUIPOS + ["Luminarias"])] if "Servicio" in equipos.columns else equipos
 
-        # ── Filtros ────────────────────────────────────────────────────────
-        f1, f2, f3 = st.columns(3)
+        # Filtros
+        f1, f2 = st.columns(2)
         with f1:
-            srv_hv = f1.selectbox("Servicio", ["Todos"] + SERVICIOS_CON_EQUIPOS, key="hv_srv")
-        eq_filtrado_srv = eq_con_hv if srv_hv == "Todos" else eq_con_hv[eq_con_hv["Servicio"] == srv_hv]
-
+            _buscar_hv = st.text_input("🔍 Buscar cliente o sede", key="hv_buscar")
         with f2:
-            clientes_hv = sorted(eq_filtrado_srv["Cliente"].unique().tolist()) if not eq_filtrado_srv.empty else []
-            cli_sel = f2.selectbox("Cliente", ["Todos"] + clientes_hv, key="hv_cli")
-        eq_filtrado_cli = eq_filtrado_srv if cli_sel == "Todos" else eq_filtrado_srv[eq_filtrado_srv["Cliente"] == cli_sel]
+            _srv_hv = st.selectbox("Servicio", ["Todos"] + SERVICIOS_CON_EQUIPOS + ["Luminarias"], key="hv_srv")
 
-        with f3:
-            sedes_hv = sorted(eq_filtrado_cli["Sede"].unique().tolist()) if not eq_filtrado_cli.empty else []
-            sede_sel = f3.selectbox("Sede", ["Todas"] + sedes_hv, key="hv_sede")
-        equipos_filtrados = eq_filtrado_cli if sede_sel == "Todas" else eq_filtrado_cli[eq_filtrado_cli["Sede"] == sede_sel]
-        equipos_filtrados = equipos_filtrados.reset_index(drop=True)
+        if _srv_hv != "Todos":
+            eq_con_hv = eq_con_hv[eq_con_hv["Servicio"] == _srv_hv]
+        if _buscar_hv:
+            _mask = (eq_con_hv["Cliente"].str.contains(_buscar_hv, case=False, na=False) |
+                     eq_con_hv["Sede"].str.contains(_buscar_hv, case=False, na=False))
+            eq_con_hv = eq_con_hv[_mask]
 
+        st.caption(f"{len(eq_con_hv)} equipo(s) — {eq_con_hv['Cliente'].nunique() if not eq_con_hv.empty else 0} cliente(s)")
         st.divider()
-        st.caption(f"{len(equipos_filtrados)} equipo(s) encontrado(s)")
 
         COLORES_HV = {
-            "Programada":   ("#e0e7ff","#1e3a8a"),
-            "En ejecución": ("#fef3c7","#78350f"),
-            "En revisión":  ("#ede9fe","#4c1d95"),
-            "Finalizada":   ("#d1fae5","#064e3b"),
+            "Programada":   ("#e0e7ff","#1e3a8a"), "En ejecución": ("#fef3c7","#78350f"),
+            "En revisión":  ("#ede9fe","#4c1d95"), "Finalizada":   ("#d1fae5","#064e3b"),
             "Cancelada":    ("#fee2e2","#7f1d1d"),
         }
 
-        for _, eq in equipos_filtrados.iterrows():
-            id_item = eq.get("ID_Item","")
-            _cli    = eq.get("Cliente","")
-            _sede   = eq.get("Sede","")
-            _serv   = eq.get("Servicio","")
-            ultimo  = eq.get("Ultimo_Mantenimiento","—")
-            proximo = eq.get("Proximo_Mantenimiento","—")
+        # ── ÁRBOL: Cliente → Sede → Equipos ──────────────────────────────
+        clientes_hv = sorted(eq_con_hv["Cliente"].unique().tolist()) if not eq_con_hv.empty else []
 
-            # ── OTs vinculadas: por ID_Item (directo) + por Cliente+Sede+Servicio (emergencias/correctivos)
-            ots_directas = pd.DataFrame()
-            ots_sede     = pd.DataFrame()
-            if not ots.empty:
-                if id_item and "ID_Item" in ots.columns:
-                    ots_directas = ots[ots["ID_Item"] == id_item]
-                ots_sede = ots[
-                    (ots["Cliente"].str.strip().str.lower() == _cli.strip().lower()) &
-                    (ots["Sede"].str.strip().str.lower()    == _sede.strip().lower()) &
-                    (ots["Servicio"] == _serv) &
-                    ~(ots["ID"].isin(ots_directas["ID"]) if not ots_directas.empty else pd.Series([], dtype=bool))
-                ]
-            ots_eq = pd.concat([ots_directas, ots_sede], ignore_index=True) if not ots_directas.empty or not ots_sede.empty else pd.DataFrame()
+        for _cli in clientes_hv:
+            eq_cli = eq_con_hv[eq_con_hv["Cliente"] == _cli]
+            n_sedes_cli = eq_cli["Sede"].nunique()
+            n_eq_cli    = len(eq_cli)
 
-            # ── SOLs vinculadas: por Cliente+Sede+Servicio
-            sols_eq = pd.DataFrame()
-            if not df_sol.empty:
-                sols_eq = df_sol[
-                    (df_sol["Cliente"].str.strip().str.lower() == _cli.strip().lower()) &
-                    (df_sol.get("Sede", df_sol.get("Nombre_Sede", pd.Series(dtype=str))).str.strip().str.lower() == _sede.strip().lower() if "Sede" in df_sol.columns else pd.Series([True]*len(df_sol))) &
-                    (df_sol["Servicio"] == _serv)
-                ] if "Servicio" in df_sol.columns else pd.DataFrame()
+            with st.expander(f"🏢 **{_cli}** — {n_sedes_cli} sede(s) · {n_eq_cli} equipo(s)"):
+                sedes_cli = sorted(eq_cli["Sede"].unique().tolist())
 
-            n_ots  = len(ots_eq)
-            n_sols = len(sols_eq)
+                for _sede in sedes_cli:
+                    eq_sede = eq_cli[eq_cli["Sede"] == _sede]
+                    n_eq_sede = len(eq_sede)
 
-            # Alerta próximo mantenimiento
-            try:
-                dias = (datetime.strptime(proximo, "%Y-%m-%d") - ahora_colombia()).days
-                alerta = "🔴 Vencido" if dias < 0 else ("🟡 Próximo" if dias <= 15 else "🟢 Al día")
-            except Exception:
-                alerta = "⚪ Sin fecha"
+                    # Contar OTs y SOLs de la sede
+                    ots_sede_cnt = int((ots["Sede"].str.strip().str.lower() == _sede.strip().lower()).sum()) if not ots.empty else 0
 
-            with st.expander(
-                f"{alerta} **{id_item}** — {eq.get('Marca','')} {eq.get('Modelo','')} | "
-                f"{eq.get('Especificaciones','')} | {_sede} | "
-                f"{n_ots} OT(s) · {n_sols} SOL(s)"
-            ):
-                # Datos del equipo
-                st.markdown("#### 🔧 Datos del equipo")
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.write(f"**ID:** {id_item}")
-                    st.write(f"**Servicio:** {_serv}")
-                    st.write(f"**Marca:** {eq.get('Marca','—')}")
-                    st.write(f"**Modelo:** {eq.get('Modelo','—')}")
-                    st.write(f"**Serial:** {eq.get('Numero_Serie','—')}")
-                with c2:
-                    st.write(f"**Cliente:** {_cli}")
-                    st.write(f"**Sede:** {_sede}")
-                    st.write(f"**Capacidad:** {eq.get('Especificaciones','—')}")
-                    st.write(f"**Ubicación:** {eq.get('Ubicacion','—')}")
-                    st.write(f"**Último mto.:** {ultimo}  |  **Próximo:** {proximo} {alerta}")
+                    st.markdown(f"""
+                    <div style='background:#fff5f5;border-left:4px solid #dc2626;
+                                padding:6px 12px;border-radius:0 4px 4px 0;margin:6px 0 4px 0'>
+                      <span style='font-weight:700;color:#dc2626'>📍 {_sede}</span>
+                      <span style='color:#888;font-size:0.8rem;margin-left:12px'>
+                        {n_eq_sede} equipo(s) · {ots_sede_cnt} OT(s)
+                      </span>
+                    </div>""", unsafe_allow_html=True)
 
-                # Historial OTs
-                st.markdown("#### 🛠️ Órdenes de Trabajo (preventivos, correctivos, emergencias)")
-                if ots_eq.empty:
-                    st.info("Sin OTs registradas para este equipo.")
-                else:
-                    _cols_ot_hv = [c for c in ["ID","Origen","Fecha_Creacion","Descripcion","Tecnico","Fecha_Ejecucion","Estado"] if c in ots_eq.columns]
-                    tabla_html(
-                        ots_eq.sort_values("Fecha_Creacion", ascending=False)[_cols_ot_hv].reset_index(drop=True),
-                        color_col="Estado", colores_estado=COLORES_HV
-                    )
+                    for _, eq in eq_sede.iterrows():
+                        id_item = eq.get("ID_Item","")
+                        _serv   = eq.get("Servicio","")
+                        ultimo  = eq.get("Ultimo_Mantenimiento","")
+                        proximo = eq.get("Proximo_Mantenimiento","")
 
-                # Historial SOLs
-                st.markdown("#### 📋 Solicitudes de servicio")
-                if sols_eq.empty:
-                    st.info("Sin solicitudes registradas para este equipo en esta sede.")
-                else:
-                    _cols_sol_hv = [c for c in ["ID","Fecha","SLA","Descripcion","Estado"] if c in sols_eq.columns]
-                    tabla_html(
-                        sols_eq.sort_values("Fecha", ascending=False)[_cols_sol_hv].reset_index(drop=True),
-                        color_col="Estado",
-                        colores_estado={"Pendiente":("#fff3cd","#7d5a00"),"Aprobado":("#d1e7dd","#0a5c36"),
-                                        "Completado":("#cfe2ff","#0a3678"),"Cancelado":("#f8d7da","#7f1d1d")}
-                    )
+                        try:
+                            dias = (datetime.strptime(proximo, "%Y-%m-%d") - ahora_colombia()).days
+                            alerta = "🔴" if dias < 0 else ("🟡" if dias <= 15 else "🟢")
+                            alerta_txt = "Vencido" if dias < 0 else (f"Próximo en {dias}d" if dias <= 15 else "Al día")
+                        except Exception:
+                            alerta, alerta_txt = "⚪", "Sin fecha"
 
-                # Editar equipo
-                with st.expander("✏️ Editar datos del equipo"):
-                    with st.form(f"form_edit_eq_{id_item}"):
-                        ec1, ec2 = st.columns(2)
-                        with ec1:
-                            e_marca  = st.text_input("Marca",    value=eq.get("Marca",""))
-                            e_modelo = st.text_input("Modelo",   value=eq.get("Modelo",""))
-                            e_serial = st.text_input("Serial",   value=eq.get("Numero_Serie",""))
-                        with ec2:
-                            e_specs  = st.text_input("Capacidad/Especificaciones", value=eq.get("Especificaciones",""))
-                            e_ubic   = st.text_input("Ubicación", value=eq.get("Ubicacion",""))
-                            e_ult    = st.text_input("Último mantenimiento (YYYY-MM-DD)", value=ultimo if ultimo != "—" else "")
-                            e_prox   = st.text_input("Próximo mantenimiento (YYYY-MM-DD)", value=proximo if proximo != "—" else "")
-                        if st.form_submit_button("💾 Guardar cambios", type="primary"):
-                            idx_e = equipos[equipos["ID_Item"] == id_item].index
-                            if len(idx_e) > 0:
-                                equipos.loc[idx_e[0], "Marca"]                = e_marca
-                                equipos.loc[idx_e[0], "Modelo"]               = e_modelo
-                                equipos.loc[idx_e[0], "Numero_Serie"]         = e_serial
-                                equipos.loc[idx_e[0], "Especificaciones"]     = e_specs
-                                equipos.loc[idx_e[0], "Ubicacion"]            = e_ubic
-                                equipos.loc[idx_e[0], "Ultimo_Mantenimiento"] = e_ult
-                                equipos.loc[idx_e[0], "Proximo_Mantenimiento"]= e_prox
-                                save_equipos(equipos)
-                                st.success(f"✅ Equipo {id_item} actualizado.")
-                                st.rerun()
+                        # OTs de este equipo
+                        ots_eq = pd.DataFrame()
+                        if not ots.empty:
+                            ots_dir = ots[ots.get("ID_Item", pd.Series(dtype=str)) == id_item] if "ID_Item" in ots.columns else pd.DataFrame()
+                            ots_sede_srv = ots[
+                                (ots["Cliente"].str.strip().str.lower() == _cli.strip().lower()) &
+                                (ots["Sede"].str.strip().str.lower() == _sede.strip().lower()) &
+                                (ots["Servicio"] == _serv)
+                            ]
+                            if not ots_dir.empty:
+                                ots_sede_srv = ots_sede_srv[~ots_sede_srv["ID"].isin(ots_dir["ID"])]
+                            ots_eq = pd.concat([ots_dir, ots_sede_srv], ignore_index=True) if not ots_dir.empty or not ots_sede_srv.empty else ots_sede_srv
+
+                        with st.expander(
+                            f"{alerta} **{id_item}** — {eq.get('Marca','')} {eq.get('Modelo','')} "
+                            f"| {eq.get('Especificaciones','')} | {len(ots_eq)} OT(s) | {alerta_txt}"
+                        ):
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.write(f"**Serial:** {eq.get('Numero_Serie','—')}")
+                                st.write(f"**Capacidad:** {eq.get('Especificaciones','—')}")
+                                st.write(f"**Ubicación:** {eq.get('Ubicacion','—')}")
+                            with c2:
+                                st.write(f"**Último mto.:** {ultimo or '—'}")
+                                st.write(f"**Próximo mto.:** {proximo or '—'} {alerta}")
+                                st.write(f"**Servicio:** {_serv}")
+
+                            if not ots_eq.empty:
+                                st.markdown("**🛠️ Historial de OTs**")
+                                _c_ot = [c for c in ["ID","Origen","Fecha_Creacion","Descripcion","Tecnico","Estado"] if c in ots_eq.columns]
+                                tabla_html(ots_eq.sort_values("Fecha_Creacion", ascending=False)[_c_ot].reset_index(drop=True),
+                                           color_col="Estado", colores_estado=COLORES_HV)
+
+                            # Editar equipo
+                            with st.expander("✏️ Editar equipo"):
+                                with st.form(f"form_hv_edit_{id_item}"):
+                                    he1, he2 = st.columns(2)
+                                    with he1:
+                                        _em = st.text_input("Marca",   value=eq.get("Marca",""))
+                                        _emo= st.text_input("Modelo",  value=eq.get("Modelo",""))
+                                        _es = st.text_input("Serial",  value=eq.get("Numero_Serie",""))
+                                    with he2:
+                                        _espec= st.text_input("Capacidad", value=eq.get("Especificaciones",""))
+                                        _eu   = st.text_input("Ubicación", value=eq.get("Ubicacion",""))
+                                        _eult = st.text_input("Último mto. (YYYY-MM-DD)", value=ultimo or "")
+                                        _eprx = st.text_input("Próximo mto. (YYYY-MM-DD)", value=proximo or "")
+                                    if st.form_submit_button("💾 Guardar", type="primary", use_container_width=True):
+                                        idx_e = equipos[equipos["ID_Item"] == id_item].index
+                                        if len(idx_e) > 0:
+                                            equipos.loc[idx_e[0], "Marca"]                = _em
+                                            equipos.loc[idx_e[0], "Modelo"]               = _emo
+                                            equipos.loc[idx_e[0], "Numero_Serie"]         = _es
+                                            equipos.loc[idx_e[0], "Especificaciones"]     = _espec
+                                            equipos.loc[idx_e[0], "Ubicacion"]            = _eu
+                                            equipos.loc[idx_e[0], "Ultimo_Mantenimiento"] = _eult
+                                            equipos.loc[idx_e[0], "Proximo_Mantenimiento"]= _eprx
+                                            save_equipos(equipos)
+                                            st.success(f"✅ {id_item} actualizado.")
+                                            st.rerun()
+
+                    st.markdown("---")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
