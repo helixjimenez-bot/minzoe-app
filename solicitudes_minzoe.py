@@ -2965,7 +2965,14 @@ elif pagina == "clientes":
         # ── Ver sedes y editar ────────────────────────────────────────────
         st.subheader("🏢 Ver sedes y editar cliente")
         empresas_lista = sorted(cli["Empresa"].unique().tolist())
-        emp_sel = st.selectbox("Selecciona la empresa", empresas_lista, key="emp_sel_edit")
+
+        # Pre-selección cuando viene desde el botón de una OT
+        _presel_cli  = st.session_state.pop("_cli_presel", None)
+        _presel_sede = st.session_state.pop("_sede_presel", None)
+        _idx_emp = empresas_lista.index(_presel_cli) if _presel_cli and _presel_cli in empresas_lista else 0
+
+        emp_sel = st.selectbox("Selecciona la empresa", empresas_lista,
+                               index=_idx_emp, key="emp_sel_edit")
 
         if emp_sel:
             sedes_emp = cli[cli["Empresa"].str.strip().str.lower() == emp_sel.strip().lower()].copy()
@@ -2975,7 +2982,9 @@ elif pagina == "clientes":
 
             st.markdown("**✏️ Editar sede**")
             sedes_lista = sedes_emp["Sede"].tolist()
-            sede_sel_edit = st.selectbox("Selecciona la sede a editar", sedes_lista, key="sede_sel_edit")
+            _idx_sede = sedes_lista.index(_presel_sede) if _presel_sede and _presel_sede in sedes_lista else 0
+            sede_sel_edit = st.selectbox("Selecciona la sede a editar", sedes_lista,
+                                         index=_idx_sede, key="sede_sel_edit")
 
             if sede_sel_edit:
                 idx_sede = sedes_emp[sedes_emp["Sede"] == sede_sel_edit].index[0]
@@ -3574,7 +3583,17 @@ elif pagina == "ots":
                         st.markdown("**🏢 Empresa**")
                         st.write(f"**Cliente:** {fila_ot['Cliente']}")
                         st.write(f"**NIT:** {fila_ot['NIT']}")
-                        st.write(f"**Sede:** {fila_ot['Sede']}")
+                        # Sede clickable → lleva a editar ese cliente
+                        _sede_ot = fila_ot.get('Sede','')
+                        _cli_ot  = fila_ot.get('Cliente','')
+                        col_sede1, col_sede2 = st.columns([3,1])
+                        col_sede1.write(f"**Sede:** {_sede_ot}")
+                        if col_sede2.button("✏️ Editar sede", key=f"btn_sede_{id_ot_sel}",
+                                             use_container_width=True):
+                            st.session_state["pagina"]       = "clientes"
+                            st.session_state["_cli_presel"]  = _cli_ot
+                            st.session_state["_sede_presel"] = _sede_ot
+                            st.rerun()
                         st.write(f"**Contacto:** {fila_ot['Nombre_Contacto']} — {fila_ot['Celular_Contacto']}")
                     with c2:
                         st.markdown("**🔧 Trabajo**")
@@ -3658,6 +3677,60 @@ elif pagina == "ots":
                                 use_container_width=True,
                                 key=f"dl_html_det_{id_ot_sel}",
                             )
+
+                    # ── Registro rápido de equipo desde la OT ─────────────
+                    if fila_ot.get("Servicio","") in SERVICIOS_CON_EQUIPOS:
+                        st.divider()
+                        with st.expander("➕ Registrar equipo en esta sede"):
+                            st.caption(f"Registra el equipo de {fila_ot.get('Servicio','')} en {fila_ot.get('Sede','')} sin necesitar un contrato.")
+
+                            SUBTIPOS_EQ = {
+                                "Aires Acondicionados": ["Minisplit","Cassette","Split Ducto",
+                                    "Manejadora de Aire","Paquete / Roof Top","Chiller",
+                                    "VRF / VRV","Fan Coil","Portátil","Ventilador","Extractor"],
+                                "UPS y Plantas Eléctricas": ["UPS","Planta Eléctrica",
+                                    "Tablero ATS","Rectificador","Banco de Baterías","Inversor"],
+                                "Cámaras de Seguridad": ["Cámara Domo","Cámara Bullet","PTZ",
+                                    "DVR / NVR","Monitor","Access Point","Cámara PTZ"],
+                            }
+                            _srv_eq = fila_ot.get("Servicio","")
+                            _subtipos = SUBTIPOS_EQ.get(_srv_eq, ["Otro"])
+
+                            with st.form(f"form_eq_rapido_{id_ot_sel}"):
+                                eq1, eq2 = st.columns(2)
+                                with eq1:
+                                    eq_subtipo = st.selectbox("Tipo de equipo", _subtipos, key=f"eq_sub_{id_ot_sel}")
+                                    eq_marca   = st.text_input("Marca")
+                                    eq_modelo  = st.text_input("Modelo")
+                                    eq_serial  = st.text_input("Serial / N° de serie")
+                                with eq2:
+                                    eq_specs   = st.text_input("Capacidad / Especificaciones",
+                                                               placeholder="Ej: 12.000 BTU | R-410A")
+                                    eq_ubic    = st.text_input("Ubicación del equipo")
+                                    eq_ult_mto = st.text_input("Último mantenimiento (YYYY-MM-DD)",
+                                                               value=fila_ot.get("Fecha_Ejecucion",""))
+                                    eq_prox    = st.text_input("Próximo mantenimiento (YYYY-MM-DD)")
+
+                                if st.form_submit_button("💾 Registrar equipo", type="primary", use_container_width=True):
+                                    equipos_all = get_equipos()
+                                    _nuevo_eq = {
+                                        "ID_Item":              gen_item_id(equipos_all),
+                                        "ID_Contrato":          id_ot_sel,  # referencia a la OT
+                                        "Cliente":              fila_ot.get("Cliente",""),
+                                        "Sede":                 fila_ot.get("Sede",""),
+                                        "Servicio":             _srv_eq,
+                                        "Marca":                eq_marca.strip(),
+                                        "Modelo":               f"{eq_subtipo} {eq_modelo}".strip(),
+                                        "Numero_Serie":         eq_serial.strip(),
+                                        "Especificaciones":     eq_specs.strip(),
+                                        "Ubicacion":            eq_ubic.strip(),
+                                        "Ultimo_Mantenimiento": eq_ult_mto.strip(),
+                                        "Proximo_Mantenimiento":eq_prox.strip(),
+                                    }
+                                    equipos_all = pd.concat([equipos_all, pd.DataFrame([_nuevo_eq])], ignore_index=True)
+                                    save_equipos(equipos_all)
+                                    st.success(f"✅ Equipo **{_nuevo_eq['ID_Item']}** registrado en {fila_ot.get('Sede','')}.")
+                                    st.rerun()
 
                 if edi is not None:
                  with edi:
