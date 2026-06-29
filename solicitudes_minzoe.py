@@ -3498,22 +3498,6 @@ elif pagina == "ots":
                     ["_ord_est", "Fecha_Creacion"], ascending=[True, False]
                 ).drop(columns=["_ord_est"])
 
-                COLS_TABLA_OT = ["ID", "Origen", "Creado_Por", "Fecha_Creacion", "Fecha_Limite", "Cliente", "Sede",
-                                 "Servicio", "SLA", "Zona", "Tecnico", "Fecha_Ejecucion", "Valor_COP", "Estado"]
-                cols_vis_ot = [c for c in COLS_TABLA_OT if c in vista_ot_ord.columns]
-
-                def color_limite(val):
-                    try:
-                        limite = datetime.strptime(val, "%Y-%m-%d %H:%M")
-                        diff   = (limite - datetime.now()).total_seconds() / 3600
-                        if diff < 0:
-                            return "background-color:#f8d7da; color:#000"
-                        elif diff <= 24:
-                            return "background-color:#fff3cd; color:#000"
-                        return "background-color:#d1e7dd; color:#000"
-                    except Exception:
-                        return ""
-
                 COLORES_OT = {
                     "Programada":   ("#e0e7ff", "#1e3a8a"),
                     "En ejecución": ("#fef3c7", "#78350f"),
@@ -3528,12 +3512,50 @@ elif pagina == "ots":
                 _pag_ot = st.session_state.get("pag_ot", 1)
                 _ini_ot = (_pag_ot - 1) * _POR_PAG_OT
                 _fin_ot = _ini_ot + _POR_PAG_OT
+                _pagina_ots = vista_ot_ord.iloc[_ini_ot:_fin_ot]
 
-                tabla_html(vista_ot_ord[cols_vis_ot].iloc[_ini_ot:_fin_ot].reset_index(drop=True),
-                           color_col="Estado", colores_estado=COLORES_OT,
-                           fmt_cols=["Valor_COP"])
+                # ── Encabezado de tabla ───────────────────────────────────
+                st.markdown("""
+                <div style='display:flex;background:#dc2626;color:#fff;
+                            padding:6px 12px;border-radius:6px 6px 0 0;
+                            font-size:0.75rem;font-weight:700;gap:0'>
+                  <span style='flex:1 1 110px'>ID</span>
+                  <span style='flex:1 1 110px'>Fecha</span>
+                  <span style='flex:1 1 170px'>Cliente</span>
+                  <span style='flex:1 1 130px'>Sede</span>
+                  <span style='flex:1 1 120px'>Servicio</span>
+                  <span style='flex:1 1 90px'>Técnico</span>
+                  <span style='flex:1 1 80px'>Estado</span>
+                  <span style='flex:0 0 90px;text-align:center'>Acción</span>
+                </div>""", unsafe_allow_html=True)
 
-                c1, c2, c3, c4, c5 = st.columns([1, 1, 3, 1, 1])
+                # ── Filas con botón Ver OT ────────────────────────────────
+                for _, _row in _pagina_ots.iterrows():
+                    _est = _row.get("Estado","")
+                    _bg, _fg = COLORES_OT.get(_est, ("#ffffff","#111111"))
+                    _c_row, _c_btn = st.columns([7, 1])
+                    with _c_row:
+                        st.markdown(f"""
+                        <div style='background:{_bg};border:1px solid #e5e7eb;
+                                    border-left:4px solid {_fg};padding:7px 12px;
+                                    display:flex;align-items:center;gap:0;
+                                    margin:1px 0;font-size:0.78rem'>
+                          <span style='flex:1 1 110px;font-weight:700;color:#111'>{_row.get('ID','')}</span>
+                          <span style='flex:1 1 110px;color:#555'>{_row.get('Fecha_Creacion','')[:10]}</span>
+                          <span style='flex:1 1 170px;color:#333'>{str(_row.get('Cliente',''))[:20]}</span>
+                          <span style='flex:1 1 130px;color:#333'>{str(_row.get('Sede',''))[:16]}</span>
+                          <span style='flex:1 1 120px;color:#333'>{str(_row.get('Servicio',''))[:14]}</span>
+                          <span style='flex:1 1 90px;color:#333'>{str(_row.get('Tecnico',''))[:12]}</span>
+                          <span style='flex:1 1 80px;font-weight:600;color:{_fg}'>{_est}</span>
+                        </div>""", unsafe_allow_html=True)
+                    with _c_btn:
+                        if st.button("→ Ver OT", key=f"ver_ot_{_row['ID']}",
+                                     use_container_width=True):
+                            st.session_state["ot_preselect"] = _row["ID"]
+                            st.rerun()
+
+                # ── Paginación y exportar ─────────────────────────────────
+                c1, c2, c3, c4 = st.columns([1, 1, 4, 1])
                 with c1:
                     if st.button("◀ Anterior", key="ot_prev", disabled=_pag_ot <= 1):
                         st.session_state["pag_ot"] = _pag_ot - 1
@@ -3543,7 +3565,7 @@ elif pagina == "ots":
                         st.session_state["pag_ot"] = _pag_ot + 1
                         st.rerun()
                 with c3:
-                    st.caption(f"Página {_pag_ot} de {_total_pags_ot} — Mostrando {min(_fin_ot,_total_ots)-_ini_ot} de {_total_ots} OTs")
+                    st.caption(f"Página {_pag_ot} de {_total_pags_ot} — {_total_ots} OTs")
                 with c4:
                     buf_ot = io.BytesIO()
                     with pd.ExcelWriter(buf_ot, engine="openpyxl") as w:
