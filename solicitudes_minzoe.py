@@ -3021,11 +3021,125 @@ elif pagina == "clientes":
         emp_sel = st.selectbox("Selecciona la empresa", empresas_lista,
                                index=_idx_emp, key="emp_sel_edit")
 
+        # Perfil de sede cuando viene del botón Ver sede
+        _ver_sede_data = st.session_state.get("_ver_sede")
+        if _ver_sede_data:
+            _vs_emp  = _ver_sede_data["emp"]
+            _vs_sede = _ver_sede_data["sede"]
+            equipos_pg = get_equipos()
+            ots_pg     = get_ots()
+            sol_pg     = get_df()
+
+            if st.button("← Volver a la lista de sedes", key="volver_sedes"):
+                st.session_state.pop("_ver_sede", None)
+                st.rerun()
+
+            st.subheader(f"📍 {_vs_sede}")
+            st.caption(f"{_vs_emp}")
+            st.divider()
+
+            # ── Equipos por tipo ─────────────────────────────────────────
+            st.markdown("**🔧 Equipos registrados**")
+            _tipos_eq_sede = {
+                "❄️ Aires Acond.":    "Aires Acondicionados",
+                "🔋 UPS":             "UPS y Plantas Eléctricas",
+                "📷 Cámaras CCTV":   "Cámaras de Seguridad",
+                "💡 Luminarias":      "Luminarias",
+            }
+            eq_sede = equipos_pg[
+                (equipos_pg["Cliente"].str.strip().str.lower() == _vs_emp.strip().lower()) &
+                (equipos_pg["Sede"].str.strip().str.lower()    == _vs_sede.strip().lower())
+            ] if not equipos_pg.empty else pd.DataFrame()
+
+            cols_eq = st.columns(len(_tipos_eq_sede))
+            for idx_t, (label, srv) in enumerate(_tipos_eq_sede.items()):
+                cnt = int((eq_sede["Servicio"] == srv).sum()) if not eq_sede.empty else 0
+                cols_eq[idx_t].metric(label, cnt)
+
+            st.divider()
+
+            # ── Historial de servicios ────────────────────────────────────
+            st.markdown("**📋 Historial de servicios**")
+
+            ots_sede = ots_pg[
+                (ots_pg["Cliente"].str.strip().str.lower() == _vs_emp.strip().lower()) &
+                (ots_pg["Sede"].str.strip().str.lower()    == _vs_sede.strip().lower())
+            ] if not ots_pg.empty else pd.DataFrame()
+
+            sol_sede = sol_pg[
+                (sol_pg["Cliente"].str.strip().str.lower() == _vs_emp.strip().lower()) &
+                (sol_pg.get("Sede", pd.Series(dtype=str)).str.strip().str.lower() == _vs_sede.strip().lower()
+                 if "Sede" in sol_pg.columns else pd.Series([False]*len(sol_pg)))
+            ] if not sol_pg.empty else pd.DataFrame()
+
+            _prev = int((ots_sede["Origen"] == "Contrato Mantenimiento").sum()) if not ots_sede.empty else 0
+            _corr = int((ots_sede["Origen"] != "Contrato Mantenimiento").sum()) if not ots_sede.empty else 0
+            _n_ots  = len(ots_sede)
+            _n_sols = len(sol_sede)
+
+            def _to_num(v):
+                try: return float(str(v).replace("$","").replace(",","").replace(".","").strip() or 0)
+                except: return 0
+            _valor_total = ots_sede["Valor_COP"].apply(_to_num).sum() if not ots_sede.empty else 0
+
+            hc1, hc2, hc3, hc4, hc5 = st.columns(5)
+            hc1.metric("🛠️ Total OTs",        _n_ots)
+            hc2.metric("🔄 Preventivos",       _prev)
+            hc3.metric("🔧 Correctivos/otros", _corr)
+            hc4.metric("📋 Solicitudes",       _n_sols)
+            hc5.metric("💰 Valor acumulado",   f"${_valor_total:,.0f}")
+
+            if not ots_sede.empty:
+                st.divider()
+                st.markdown("**OTs de esta sede**")
+                _cols_ots_sede = [c for c in ["ID","Fecha_Creacion","Origen","Servicio","Descripcion",
+                                              "Tecnico","Valor_COP","Estado"] if c in ots_sede.columns]
+                tabla_html(ots_sede.sort_values("Fecha_Creacion", ascending=False)[_cols_ots_sede].reset_index(drop=True),
+                           color_col="Estado",
+                           colores_estado={"Programada":("#e0e7ff","#1e3a8a"),"En ejecución":("#fef3c7","#78350f"),
+                                           "En revisión":("#ede9fe","#4c1d95"),"Finalizada":("#d1fae5","#064e3b"),
+                                           "Cancelada":("#fee2e2","#7f1d1d")})
+
+            if not sol_sede.empty:
+                st.divider()
+                st.markdown("**Solicitudes de esta sede**")
+                _cols_sol_sede = [c for c in ["ID","Fecha","SLA","Servicio","Descripcion","Estado"] if c in sol_sede.columns]
+                tabla_html(sol_sede.sort_values("Fecha", ascending=False)[_cols_sol_sede].reset_index(drop=True))
+
+            st.stop()
+
         if emp_sel:
             sedes_emp = cli[cli["Empresa"].str.strip().str.lower() == emp_sel.strip().lower()].copy()
             st.markdown(f"**{len(sedes_emp)} sede(s) registradas para {emp_sel}:**")
-            tabla_html(sedes_emp[["Sede","Direccion_Sede","Nombre_Contacto",
-                                   "Correo_Contacto","Celular_Contacto"]].reset_index(drop=True))
+
+            # Tabla con botón Ver sede
+            st.markdown("""
+            <div style='display:flex;background:#dc2626;color:#fff;
+                        padding:5px 12px;border-radius:6px 6px 0 0;
+                        font-size:0.75rem;font-weight:700'>
+              <span style='flex:2'>Sede</span>
+              <span style='flex:2'>Dirección</span>
+              <span style='flex:1'>Contacto</span>
+              <span style='flex:1'>Celular</span>
+              <span style='flex:0 0 90px;text-align:center'>Acción</span>
+            </div>""", unsafe_allow_html=True)
+
+            for _, _sd in sedes_emp.iterrows():
+                _c_sd, _c_btn_sd = st.columns([7, 1])
+                with _c_sd:
+                    st.markdown(f"""
+                    <div style='background:#fff;border:1px solid #e5e7eb;border-left:3px solid #dc2626;
+                                padding:7px 12px;display:flex;align-items:center;margin:1px 0;font-size:0.8rem'>
+                      <span style='flex:2;font-weight:600;color:#111'>{_sd.get('Sede','')}</span>
+                      <span style='flex:2;color:#555'>{_sd.get('Direccion_Sede','')}</span>
+                      <span style='flex:1;color:#333'>{_sd.get('Nombre_Contacto','')}</span>
+                      <span style='flex:1;color:#333'>{_sd.get('Celular_Contacto','')}</span>
+                    </div>""", unsafe_allow_html=True)
+                with _c_btn_sd:
+                    if st.button("👁 Ver sede", key=f"ver_sede_{_sd.get('Sede','')}_{emp_sel[:5]}",
+                                 use_container_width=True):
+                        st.session_state["_ver_sede"] = {"emp": emp_sel, "sede": _sd.get("Sede","")}
+                        st.rerun()
 
             st.markdown("**✏️ Editar sede**")
             sedes_lista = sedes_emp["Sede"].tolist()
