@@ -1371,6 +1371,32 @@ def verificar_login(correo, pwd, usuarios):
         return u.iloc[0]
     return None
 
+def crear_token(correo, password_hash):
+    """Crea token de sesión válido 7 días embebido en la URL."""
+    import base64, json, time as _time
+    data = json.dumps({"c": correo, "t": int(_time.time())})
+    sig  = hashlib.sha256(f"{data}{password_hash}".encode()).hexdigest()[:20]
+    return base64.urlsafe_b64encode(f"{data}|||{sig}".encode()).decode()
+
+def validar_token(token, usuarios):
+    """Valida token de URL. Retorna fila de usuario o None."""
+    import base64, json, time as _time
+    try:
+        decoded  = base64.urlsafe_b64decode(token.encode()).decode()
+        data_str, sig = decoded.rsplit("|||", 1)
+        data     = json.loads(data_str)
+        if _time.time() - data["t"] > 7 * 86400:  # 7 días
+            return None
+        u = usuarios[usuarios["correo"].str.lower() == data["c"].lower()]
+        if u.empty:
+            return None
+        expected = hashlib.sha256(f"{data_str}{u.iloc[0]['password_hash']}".encode()).hexdigest()[:20]
+        if sig != expected:
+            return None
+        return u.iloc[0]
+    except Exception:
+        return None
+
 def pagina_login():
     st.markdown("""
     <style>
@@ -1414,6 +1440,11 @@ def pagina_login():
                     st.session_state["user_nombre"] = user["nombre"]
                     st.session_state["user_correo"] = user["correo"]
                     st.session_state["user_rol"]    = user["rol"]
+                    # Guardar token en URL para auto-login al refrescar
+                    try:
+                        st.query_params["t"] = crear_token(user["correo"], user["password_hash"])
+                    except Exception:
+                        pass
                     st.rerun()
                 else:
                     st.error("Correo o contraseña incorrectos.")
@@ -1776,7 +1807,19 @@ if usuarios.empty:
     save_usuarios(admin_default)
     usuarios = admin_default
 
-# Si no ha iniciado sesión, mostrar pantalla de login
+# Auto-login desde token en URL al refrescar la página
+if not st.session_state.get("logged_in", False):
+    _token_url = st.query_params.get("t", "")
+    if _token_url:
+        _u_token = validar_token(_token_url, usuarios)
+        if _u_token is not None:
+            st.session_state["logged_in"]   = True
+            st.session_state["user_nombre"] = _u_token["nombre"]
+            st.session_state["user_correo"] = _u_token["correo"]
+            st.session_state["user_rol"]    = _u_token["rol"]
+            st.rerun()
+
+# Si no ha iniciado sesión (ni token válido), mostrar pantalla de login
 if not st.session_state.get("logged_in", False):
     pagina_login()
     st.stop()
@@ -1910,6 +1953,10 @@ with st.sidebar:
     if st.button("🚪 Cerrar sesión", use_container_width=True, type="secondary"):
         for k in ["logged_in","user_nombre","user_correo","user_rol"]:
             st.session_state.pop(k, None)
+        try:
+            st.query_params.clear()  # elimina el token de la URL
+        except Exception:
+            pass
         st.rerun()
 
     # Solo admin puede gestionar usuarios y subir logo
