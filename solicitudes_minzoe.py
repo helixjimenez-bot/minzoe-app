@@ -3877,20 +3877,6 @@ elif pagina == "ots":
                     st.markdown("**📝 Observaciones**")
                     st.write(fila_ot["Observaciones"] or "—")
 
-                    # ── Registro rápido de equipo desde la OT ─────────────
-                    if fila_ot.get("Servicio","") in SERVICIOS_CON_EQUIPOS:
-                        st.divider()
-                        with st.expander("➕ Registrar equipo en esta sede"):
-                            st.caption(f"Registra el equipo en {fila_ot.get('Sede','')}. La hoja de vida se crea automáticamente.")
-                            _eq_ot = form_crear_equipo(
-                                f"form_eq_rapido_{id_ot_sel}",
-                                fila_ot.get("Cliente",""),
-                                fila_ot.get("Sede",""),
-                                servicio_fijo=fila_ot.get("Servicio","")
-                            )
-                            if _eq_ot:
-                                st.success(f"✅ Equipo **{_eq_ot['ID_Item']}** registrado. Ya aparece en Hojas de Vida.")
-                                st.rerun()
 
                     # ── MENSAJE WHATSAPP ──────────────────────────────────
                     st.divider()
