@@ -3227,65 +3227,7 @@ elif pagina == "clientes":
                         st.session_state["_ver_sede"] = {"emp": emp_sel, "sede": _sd.get("Sede","")}
                         st.rerun()
 
-            st.markdown("**✏️ Editar sede**")
-            sedes_lista = sedes_emp["Sede"].tolist()
-            _idx_sede = sedes_lista.index(_presel_sede) if _presel_sede and _presel_sede in sedes_lista else 0
-            sede_sel_edit = st.selectbox("Selecciona la sede a editar", sedes_lista,
-                                         index=_idx_sede, key="sede_sel_edit")
-
-            if sede_sel_edit:
-                idx_sede = sedes_emp[sedes_emp["Sede"] == sede_sel_edit].index[0]
-                fs = cli.loc[idx_sede]
-
-                with st.form("form_editar_cliente"):
-                    st.markdown("**Datos de la empresa**")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        ee_empresa = st.text_input("Nombre empresa",    value=fs.get("Empresa",""))
-                        ee_nit     = st.text_input("NIT",               value=fs.get("NIT",""))
-                    with c2:
-                        ee_dir_emp = st.text_input("Dirección empresa", value=fs.get("Direccion_Empresa",""))
-
-                    st.markdown("**Datos de la sede**")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        ee_sede  = st.text_input("Nombre sede",     value=fs.get("Sede",""))
-                    with c2:
-                        ee_dir_s = st.text_input("Dirección sede",  value=fs.get("Direccion_Sede",""))
-
-                    st.markdown("**Contacto**")
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        ee_nom_c = st.text_input("Nombre contacto",  value=fs.get("Nombre_Contacto",""))
-                    with c2:
-                        ee_cor_c = st.text_input("Correo contacto",  value=fs.get("Correo_Contacto",""))
-                    with c3:
-                        ee_cel_c = st.text_input("Celular contacto", value=fs.get("Celular_Contacto",""))
-
-                    c_grd, c_eli = st.columns(2)
-                    with c_grd:
-                        guardar_edit = st.form_submit_button("💾 Guardar cambios", type="primary", use_container_width=True)
-                    with c_eli:
-                        eliminar_sede = st.form_submit_button("🗑️ Eliminar esta sede", use_container_width=True)
-
-                    if guardar_edit:
-                        cli.loc[idx_sede, "Empresa"]           = ee_empresa.strip()
-                        cli.loc[idx_sede, "NIT"]               = ee_nit.strip()
-                        cli.loc[idx_sede, "Direccion_Empresa"] = ee_dir_emp.strip()
-                        cli.loc[idx_sede, "Sede"]              = ee_sede.strip()
-                        cli.loc[idx_sede, "Direccion_Sede"]    = ee_dir_s.strip()
-                        cli.loc[idx_sede, "Nombre_Contacto"]   = ee_nom_c.strip()
-                        cli.loc[idx_sede, "Correo_Contacto"]   = ee_cor_c.strip()
-                        cli.loc[idx_sede, "Celular_Contacto"]  = ee_cel_c.strip()
-                        save_cli(cli)
-                        st.success(f"✅ Sede **{sede_sel_edit}** actualizada.")
-                        st.rerun()
-
-                    if eliminar_sede:
-                        cli = cli.drop(index=idx_sede).reset_index(drop=True)
-                        save_cli(cli)
-                        st.success(f"✅ Sede **{sede_sel_edit}** eliminada.")
-                        st.rerun()
+            st.caption("Haz clic en **👁 Ver sede** para editar los datos o equipos de cada sede.")
 
             # Agregar nueva sede a esta empresa
             st.divider()
