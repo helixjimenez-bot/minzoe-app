@@ -3513,14 +3513,14 @@ elif pagina == "ots":
                         "Observaciones":   (f"Equipo: {ot_equipo_id} — {ot_equipo_desc}\n" if ot_equipo_id else "") + ot_obs.strip(),
                     }
                     # Actualizar último/próximo mantenimiento si se vinculó un equipo
-                    if ot_equipo_id and not equipos_ot.empty:
-                        idx_eq = equipos_ot[equipos_ot["ID_Item"] == ot_equipo_id].index
+                    if ot_equipo_id and not equipos.empty:
+                        idx_eq = equipos[equipos["ID_Item"] == ot_equipo_id].index
                         if len(idx_eq) > 0:
-                            freq_eq = contratos[contratos["ID_Contrato"] == equipos_ot.loc[idx_eq[0],"ID_Contrato"]]["Frecuencia"].values
+                            freq_eq = contratos[contratos["ID_Contrato"] == equipos.loc[idx_eq[0],"ID_Contrato"]]["Frecuencia"].values
                             freq    = freq_eq[0] if len(freq_eq) > 0 else "Mensual"
-                            equipos_ot.loc[idx_eq[0], "Ultimo_Mantenimiento"]  = ahora_colombia().strftime("%Y-%m-%d")
-                            equipos_ot.loc[idx_eq[0], "Proximo_Mantenimiento"] = proxima_fecha(ahora_colombia().strftime("%Y-%m-%d"), freq)
-                            save_equipos(equipos_ot)
+                            equipos.loc[idx_eq[0], "Ultimo_Mantenimiento"]  = ahora_colombia().strftime("%Y-%m-%d")
+                            equipos.loc[idx_eq[0], "Proximo_Mantenimiento"] = proxima_fecha(ahora_colombia().strftime("%Y-%m-%d"), freq)
+                            save_equipos(equipos)
                     ots = pd.concat([ots, pd.DataFrame([nueva_ot])], ignore_index=True)
                     save_ots(ots)
                     msg_ot = f"✅ OT **{nueva_ot['ID']}** guardada para {empresa_final_ot}."
