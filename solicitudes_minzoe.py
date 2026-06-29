@@ -3056,6 +3056,92 @@ elif pagina == "clientes":
                 cnt = int((eq_sede["Servicio"] == srv).sum()) if not eq_sede.empty else 0
                 cols_eq[idx_t].metric(label, cnt)
 
+            # ── Crear equipo ──────────────────────────────────────────────
+            _SRVS_EQ = list(_tipos_eq_sede.values())
+            _SUBTIPOS_SEDE = {
+                "Aires Acondicionados":   ["Minisplit","Cassette","Split Ducto","Manejadora de Aire",
+                                           "Paquete / Roof Top","Chiller","VRF / VRV","Fan Coil","Portátil","Ventilador","Extractor"],
+                "UPS y Plantas Eléctricas":["UPS","Planta Eléctrica","Tablero ATS","Rectificador","Banco de Baterías","Inversor"],
+                "Cámaras de Seguridad":   ["Cámara Domo","Cámara Bullet","PTZ","DVR / NVR","Monitor","Access Point"],
+                "Luminarias":             ["Luminaria LED","Luminaria Fluorescente","Reflector","Poste","Luminaria de Emergencia","Otro"],
+            }
+            with st.expander("➕ Crear equipo en esta sede"):
+                with st.form("form_crear_eq_sede"):
+                    _srv_nuevo = st.selectbox("Tipo de servicio", _SRVS_EQ, key="eq_srv_sede")
+                    _sub_nuevo = st.selectbox("Tipo de equipo", _SUBTIPOS_SEDE.get(_srv_nuevo, ["Otro"]), key="eq_sub_sede")
+                    c_eq1, c_eq2 = st.columns(2)
+                    with c_eq1:
+                        _marca  = st.text_input("Marca")
+                        _modelo = st.text_input("Modelo")
+                        _serial = st.text_input("Serial / N° de serie")
+                    with c_eq2:
+                        _specs  = st.text_input("Capacidad / Especificaciones")
+                        _ubic   = st.text_input("Ubicación")
+                        _ult    = st.text_input("Último mantenimiento (YYYY-MM-DD)")
+                        _prox   = st.text_input("Próximo mantenimiento (YYYY-MM-DD)")
+                    if st.form_submit_button("💾 Guardar equipo", type="primary", use_container_width=True):
+                        _eq_all = get_equipos()
+                        _eq_nuevo = {
+                            "ID_Item": gen_item_id(_eq_all),
+                            "ID_Contrato": "", "Cliente": _vs_emp, "Sede": _vs_sede,
+                            "Servicio": _srv_nuevo,
+                            "Marca": _marca.strip(),
+                            "Modelo": f"{_sub_nuevo} {_modelo}".strip(),
+                            "Numero_Serie": _serial.strip(),
+                            "Especificaciones": _specs.strip(),
+                            "Ubicacion": _ubic.strip(),
+                            "Ultimo_Mantenimiento": _ult.strip(),
+                            "Proximo_Mantenimiento": _prox.strip(),
+                        }
+                        _eq_all = pd.concat([_eq_all, pd.DataFrame([_eq_nuevo])], ignore_index=True)
+                        save_equipos(_eq_all)
+                        st.success(f"✅ Equipo **{_eq_nuevo['ID_Item']}** registrado.")
+                        st.rerun()
+
+            # ── Editar / eliminar equipo ──────────────────────────────────
+            if not eq_sede.empty:
+                with st.expander(f"✏️ Editar equipo ({len(eq_sede)} registrado(s))"):
+                    _eq_ops = {f"{r['ID_Item']} — {r.get('Modelo','')} | {r.get('Ubicacion','')}": r['ID_Item']
+                               for _, r in eq_sede.iterrows()}
+                    _eq_sel = st.selectbox("Selecciona el equipo a editar", list(_eq_ops.keys()), key="eq_edit_sel_sede")
+                    if _eq_sel:
+                        _eq_id  = _eq_ops[_eq_sel]
+                        _eq_row = eq_sede[eq_sede["ID_Item"] == _eq_id].iloc[0]
+                        with st.form("form_editar_eq_sede"):
+                            ec1, ec2 = st.columns(2)
+                            with ec1:
+                                _e_marca  = st.text_input("Marca",   value=_eq_row.get("Marca",""))
+                                _e_modelo = st.text_input("Modelo",  value=_eq_row.get("Modelo",""))
+                                _e_serial = st.text_input("Serial",  value=_eq_row.get("Numero_Serie",""))
+                            with ec2:
+                                _e_specs  = st.text_input("Capacidad", value=_eq_row.get("Especificaciones",""))
+                                _e_ubic   = st.text_input("Ubicación", value=_eq_row.get("Ubicacion",""))
+                                _e_ult    = st.text_input("Último mto. (YYYY-MM-DD)", value=_eq_row.get("Ultimo_Mantenimiento",""))
+                                _e_prox   = st.text_input("Próximo mto. (YYYY-MM-DD)", value=_eq_row.get("Proximo_Mantenimiento",""))
+                            cg, ce = st.columns(2)
+                            with cg:
+                                if st.form_submit_button("💾 Guardar cambios", type="primary", use_container_width=True):
+                                    _eq_all2 = get_equipos()
+                                    _idx_e = _eq_all2[_eq_all2["ID_Item"] == _eq_id].index
+                                    if len(_idx_e) > 0:
+                                        _eq_all2.loc[_idx_e[0], "Marca"]                = _e_marca
+                                        _eq_all2.loc[_idx_e[0], "Modelo"]               = _e_modelo
+                                        _eq_all2.loc[_idx_e[0], "Numero_Serie"]         = _e_serial
+                                        _eq_all2.loc[_idx_e[0], "Especificaciones"]     = _e_specs
+                                        _eq_all2.loc[_idx_e[0], "Ubicacion"]            = _e_ubic
+                                        _eq_all2.loc[_idx_e[0], "Ultimo_Mantenimiento"] = _e_ult
+                                        _eq_all2.loc[_idx_e[0], "Proximo_Mantenimiento"]= _e_prox
+                                        save_equipos(_eq_all2)
+                                        st.success(f"✅ Equipo {_eq_id} actualizado.")
+                                        st.rerun()
+                            with ce:
+                                if st.form_submit_button("🗑️ Eliminar equipo", use_container_width=True):
+                                    _eq_all3 = get_equipos()
+                                    _eq_all3 = _eq_all3[_eq_all3["ID_Item"] != _eq_id].reset_index(drop=True)
+                                    save_equipos(_eq_all3)
+                                    st.success(f"✅ Equipo {_eq_id} eliminado.")
+                                    st.rerun()
+
             st.divider()
 
             # ── Historial de servicios ────────────────────────────────────
