@@ -3459,14 +3459,21 @@ elif pagina == "ots":
                     st.rerun()
                 st.divider()
 
-            # ── Técnico en modo reporte: saltar tabla/filtros, ir directo al detalle ──
+            # ── Saltar tabla cuando viene de Ver OT o técnico en reporte ──
             _tec_modo_rep = st.session_state.get("_tec_en_reporte")
-            # _tec_viewing_ot es persistente (no se hace pop), sobrevive reruns del canvas
             _tec_ot_id    = st.session_state.get("_tec_viewing_ot")
+            _ver_ot_directo = st.session_state.get("_ver_ot_id")  # viene del botón Ver OT
             ot_pre        = st.session_state.pop("ot_preselect", None) or _tec_ot_id
 
             if _tec_modo_rep and _tec_ot_id and _tec_ot_id in ots["ID"].values:
                 id_ot_sel = _tec_ot_id
+            elif _ver_ot_directo and _ver_ot_directo in ots["ID"].values:
+                # Viene del botón Ver OT — mostrar solo el detalle, sin tabla
+                id_ot_sel = _ver_ot_directo
+                if st.button("← Volver a la lista de OTs", key="volver_lista_ot"):
+                    st.session_state.pop("_ver_ot_id", None)
+                    st.rerun()
+                st.divider()
             else:
                 ORIGENES  = ["Solicitud", "Manual", "Contrato Mantenimiento"]
                 c1, c2, c3, c4 = st.columns(4)
@@ -3551,7 +3558,7 @@ elif pagina == "ots":
                     with _c_btn:
                         if st.button("→ Ver OT", key=f"ver_ot_{_row['ID']}",
                                      use_container_width=True):
-                            st.session_state["ot_preselect"] = _row["ID"]
+                            st.session_state["_ver_ot_id"] = _row["ID"]
                             st.rerun()
 
                 # ── Paginación y exportar ─────────────────────────────────
@@ -3578,15 +3585,10 @@ elif pagina == "ots":
                     )
 
                 st.divider()
-                if ot_pre and ot_pre in ots["ID"].values:
-                    # Viene de botón Ver OT — ir directo al detalle sin selectbox
-                    id_ot_sel = ot_pre
-                    if st.button("← Volver a la lista", key="volver_lista_ot"):
-                        st.session_state.pop("ot_preselect", None)
-                        st.rerun()
-                else:
-                    ids_ot_lista = ots.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))["ID"].tolist()
-                    id_ot_sel = st.selectbox("Selecciona una OT", ids_ot_lista, key="id_ot_sel")
+                ids_ot_lista = ots.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))["ID"].tolist()
+                idx_pre = ids_ot_lista.index(ot_pre) if ot_pre and ot_pre in ids_ot_lista else 0
+                id_ot_sel = st.selectbox("Selecciona una OT", ids_ot_lista,
+                                         index=idx_pre, key="id_ot_sel")
 
             if id_ot_sel:
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
