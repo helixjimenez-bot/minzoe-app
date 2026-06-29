@@ -3631,6 +3631,34 @@ elif pagina == "ots":
                         st.caption("Agrega el celular del técnico en ✏️ Editar para tenerlo a la mano.")
                     st.text_area("Copia este mensaje y pégalo en WhatsApp:", value=mensaje_wa, height=300, key="msg_wa")
 
+                    # ── Descargar reporte si existe ───────────────────────
+                    _rep_det_html, _rep_det_meta = cargar_reporte_sb(id_ot_sel)
+                    if _rep_det_html:
+                        st.divider()
+                        st.markdown(f"**📄 Reporte guardado** — {_rep_det_meta.get('tipo','')} | {_rep_det_meta.get('fecha','')}")
+                        _dc1, _dc2 = st.columns(2)
+                        with _dc1:
+                            _pdf_det = html_to_pdf(_rep_det_html)
+                            if _pdf_det:
+                                st.download_button(
+                                    "⬇️ Descargar PDF",
+                                    data=_pdf_det,
+                                    file_name=f"Reporte_{id_ot_sel}.pdf",
+                                    mime="application/pdf",
+                                    use_container_width=True,
+                                    type="primary",
+                                    key=f"dl_pdf_det_{id_ot_sel}",
+                                )
+                        with _dc2:
+                            st.download_button(
+                                "⬇️ Descargar HTML",
+                                data=_rep_det_html,
+                                file_name=f"Reporte_{id_ot_sel}.html",
+                                mime="text/html",
+                                use_container_width=True,
+                                key=f"dl_html_det_{id_ot_sel}",
+                            )
+
                 if edi is not None:
                  with edi:
                     with st.form("form_editar_ot"):
