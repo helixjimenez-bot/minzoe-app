@@ -3624,6 +3624,55 @@ elif pagina == "ots":
                     st.markdown("**📝 Observaciones**")
                     st.write(fila_ot["Observaciones"] or "—")
 
+                    # ── Registro rápido de equipo desde la OT ─────────────
+                    if fila_ot.get("Servicio","") in SERVICIOS_CON_EQUIPOS:
+                        st.divider()
+                        with st.expander("➕ Registrar equipo en esta sede"):
+                            st.caption(f"Registra el equipo de {fila_ot.get('Servicio','')} en {fila_ot.get('Sede','')} sin necesitar un contrato.")
+                            SUBTIPOS_EQ = {
+                                "Aires Acondicionados": ["Minisplit","Cassette","Split Ducto",
+                                    "Manejadora de Aire","Paquete / Roof Top","Chiller",
+                                    "VRF / VRV","Fan Coil","Portátil","Ventilador","Extractor"],
+                                "UPS y Plantas Eléctricas": ["UPS","Planta Eléctrica",
+                                    "Tablero ATS","Rectificador","Banco de Baterías","Inversor"],
+                                "Cámaras de Seguridad": ["Cámara Domo","Cámara Bullet","PTZ",
+                                    "DVR / NVR","Monitor","Access Point","Cámara PTZ"],
+                            }
+                            _srv_eq   = fila_ot.get("Servicio","")
+                            _subtipos = SUBTIPOS_EQ.get(_srv_eq, ["Otro"])
+                            with st.form(f"form_eq_rapido_{id_ot_sel}"):
+                                eq1, eq2 = st.columns(2)
+                                with eq1:
+                                    eq_subtipo = st.selectbox("Tipo de equipo", _subtipos, key=f"eq_sub_{id_ot_sel}")
+                                    eq_marca   = st.text_input("Marca")
+                                    eq_modelo  = st.text_input("Modelo")
+                                    eq_serial  = st.text_input("Serial / N° de serie")
+                                with eq2:
+                                    eq_specs   = st.text_input("Capacidad / Especificaciones", placeholder="Ej: 12.000 BTU | R-410A")
+                                    eq_ubic    = st.text_input("Ubicación del equipo")
+                                    eq_ult_mto = st.text_input("Último mantenimiento (YYYY-MM-DD)", value=fila_ot.get("Fecha_Ejecucion",""))
+                                    eq_prox    = st.text_input("Próximo mantenimiento (YYYY-MM-DD)")
+                                if st.form_submit_button("💾 Registrar equipo", type="primary", use_container_width=True):
+                                    equipos_all = get_equipos()
+                                    _nuevo_eq = {
+                                        "ID_Item":               gen_item_id(equipos_all),
+                                        "ID_Contrato":           id_ot_sel,
+                                        "Cliente":               fila_ot.get("Cliente",""),
+                                        "Sede":                  fila_ot.get("Sede",""),
+                                        "Servicio":              _srv_eq,
+                                        "Marca":                 eq_marca.strip(),
+                                        "Modelo":                f"{eq_subtipo} {eq_modelo}".strip(),
+                                        "Numero_Serie":          eq_serial.strip(),
+                                        "Especificaciones":      eq_specs.strip(),
+                                        "Ubicacion":             eq_ubic.strip(),
+                                        "Ultimo_Mantenimiento":  eq_ult_mto.strip(),
+                                        "Proximo_Mantenimiento": eq_prox.strip(),
+                                    }
+                                    equipos_all = pd.concat([equipos_all, pd.DataFrame([_nuevo_eq])], ignore_index=True)
+                                    save_equipos(equipos_all)
+                                    st.success(f"✅ Equipo **{_nuevo_eq['ID_Item']}** registrado en {fila_ot.get('Sede','')}.")
+                                    st.rerun()
+
                     # ── MENSAJE WHATSAPP ──────────────────────────────────
                     st.divider()
                     celular_tec = fila_ot.get("Celular_Tecnico", "").strip()
@@ -3677,60 +3726,6 @@ elif pagina == "ots":
                                 use_container_width=True,
                                 key=f"dl_html_det_{id_ot_sel}",
                             )
-
-                    # ── Registro rápido de equipo desde la OT ─────────────
-                    if fila_ot.get("Servicio","") in SERVICIOS_CON_EQUIPOS:
-                        st.divider()
-                        with st.expander("➕ Registrar equipo en esta sede"):
-                            st.caption(f"Registra el equipo de {fila_ot.get('Servicio','')} en {fila_ot.get('Sede','')} sin necesitar un contrato.")
-
-                            SUBTIPOS_EQ = {
-                                "Aires Acondicionados": ["Minisplit","Cassette","Split Ducto",
-                                    "Manejadora de Aire","Paquete / Roof Top","Chiller",
-                                    "VRF / VRV","Fan Coil","Portátil","Ventilador","Extractor"],
-                                "UPS y Plantas Eléctricas": ["UPS","Planta Eléctrica",
-                                    "Tablero ATS","Rectificador","Banco de Baterías","Inversor"],
-                                "Cámaras de Seguridad": ["Cámara Domo","Cámara Bullet","PTZ",
-                                    "DVR / NVR","Monitor","Access Point","Cámara PTZ"],
-                            }
-                            _srv_eq = fila_ot.get("Servicio","")
-                            _subtipos = SUBTIPOS_EQ.get(_srv_eq, ["Otro"])
-
-                            with st.form(f"form_eq_rapido_{id_ot_sel}"):
-                                eq1, eq2 = st.columns(2)
-                                with eq1:
-                                    eq_subtipo = st.selectbox("Tipo de equipo", _subtipos, key=f"eq_sub_{id_ot_sel}")
-                                    eq_marca   = st.text_input("Marca")
-                                    eq_modelo  = st.text_input("Modelo")
-                                    eq_serial  = st.text_input("Serial / N° de serie")
-                                with eq2:
-                                    eq_specs   = st.text_input("Capacidad / Especificaciones",
-                                                               placeholder="Ej: 12.000 BTU | R-410A")
-                                    eq_ubic    = st.text_input("Ubicación del equipo")
-                                    eq_ult_mto = st.text_input("Último mantenimiento (YYYY-MM-DD)",
-                                                               value=fila_ot.get("Fecha_Ejecucion",""))
-                                    eq_prox    = st.text_input("Próximo mantenimiento (YYYY-MM-DD)")
-
-                                if st.form_submit_button("💾 Registrar equipo", type="primary", use_container_width=True):
-                                    equipos_all = get_equipos()
-                                    _nuevo_eq = {
-                                        "ID_Item":              gen_item_id(equipos_all),
-                                        "ID_Contrato":          id_ot_sel,  # referencia a la OT
-                                        "Cliente":              fila_ot.get("Cliente",""),
-                                        "Sede":                 fila_ot.get("Sede",""),
-                                        "Servicio":             _srv_eq,
-                                        "Marca":                eq_marca.strip(),
-                                        "Modelo":               f"{eq_subtipo} {eq_modelo}".strip(),
-                                        "Numero_Serie":         eq_serial.strip(),
-                                        "Especificaciones":     eq_specs.strip(),
-                                        "Ubicacion":            eq_ubic.strip(),
-                                        "Ultimo_Mantenimiento": eq_ult_mto.strip(),
-                                        "Proximo_Mantenimiento":eq_prox.strip(),
-                                    }
-                                    equipos_all = pd.concat([equipos_all, pd.DataFrame([_nuevo_eq])], ignore_index=True)
-                                    save_equipos(equipos_all)
-                                    st.success(f"✅ Equipo **{_nuevo_eq['ID_Item']}** registrado en {fila_ot.get('Sede','')}.")
-                                    st.rerun()
 
                 if edi is not None:
                  with edi:
