@@ -3584,11 +3584,7 @@ elif pagina == "ots":
                         use_container_width=True,
                     )
 
-                st.divider()
-                ids_ot_lista = ots.sort_values("ID", ascending=False, key=lambda x: x.str.replace("OT-", ""))["ID"].tolist()
-                idx_pre = ids_ot_lista.index(ot_pre) if ot_pre and ot_pre in ids_ot_lista else 0
-                id_ot_sel = st.selectbox("Selecciona una OT", ids_ot_lista,
-                                         index=idx_pre, key="id_ot_sel")
+                id_ot_sel = None  # detalle solo al hacer clic en Ver OT
 
             if id_ot_sel:
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
