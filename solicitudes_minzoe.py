@@ -486,7 +486,7 @@ COLS_OT = [
     "Nombre_Contacto", "Celular_Contacto",
     "Servicio", "Descripcion", "SLA", "Zona", "Tecnico", "Celular_Tecnico",
     "Fecha_Ejecucion", "Hora_Inicio", "Hora_Final", "Horas_Laboradas",
-    "Materiales", "Valor_COP", "Estado", "Observaciones", "ID_Item",
+    "Materiales", "Valor_COP", "Estado", "Observaciones", "ID_Item", "Fecha_Modificacion",
 ]
 
 
@@ -615,6 +615,12 @@ def load_ots():
 def save_ots(df):
     sb_save("ordenes_trabajo", df)
     _invalidar_cache("ordenes_trabajo")
+
+def _tocar_ot(df, ot_id):
+    """Sella Fecha_Modificacion en la OT indicada para que suba al tope."""
+    if "Fecha_Modificacion" in df.columns:
+        df.loc[df["ID"] == ot_id, "Fecha_Modificacion"] = ahora_colombia().strftime("%Y-%m-%d %H:%M:%S")
+    return df
 
 
 def load_cv():
@@ -3646,8 +3652,8 @@ elif pagina == "ots":
                             ots_all.loc[idx_tec, "Hora_Inicio"]     = hora_ini
                             ots_all.loc[idx_tec, "Hora_Final"]      = hora_fin
                             ots_all.loc[idx_tec, "Observaciones"]   = obs_tec
-                            sb_save("ordenes_trabajo", ots_all)
-                            _invalidar_cache("ordenes_trabajo")
+                            ots_all = _tocar_ot(ots_all, _tec_ot_sel)
+                            save_ots(ots_all)
                             st.success("✅ OT actualizada.")
                             st.rerun()
 
@@ -3717,14 +3723,15 @@ elif pagina == "ots":
                 if buscar_ot:
                     vista_ot = vista_ot[vista_ot["Cliente"].str.contains(buscar_ot, case=False, na=False)]
 
-                # Ordenar: En revisión primero (más reciente arriba), luego el resto por ID desc
-                _orden_est = {"En revisión": 0, "En ejecución": 1, "Programada": 2,
-                              "Finalizada": 3, "Cancelada": 4}
+                # Ordenar por última modificación (más reciente arriba), Finalizadas/Canceladas al fondo
+                _orden_est = {"Finalizada": 1, "Cancelada": 2}
                 vista_ot_ord = vista_ot.copy()
-                vista_ot_ord["_ord_est"] = vista_ot_ord["Estado"].map(_orden_est).fillna(5)
+                vista_ot_ord["_cerrada"] = vista_ot_ord["Estado"].map(_orden_est).fillna(0)
+                # Usar Fecha_Modificacion si existe, si no Fecha_Creacion
+                _col_orden = "Fecha_Modificacion" if "Fecha_Modificacion" in vista_ot_ord.columns else "Fecha_Creacion"
                 vista_ot_ord = vista_ot_ord.sort_values(
-                    ["_ord_est", "Fecha_Creacion"], ascending=[True, False]
-                ).drop(columns=["_ord_est"])
+                    ["_cerrada", _col_orden], ascending=[True, False]
+                ).drop(columns=["_cerrada"])
 
                 COLORES_OT = {
                     "Programada":   ("#e0e7ff", "#1e3a8a"),
@@ -3989,6 +3996,7 @@ elif pagina == "ots":
                             ots.loc[idx_ot, "Horas_Laboradas"]  = calcular_horas(ee_hora_ini, ee_hora_fin)
                             ots.loc[idx_ot, "Materiales"]     = ee_mat
                             ots.loc[idx_ot, "Observaciones"]  = ee_obs
+                            ots = _tocar_ot(ots, id_ot_sel)
                             save_ots(ots)
                             msg = f"✅ OT {id_ot_sel} actualizada."
                             if ee_estado == "Finalizada":
@@ -4807,6 +4815,7 @@ elif pagina == "ots":
                             def _finalizar_ot_y_sol(ot_id):
                                 """Técnico entregó reporte: pasa a En revisión (admin la cierra después)."""
                                 ots.loc[ots["ID"] == ot_id, "Estado"] = "En revisión"
+                                _tocar_ot(ots, ot_id)
                                 save_ots(ots)
                                 return f"OT **{ot_id}** enviada a revisión. El administrador la cerrará definitivamente."
 
@@ -5205,6 +5214,7 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             _fec_l  = st.session_state.get(f"loc_fec_{id_ot_sel}","")
                             ok_h, res_h = guardar_reporte_local(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
                             ots.loc[ots["ID"] == id_ot_sel, "Estado"] = "En revisión"
+                            ots = _tocar_ot(ots, id_ot_sel)
                             save_ots(ots)
                             del st.session_state[_loc_key]
                             st.success(f"✅ OT **{id_ot_sel}** enviada a revisión.")
