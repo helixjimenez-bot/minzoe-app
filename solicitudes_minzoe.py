@@ -1432,7 +1432,7 @@ def hash_pwd(pwd):
     return hashlib.sha256(pwd.encode()).hexdigest()
 
 def load_usuarios():
-    return sb_load("usuarios", ["nombre", "correo", "password_hash", "rol"])
+    return sb_load("usuarios", ["nombre", "correo", "password_hash", "rol", "Empresa_Vinculada"])
 
 def save_usuarios(df):
     sb_save("usuarios", df)
@@ -1514,6 +1514,7 @@ def pagina_login():
                     st.session_state["user_nombre"] = user["nombre"]
                     st.session_state["user_correo"] = user["correo"]
                     st.session_state["user_rol"]    = user["rol"]
+                    st.session_state["user_empresa"]= user.get("Empresa_Vinculada","")
                     # Guardar token en URL para auto-login al refrescar
                     try:
                         st.query_params["t"] = crear_token(user["correo"], user["password_hash"])
@@ -1891,6 +1892,7 @@ if not st.session_state.get("logged_in", False):
             st.session_state["user_nombre"] = _u_token["nombre"]
             st.session_state["user_correo"] = _u_token["correo"]
             st.session_state["user_rol"]    = _u_token["rol"]
+            st.session_state["user_empresa"]= _u_token.get("Empresa_Vinculada","")
             st.rerun()
 
 # Si no ha iniciado sesión (ni token válido), mostrar pantalla de login
@@ -1899,8 +1901,14 @@ if not st.session_state.get("logged_in", False):
     st.stop()
 
 # ── Usuario autenticado: carga lazy por página ───────────────────────────────
-# Técnico entra directo a sus OTs, no al dashboard
-_pagina_default = "ots" if st.session_state.get("user_rol") == "tecnico" else "resumen"
+# Técnico entra directo a sus OTs, cliente a su perfil, resto al dashboard
+_rol_actual_top = st.session_state.get("user_rol")
+if _rol_actual_top == "tecnico":
+    _pagina_default = "ots"
+elif _rol_actual_top == "cliente":
+    _pagina_default = "perfil_cliente"
+else:
+    _pagina_default = "resumen"
 pagina = st.session_state.get("pagina", _pagina_default)
 
 # Solo carga lo mínimo para el sidebar
@@ -1940,79 +1948,89 @@ with st.sidebar:
 
     _rol_actual = st.session_state.get("user_rol", "usuario")
     _es_tecnico = _rol_actual == "tecnico"
+    _es_cliente = _rol_actual == "cliente"
 
-    # ── GENERAL ──────────────────────────────────────────────────────────────
-    if not _es_tecnico:
-        if st.button("📊 Dashboard", use_container_width=True):
-            st.session_state["pagina"] = "resumen"
+    if _es_cliente:
+        # ── Menú simplificado para clientes ───────────────────────────
+        if st.button("🏢 Mi Portal", use_container_width=True, type="primary"):
+            st.session_state["pagina"] = "perfil_cliente"
             st.rerun()
-
-    if not _es_tecnico:
-        st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>BASE DE DATOS</p>", unsafe_allow_html=True)
-        if st.button("🏢 Clientes", use_container_width=True):
-            st.session_state["pagina"] = "clientes"
-            st.rerun()
-
-    st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>OPERACIONES</p>", unsafe_allow_html=True)
-
-    if not _es_tecnico:
-        if st.button("➕ Nueva Solicitud", use_container_width=True, type="primary"):
-            for key in ["empresa_sel", "sede_sel"]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.session_state["pagina"] = "nueva"
-            st.rerun()
-
-        if st.button("📋 Ver Solicitudes", use_container_width=True):
-            st.session_state["pagina"] = "ver"
-            st.rerun()
-
-    _lbl_ots = "🛠️ Mis OTs" if _es_tecnico else "🛠️ Órdenes de Trabajo"
-    if st.button(_lbl_ots, use_container_width=True, type="primary" if _es_tecnico else "secondary"):
-        st.session_state["pagina"] = "ots"
-        st.session_state["accion_ot_radio"] = "📋 Ver OTs"
-        st.rerun()
-
-    if st.button("📅 Calendario de Visitas", use_container_width=True):
-        st.session_state["pagina"] = "calendario"
-        st.rerun()
-
-    if not _es_tecnico:
-        if st.button("📄 Contratos de Mantenimiento", use_container_width=True):
-            st.session_state["pagina"] = "contratos_mto"
-            st.rerun()
-
-    if st.button("🗂️ Hojas de Vida Equipos", use_container_width=True):
-        st.session_state["pagina"] = "hojas_vida"
-        st.rerun()
-
-    if not _es_tecnico:
-        st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>FINANCIERO</p>", unsafe_allow_html=True)
-        if st.button("💰 Compras y Ventas", use_container_width=True):
-            st.session_state["pagina"] = "compras_ventas"
-            st.rerun()
-
-    st.divider()
-    if _es_tecnico:
-        _nom_tec_sidebar = st.session_state.get("user_nombre", "")
-        _mis_ots = _ots_sidebar[_ots_sidebar["Tecnico"].str.strip().str.lower() == _nom_tec_sidebar.strip().lower()] if not _ots_sidebar.empty else _ots_sidebar
-        ots_activas = int((_mis_ots["Estado"].isin(["Programada","En ejecución"])).sum()) if not _mis_ots.empty else 0
-        ots_hoy = int((_mis_ots["Fecha_Ejecucion"].str.startswith(ahora_colombia().strftime("%Y-%m-%d"), na=False)).sum()) if not _mis_ots.empty else 0
-        st.metric("🛠️ Mis OTs Activas", ots_activas)
-        st.metric("📅 Visitas hoy",     ots_hoy)
+        st.divider()
+        st.caption(f"Empresa: **{st.session_state.get('user_empresa','')}**")
+        st.divider()
     else:
-        pendientes   = int((_df_sidebar["Estado"] == "Pendiente").sum()) if not _df_sidebar.empty else 0
-        ots_activas  = int((_ots_sidebar["Estado"].isin(["Programada","En ejecución"])).sum()) if not _ots_sidebar.empty else 0
-        en_revision  = int((_ots_sidebar["Estado"] == "En revisión").sum()) if not _ots_sidebar.empty else 0
-        st.metric("🟡 Sol. Pendientes", pendientes)
-        st.metric("🛠️ OTs Activas",    ots_activas)
-        if en_revision > 0:
-            st.markdown(f"""
-            <div style='background:#4c1d95;color:#ede9fe;border-radius:8px;
-                        padding:8px 12px;text-align:center;font-weight:700'>
-              🔔 {en_revision} OT(s) en revisión
-            </div>""", unsafe_allow_html=True)
-    st.divider()
+        # ── GENERAL ──────────────────────────────────────────────────────────────
+        if not _es_tecnico:
+            if st.button("📊 Dashboard", use_container_width=True):
+                st.session_state["pagina"] = "resumen"
+                st.rerun()
+
+        if not _es_tecnico:
+            st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>BASE DE DATOS</p>", unsafe_allow_html=True)
+            if st.button("🏢 Clientes", use_container_width=True):
+                st.session_state["pagina"] = "clientes"
+                st.rerun()
+
+        st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>OPERACIONES</p>", unsafe_allow_html=True)
+
+        if not _es_tecnico:
+            if st.button("➕ Nueva Solicitud", use_container_width=True, type="primary"):
+                for key in ["empresa_sel", "sede_sel"]:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.session_state["pagina"] = "nueva"
+                st.rerun()
+
+            if st.button("📋 Ver Solicitudes", use_container_width=True):
+                st.session_state["pagina"] = "ver"
+                st.rerun()
+
+        _lbl_ots = "🛠️ Mis OTs" if _es_tecnico else "🛠️ Órdenes de Trabajo"
+        if st.button(_lbl_ots, use_container_width=True, type="primary" if _es_tecnico else "secondary"):
+            st.session_state["pagina"] = "ots"
+            st.session_state["accion_ot_radio"] = "📋 Ver OTs"
+            st.rerun()
+
+        if st.button("📅 Calendario de Visitas", use_container_width=True):
+            st.session_state["pagina"] = "calendario"
+            st.rerun()
+
+        if not _es_tecnico:
+            if st.button("📄 Contratos de Mantenimiento", use_container_width=True):
+                st.session_state["pagina"] = "contratos_mto"
+                st.rerun()
+
+        if st.button("🗂️ Hojas de Vida Equipos", use_container_width=True):
+            st.session_state["pagina"] = "hojas_vida"
+            st.rerun()
+
+        if not _es_tecnico:
+            st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>FINANCIERO</p>", unsafe_allow_html=True)
+            if st.button("💰 Compras y Ventas", use_container_width=True):
+                st.session_state["pagina"] = "compras_ventas"
+                st.rerun()
+
+        st.divider()
+        if _es_tecnico:
+            _nom_tec_sidebar = st.session_state.get("user_nombre", "")
+            _mis_ots = _ots_sidebar[_ots_sidebar["Tecnico"].str.strip().str.lower() == _nom_tec_sidebar.strip().lower()] if not _ots_sidebar.empty else _ots_sidebar
+            ots_activas = int((_mis_ots["Estado"].isin(["Programada","En ejecución"])).sum()) if not _mis_ots.empty else 0
+            ots_hoy = int((_mis_ots["Fecha_Ejecucion"].str.startswith(ahora_colombia().strftime("%Y-%m-%d"), na=False)).sum()) if not _mis_ots.empty else 0
+            st.metric("🛠️ Mis OTs Activas", ots_activas)
+            st.metric("📅 Visitas hoy",     ots_hoy)
+        else:
+            pendientes   = int((_df_sidebar["Estado"] == "Pendiente").sum()) if not _df_sidebar.empty else 0
+            ots_activas  = int((_ots_sidebar["Estado"].isin(["Programada","En ejecución"])).sum()) if not _ots_sidebar.empty else 0
+            en_revision  = int((_ots_sidebar["Estado"] == "En revisión").sum()) if not _ots_sidebar.empty else 0
+            st.metric("🟡 Sol. Pendientes", pendientes)
+            st.metric("🛠️ OTs Activas",    ots_activas)
+            if en_revision > 0:
+                st.markdown(f"""
+                <div style='background:#4c1d95;color:#ede9fe;border-radius:8px;
+                            padding:8px 12px;text-align:center;font-weight:700'>
+                  🔔 {en_revision} OT(s) en revisión
+                </div>""", unsafe_allow_html=True)
+        st.divider()
 
     # Usuario actual
     st.markdown(f"""
@@ -2025,7 +2043,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     if st.button("🚪 Cerrar sesión", use_container_width=True, type="secondary"):
-        for k in ["logged_in","user_nombre","user_correo","user_rol"]:
+        for k in ["logged_in","user_nombre","user_correo","user_rol","user_empresa"]:
             st.session_state.pop(k, None)
         try:
             st.query_params.clear()  # elimina el token de la URL
@@ -2065,7 +2083,7 @@ st.markdown("""
 # PÁGINA: NUEVA SOLICITUD
 # ══════════════════════════════════════════════════════════════════════════════
 if pagina == "nueva":
-    if st.session_state.get("user_rol") == "tecnico":
+    if st.session_state.get("user_rol") in ("tecnico", "cliente"):
         st.warning("⛔ No tienes permiso para acceder a esta sección.")
         st.stop()
     df = get_df(); cli = get_cli(); ots = get_ots(); equipos = get_equipos()
@@ -2276,7 +2294,7 @@ if pagina == "nueva":
 # PÁGINA: VER SOLICITUDES
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "ver":
-    if st.session_state.get("user_rol") == "tecnico":
+    if st.session_state.get("user_rol") in ("tecnico", "cliente"):
         st.warning("⛔ No tienes permiso para acceder a esta sección.")
         st.stop()
     import io
@@ -2550,6 +2568,9 @@ elif pagina == "ver":
 elif pagina == "resumen":
     if st.session_state.get("user_rol") == "tecnico":
         st.session_state["pagina"] = "ots"
+        st.rerun()
+    if st.session_state.get("user_rol") == "cliente":
+        st.session_state["pagina"] = "perfil_cliente"
         st.rerun()
     import plotly.express as px
     import plotly.graph_objects as go
@@ -2931,7 +2952,7 @@ elif pagina == "resumen":
 # PÁGINA: CLIENTES
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "clientes":
-    if st.session_state.get("user_rol") == "tecnico":
+    if st.session_state.get("user_rol") in ("tecnico", "cliente"):
         st.warning("⛔ No tienes permiso para acceder a esta sección.")
         st.stop()
     cli = get_cli()
@@ -3315,6 +3336,9 @@ elif pagina == "clientes":
 # PÁGINA: ÓRDENES DE TRABAJO
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "ots":
+    if st.session_state.get("user_rol") == "cliente":
+        st.session_state["pagina"] = "perfil_cliente"
+        st.rerun()
     import io
     df = get_df(); ots = get_ots(); cli = get_cli(); equipos = get_equipos()
     _rol_ots     = st.session_state.get("user_rol", "usuario")
@@ -5286,7 +5310,7 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 # PÁGINA: CONTRATOS DE MANTENIMIENTO
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "contratos_mto":
-    if st.session_state.get("user_rol") == "tecnico":
+    if st.session_state.get("user_rol") in ("tecnico", "cliente"):
         st.warning("⛔ No tienes permiso para acceder a esta sección.")
         st.stop()
     import io
@@ -5873,7 +5897,7 @@ elif pagina == "contratos_mto":
 # PÁGINA: COMPRAS Y VENTAS (NUEVA VERSIÓN)
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "compras_ventas":
-    if st.session_state.get("user_rol") == "tecnico":
+    if st.session_state.get("user_rol") in ("tecnico", "cliente"):
         st.warning("⛔ No tienes permiso para acceder a esta sección.")
         st.stop()
     import io
@@ -6130,6 +6154,9 @@ elif pagina == "compras_ventas":
 # PÁGINA: HOJAS DE VIDA EQUIPOS AIRES
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "hojas_vida":
+    if st.session_state.get("user_rol") == "cliente":
+        st.session_state["pagina"] = "perfil_cliente"
+        st.rerun()
     equipos   = get_equipos()
     ots       = get_ots()
     df_sol    = get_df()
@@ -6271,6 +6298,9 @@ elif pagina == "hojas_vida":
 # PÁGINA: CALENDARIO DE VISITAS
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "calendario":
+    if st.session_state.get("user_rol") == "cliente":
+        st.session_state["pagina"] = "perfil_cliente"
+        st.rerun()
     import plotly.express as px
     ots = get_ots()
     st.subheader("📅 Calendario de Visitas")
@@ -6353,6 +6383,116 @@ elif pagina == "calendario":
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# PÁGINA: PORTAL DEL CLIENTE (solo rol cliente)
+# ══════════════════════════════════════════════════════════════════════════════
+elif pagina == "perfil_cliente":
+    if st.session_state.get("user_rol") != "cliente":
+        st.warning("⛔ Esta sección es solo para clientes.")
+        st.stop()
+
+    _mi_empresa = st.session_state.get("user_empresa", "")
+    if not _mi_empresa:
+        st.error("Tu usuario no tiene una empresa vinculada. Contacta al administrador de Minzoe.")
+        st.stop()
+
+    df_sol_cli  = get_df()
+    ots_cli     = get_ots()
+    equipos_cli = get_equipos()
+
+    mis_sols = df_sol_cli[df_sol_cli["Cliente"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not df_sol_cli.empty else pd.DataFrame()
+    mis_ots  = ots_cli[ots_cli["Cliente"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not ots_cli.empty else pd.DataFrame()
+    mis_eq   = equipos_cli[equipos_cli["Cliente"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not equipos_cli.empty else pd.DataFrame()
+
+    st.markdown(f"""
+    <div style='background:#dc2626;color:white;padding:18px 24px;border-radius:12px;margin-bottom:16px'>
+      <div style='font-size:1.5rem;font-weight:900'>🏢 {_mi_empresa}</div>
+      <div style='font-size:0.85rem;opacity:0.9'>Portal de Cliente — Construcciones Minzoe SAS</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("📋 Solicitudes", len(mis_sols))
+    k2.metric("🛠️ OTs Totales", len(mis_ots))
+    _n_activas = int((mis_ots["Estado"].isin(["Programada","En ejecución","En revisión"])).sum()) if not mis_ots.empty else 0
+    k3.metric("🔄 En proceso", _n_activas)
+    _n_fin = int((mis_ots["Estado"] == "Finalizada").sum()) if not mis_ots.empty else 0
+    k4.metric("✅ Finalizadas", _n_fin)
+
+    st.divider()
+
+    tab_sol_cli, tab_ot_cli, tab_eq_cli = st.tabs(["📋 Mis Solicitudes", "🛠️ Mis OTs", "🔧 Mis Equipos"])
+
+    COLORES_OT_CLI = {
+        "Programada":   ("#e0e7ff","#1e3a8a"), "En ejecución": ("#fef3c7","#78350f"),
+        "En revisión":  ("#ede9fe","#4c1d95"), "Finalizada":   ("#d1fae5","#064e3b"),
+        "Cancelada":    ("#fee2e2","#7f1d1d"),
+    }
+    COLORES_SOL_CLI = {
+        "Pendiente":("#fff3cd","#7d5a00"),"Aprobado":("#d1e7dd","#0a5c36"),
+        "Completado":("#cfe2ff","#0a3678"),"Cancelado":("#f8d7da","#7f1d1d"),
+    }
+
+    with tab_sol_cli:
+        if mis_sols.empty:
+            st.info("No tienes solicitudes registradas todavía.")
+        else:
+            _cols_sol_cli = [c for c in ["ID","Fecha","Sede","Servicio","SLA","Descripcion","Estado"] if c in mis_sols.columns]
+            tabla_html(mis_sols.sort_values("Fecha", ascending=False)[_cols_sol_cli].reset_index(drop=True),
+                       color_col="Estado", colores_estado=COLORES_SOL_CLI)
+
+    with tab_ot_cli:
+        if mis_ots.empty:
+            st.info("No tienes órdenes de trabajo registradas todavía.")
+        else:
+            _cols_ot_cli = [c for c in ["ID","Fecha_Creacion","Sede","Servicio","Tecnico","Fecha_Ejecucion","Estado"] if c in mis_ots.columns]
+            tabla_html(mis_ots.sort_values("Fecha_Creacion", ascending=False)[_cols_ot_cli].reset_index(drop=True),
+                       color_col="Estado", colores_estado=COLORES_OT_CLI)
+
+            st.divider()
+            st.markdown("**📄 Descargar reporte de servicio**")
+            _ots_con_reporte = mis_ots[mis_ots["Estado"].isin(["Finalizada","En revisión"])]
+            if _ots_con_reporte.empty:
+                st.caption("Aún no hay reportes disponibles para descargar.")
+            else:
+                _ot_rep_sel_cli = st.selectbox("Selecciona la OT", _ots_con_reporte["ID"].tolist(), key="cli_ot_rep_sel")
+                if _ot_rep_sel_cli:
+                    _rep_html_cli, _rep_meta_cli = cargar_reporte_sb(_ot_rep_sel_cli)
+                    if _rep_html_cli:
+                        _pdf_cli = html_to_pdf(_rep_html_cli)
+                        dcc1, dcc2 = st.columns(2)
+                        with dcc1:
+                            if _pdf_cli:
+                                st.download_button("⬇️ Descargar PDF", data=_pdf_cli,
+                                    file_name=f"Reporte_{_ot_rep_sel_cli}.pdf", mime="application/pdf",
+                                    use_container_width=True, type="primary", key="cli_dl_pdf")
+                        with dcc2:
+                            st.download_button("⬇️ Descargar HTML", data=_rep_html_cli,
+                                file_name=f"Reporte_{_ot_rep_sel_cli}.html", mime="text/html",
+                                use_container_width=True, key="cli_dl_html")
+                    else:
+                        st.info("El reporte de esta OT aún no está disponible para descarga.")
+
+    with tab_eq_cli:
+        if mis_eq.empty:
+            st.info("No tienes equipos registrados todavía.")
+        else:
+            _sedes_eq_cli = sorted(mis_eq["Sede"].unique().tolist())
+            for _sd in _sedes_eq_cli:
+                _eq_sd = mis_eq[mis_eq["Sede"] == _sd]
+                st.markdown(f"**📍 {_sd}** — {len(_eq_sd)} equipo(s)")
+                for _, _eq in _eq_sd.iterrows():
+                    _prox = _eq.get("Proximo_Mantenimiento","")
+                    try:
+                        _dias = (datetime.strptime(_prox, "%Y-%m-%d") - ahora_colombia()).days
+                        _alerta = "🔴" if _dias < 0 else ("🟡" if _dias <= 15 else "🟢")
+                    except Exception:
+                        _alerta = "⚪"
+                    st.write(f"{_alerta} **{_eq.get('ID_Item','')}** — {_eq.get('Marca','')} {_eq.get('Modelo','')} "
+                             f"| {_eq.get('Especificaciones','')} | Próx. mantenimiento: {_prox or '—'}")
+                st.divider()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PÁGINA: GESTIÓN DE USUARIOS (solo admin) — limpia, sin migración
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "gestion_usuarios":
@@ -6362,18 +6502,26 @@ elif pagina == "gestion_usuarios":
     st.subheader("👥 Gestión de Usuarios")
     usuarios = load_usuarios()
 
+    st.markdown("**Agregar nuevo usuario**")
+    nu_rol  = st.selectbox("Rol", ["usuario", "tecnico", "cliente", "admin"], key="nu_rol_sel")
+    _empresas_cli = sorted(get_cli()["Empresa"].unique().tolist()) if not get_cli().empty else []
+    nu_empresa = ""
+    if nu_rol == "cliente":
+        nu_empresa = st.selectbox("Empresa vinculada *", _empresas_cli, key="nu_empresa_sel",
+                                   help="El cliente solo verá la información de esta empresa")
+
     with st.form("form_nuevo_usuario"):
-        st.markdown("**Agregar nuevo usuario**")
         c1, c2 = st.columns(2)
         with c1:
             nu_nombre = st.text_input("Nombre completo")
             nu_correo = st.text_input("Correo electrónico")
         with c2:
             nu_pwd  = st.text_input("Contraseña", type="password")
-            nu_rol  = st.selectbox("Rol", ["usuario", "tecnico", "admin"])
         if st.form_submit_button("➕ Agregar usuario", type="primary", use_container_width=True):
             if not nu_nombre or not nu_correo or not nu_pwd:
                 st.error("Todos los campos son obligatorios.")
+            elif nu_rol == "cliente" and not nu_empresa:
+                st.error("Selecciona la empresa vinculada para el cliente.")
             elif nu_correo.lower() in usuarios["correo"].str.lower().values:
                 st.error("Ese correo ya está registrado.")
             else:
@@ -6382,6 +6530,7 @@ elif pagina == "gestion_usuarios":
                     "correo":        nu_correo,
                     "password_hash": hash_pwd(nu_pwd),
                     "rol":           nu_rol,
+                    "Empresa_Vinculada": nu_empresa if nu_rol == "cliente" else "",
                 }
                 usuarios = pd.concat([usuarios, pd.DataFrame([nuevo_u])], ignore_index=True)
                 save_usuarios(usuarios)
@@ -6545,18 +6694,25 @@ elif pagina == "usuarios":
     usuarios = load_usuarios()
 
     # Agregar usuario
+    st.markdown("**Agregar nuevo usuario**")
+    nu_rol = st.selectbox("Rol", ["usuario", "tecnico", "cliente", "admin"], key="nu_rol_mig")
+    _empresas_cli_mig = sorted(get_cli()["Empresa"].unique().tolist()) if not get_cli().empty else []
+    nu_empresa_mig = ""
+    if nu_rol == "cliente":
+        nu_empresa_mig = st.selectbox("Empresa vinculada *", _empresas_cli_mig, key="nu_empresa_mig")
+
     with st.form("form_nuevo_usuario", clear_on_submit=True):
-        st.markdown("**Agregar nuevo usuario**")
         c1, c2 = st.columns(2)
         with c1:
             nu_nombre = st.text_input("Nombre completo")
             nu_correo = st.text_input("Correo electrónico")
         with c2:
             nu_pwd    = st.text_input("Contraseña", type="password")
-            nu_rol    = st.selectbox("Rol", ["usuario", "tecnico", "admin"])
         if st.form_submit_button("➕ Agregar usuario", type="primary", use_container_width=True):
             if not nu_nombre or not nu_correo or not nu_pwd:
                 st.error("Todos los campos son obligatorios.")
+            elif nu_rol == "cliente" and not nu_empresa_mig:
+                st.error("Selecciona la empresa vinculada para el cliente.")
             elif nu_correo.lower() in usuarios["correo"].str.lower().values:
                 st.error("Ese correo ya está registrado.")
             else:
@@ -6565,6 +6721,7 @@ elif pagina == "usuarios":
                     "correo":        nu_correo,
                     "password_hash": hash_pwd(nu_pwd),
                     "rol":           nu_rol,
+                    "Empresa_Vinculada": nu_empresa_mig if nu_rol == "cliente" else "",
                 }
                 usuarios = pd.concat([usuarios, pd.DataFrame([nuevo_u])], ignore_index=True)
                 save_usuarios(usuarios)
