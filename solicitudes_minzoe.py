@@ -1954,6 +1954,15 @@ with st.sidebar:
         # ── Menú simplificado para clientes ───────────────────────────
         if st.button("🏢 Mi Portal", use_container_width=True, type="primary"):
             st.session_state["pagina"] = "perfil_cliente"
+            st.session_state.pop("_cli_tab", None)
+            st.rerun()
+        if st.button("📋 Mis Solicitudes", use_container_width=True):
+            st.session_state["pagina"] = "perfil_cliente"
+            st.session_state["_cli_tab"] = "sol"
+            st.rerun()
+        if st.button("🛠️ Mis OTs", use_container_width=True):
+            st.session_state["pagina"] = "perfil_cliente"
+            st.session_state["_cli_tab"] = "ots"
             st.rerun()
         st.divider()
         st.caption(f"Empresa: **{st.session_state.get('user_empresa','')}**")
@@ -6477,9 +6486,20 @@ elif pagina == "perfil_cliente":
         "Completado":("#cfe2ff","#0a3678"),"Cancelado":("#f8d7da","#7f1d1d"),
     }
 
-    tab_sedes_cli, tab_ac_cli, tab_sol_cli, tab_ot_cli = st.tabs([
-        "🏪 Mis Sedes", "❄️ Aires Acondicionados", "📋 Solicitudes", "🛠️ OTs & Reportes"
-    ])
+    # Reordenar tabs según botón del sidebar que se haya presionado
+    _cli_tab = st.session_state.pop("_cli_tab", None)
+    _tabs_ord = ["🏪 Mis Sedes", "❄️ Aires Acondicionados", "📋 Solicitudes", "🛠️ OTs & Reportes"]
+    if _cli_tab == "sol":
+        _tabs_ord = ["📋 Solicitudes", "🏪 Mis Sedes", "❄️ Aires Acondicionados", "🛠️ OTs & Reportes"]
+    elif _cli_tab == "ots":
+        _tabs_ord = ["🛠️ OTs & Reportes", "🏪 Mis Sedes", "❄️ Aires Acondicionados", "📋 Solicitudes"]
+
+    _tabs_result = st.tabs(_tabs_ord)
+    _tab_map = {name: _tabs_result[i] for i, name in enumerate(_tabs_ord)}
+    tab_sedes_cli = _tab_map["🏪 Mis Sedes"]
+    tab_ac_cli    = _tab_map["❄️ Aires Acondicionados"]
+    tab_sol_cli   = _tab_map["📋 Solicitudes"]
+    tab_ot_cli    = _tab_map["🛠️ OTs & Reportes"]
 
     # ── TAB 1: Mis Sedes ─────────────────────────────────────────────────────
     with tab_sedes_cli:
