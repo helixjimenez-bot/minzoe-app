@@ -6532,6 +6532,8 @@ elif pagina == "perfil_cliente":
             sc1.markdown(f"### 🏪 Sedes")
             sc2.caption(f"{len(_sedes_lista)} sedes · Página {_pag_s} de {_total_pag_s}")
 
+            _sede_exp = st.session_state.get("_cli_sede_exp")
+
             # Tarjetas en grilla 2 columnas
             for i in range(0, len(_sedes_pag), 2):
                 col_a, col_b = st.columns(2)
@@ -6541,24 +6543,77 @@ elif pagina == "perfil_cliente":
                     _sd = _sedes_pag[i + col_idx]
                     _sd_row = _mis_sedes_df[_mis_sedes_df["Sede"] == _sd].iloc[0]
                     _ac_cnt  = len(_mis_ac[_mis_ac["Sede"] == _sd]) if not _mis_ac.empty else 0
-                    _ots_cnt = int((mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()).sum()) if not mis_ots.empty else 0
-                    _ac_badge = f"<span style='background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:20px;font-size:0.7rem;font-weight:700'>❄️ {_ac_cnt} AC</span>" if _ac_cnt > 0 else ""
-                    _ot_badge = f"<span style='background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:20px;font-size:0.7rem;font-weight:700'>🔧 {_ots_cnt} OT</span>" if _ots_cnt > 0 else ""
+                    _sols_sd = mis_sols[mis_sols["Sede"].str.strip().str.lower() == _sd.strip().lower()] if not mis_sols.empty else pd.DataFrame()
+                    _ots_sd  = mis_ots[mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()] if not mis_ots.empty else pd.DataFrame()
+                    _expanded = (_sede_exp == _sd)
+
                     with col_w:
                         st.markdown(f"""
-                        <div style='background:white;border:1px solid #e5e7eb;border-radius:12px;
-                                    padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);
-                                    border-top:3px solid #dc2626;margin-bottom:10px'>
-                          <div style='font-weight:700;color:#111;font-size:0.92rem;margin-bottom:6px'>
+                        <div style='background:white;border:1px solid {"#dc2626" if _expanded else "#e5e7eb"};
+                                    border-radius:12px;padding:16px;
+                                    box-shadow:0 2px 8px rgba(0,0,0,{"0.12" if _expanded else "0.06"});
+                                    border-top:3px solid #dc2626;margin-bottom:4px'>
+                          <div style='font-weight:700;color:#111;font-size:0.9rem;margin-bottom:8px'>
                             📍 {_sd}
                           </div>
-                          <div style='margin-bottom:8px'>{_ac_badge} {_ot_badge}</div>
-                          <div style='font-size:0.8rem;color:#555;line-height:1.6'>
-                            🏠 {_sd_row.get('Direccion_Sede','—')}<br>
-                            👤 {_sd_row.get('Nombre_Contacto','—')}<br>
-                            📱 {_sd_row.get('Celular_Contacto','—')}
+                          <div style='font-size:0.78rem;color:#555;line-height:1.7'>
+                            🏠 {_sd_row.get("Direccion_Sede","—") or "—"}<br>
+                            👤 {_sd_row.get("Nombre_Contacto","—") or "—"}<br>
+                            📱 {_sd_row.get("Celular_Contacto","—") or "—"}
                           </div>
                         </div>""", unsafe_allow_html=True)
+
+                        if not _expanded:
+                            if st.button("Ver más →", key=f"verm_{_sd}", use_container_width=True):
+                                st.session_state["_cli_sede_exp"] = _sd
+                                st.rerun()
+                        else:
+                            # Panel expandido: métricas clickeables
+                            st.markdown(f"""
+                            <div style='background:#fafafa;border:1px solid #dc2626;border-radius:0 0 12px 12px;
+                                        padding:12px 16px;margin-top:-4px'>
+                              <div style='font-size:0.75rem;color:#888;margin-bottom:8px;font-weight:600'>
+                                INFORMACIÓN DE LA SEDE
+                              </div>
+                            </div>""", unsafe_allow_html=True)
+                            m1, m2, m3 = st.columns(3)
+                            with m1:
+                                st.markdown(f"""<div style='background:#e0f2fe;border-radius:10px;padding:10px;text-align:center'>
+                                  <div style='font-size:1.6rem;font-weight:900;color:#0369a1'>{_ac_cnt}</div>
+                                  <div style='font-size:0.7rem;color:#0369a1;font-weight:600'>Equipos AC</div>
+                                </div>""", unsafe_allow_html=True)
+                                if _ac_cnt > 0:
+                                    if st.button("Ver →", key=f"ac_{_sd}", use_container_width=True):
+                                        st.session_state["_cli_seccion"] = "equipos_ac"
+                                        st.session_state["_cli_sede_filtro"] = _sd
+                                        st.session_state.pop("_cli_sede_exp", None)
+                                        st.rerun()
+                            with m2:
+                                st.markdown(f"""<div style='background:#f0fdf4;border-radius:10px;padding:10px;text-align:center'>
+                                  <div style='font-size:1.6rem;font-weight:900;color:#166534'>{len(_sols_sd)}</div>
+                                  <div style='font-size:0.7rem;color:#166534;font-weight:600'>Solicitudes</div>
+                                </div>""", unsafe_allow_html=True)
+                                if len(_sols_sd) > 0:
+                                    if st.button("Ver →", key=f"sol_{_sd}", use_container_width=True):
+                                        st.session_state["_cli_seccion"] = "solicitudes"
+                                        st.session_state["_cli_sede_filtro"] = _sd
+                                        st.session_state.pop("_cli_sede_exp", None)
+                                        st.rerun()
+                            with m3:
+                                st.markdown(f"""<div style='background:#faf5ff;border-radius:10px;padding:10px;text-align:center'>
+                                  <div style='font-size:1.6rem;font-weight:900;color:#7e22ce'>{len(_ots_sd)}</div>
+                                  <div style='font-size:0.7rem;color:#7e22ce;font-weight:600'>OTs</div>
+                                </div>""", unsafe_allow_html=True)
+                                if len(_ots_sd) > 0:
+                                    if st.button("Ver →", key=f"ot_{_sd}", use_container_width=True):
+                                        st.session_state["_cli_seccion"] = "ots"
+                                        st.session_state["_cli_sede_filtro"] = _sd
+                                        st.session_state.pop("_cli_sede_exp", None)
+                                        st.rerun()
+                            if st.button("✕ Cerrar", key=f"cerr_{_sd}", use_container_width=True):
+                                st.session_state.pop("_cli_sede_exp", None)
+                                st.rerun()
+                        st.markdown("<br>", unsafe_allow_html=True)
 
             # Paginación
             pa, pb, pc = st.columns([1, 3, 1])
@@ -6590,8 +6645,12 @@ elif pagina == "perfil_cliente":
                         st.write(f"**{_eq.get('ID_Item','')}** — {_eq.get('Marca','')} {_eq.get('Modelo','')} | {_eq.get('Especificaciones','')} | {_a}")
 
         elif _cli_seccion == "equipos_ac":
-            st.markdown(f"### 🔧 Hojas de vida AC — {_total_ac} equipo(s)")
-            for _sd in (sorted(_mis_ac["Sede"].unique().tolist()) if not _mis_ac.empty else []):
+            _ef = st.session_state.pop("_cli_sede_filtro", None)
+            _ac_vis = _mis_ac[_mis_ac["Sede"].str.strip().str.lower() == _ef.strip().lower()] if _ef and not _mis_ac.empty else _mis_ac
+            _titulo_e = f"🔧 Hojas de vida AC — **{_ef}**" if _ef else f"🔧 Hojas de vida AC — {_total_ac} equipo(s)"
+            st.markdown(f"### {_titulo_e}")
+            for _sd in (sorted(_ac_vis["Sede"].unique().tolist()) if not _ac_vis.empty else []):
+                _mis_ac = _ac_vis  # usa la vista filtrada
                 _ac_sd = _mis_ac[_mis_ac["Sede"] == _sd]
                 st.markdown(f"""<div style="background:#fff0f0;border-left:4px solid #dc2626;
                     padding:8px 16px;border-radius:0 8px 8px 0;margin:10px 0 4px;
@@ -6633,19 +6692,25 @@ elif pagina == "perfil_cliente":
                                             mime="text/html", key=f"dl3_{_eq.get('ID_Item','x')}_{_or['ID']}")
 
         elif _cli_seccion == "solicitudes":
-            st.markdown(f"### 📋 Mis Solicitudes — {len(mis_sols)}")
-            if mis_sols.empty: st.info("No tienes solicitudes.")
+            _sf = st.session_state.pop("_cli_sede_filtro", None)
+            _sols_vis = mis_sols[mis_sols["Sede"].str.strip().str.lower() == _sf.strip().lower()] if _sf and not mis_sols.empty else mis_sols
+            _titulo_s = f"📋 Solicitudes de **{_sf}**" if _sf else f"📋 Mis Solicitudes"
+            st.markdown(f"### {_titulo_s} — {len(_sols_vis)}")
+            if _sols_vis.empty: st.info("No hay solicitudes.")
             else:
-                _c = [c for c in ["ID","Fecha","Sede","Servicio","SLA","Descripcion","Estado"] if c in mis_sols.columns]
-                tabla_html(mis_sols.sort_values("Fecha", ascending=False)[_c].reset_index(drop=True),
+                _c = [c for c in ["ID","Fecha","Sede","Servicio","SLA","Descripcion","Estado"] if c in _sols_vis.columns]
+                tabla_html(_sols_vis.sort_values("Fecha", ascending=False)[_c].reset_index(drop=True),
                            color_col="Estado", colores_estado=COLORES_SOL_CLI)
 
         elif _cli_seccion in ("ots", "tab_ots"):
-            st.markdown(f"### 🛠️ Mis OTs — {len(mis_ots)}")
-            if mis_ots.empty: st.info("No tienes OTs.")
+            _of = st.session_state.pop("_cli_sede_filtro", None)
+            _ots_vis = mis_ots[mis_ots["Sede"].str.strip().str.lower() == _of.strip().lower()] if _of and not mis_ots.empty else mis_ots
+            _titulo_o = f"🛠️ OTs de **{_of}**" if _of else f"🛠️ Mis OTs"
+            st.markdown(f"### {_titulo_o} — {len(_ots_vis)}")
+            if _ots_vis.empty: st.info("No hay OTs.")
             else:
-                _c = [c for c in ["ID","Fecha_Creacion","Sede","Servicio","Tecnico","Fecha_Ejecucion","Estado"] if c in mis_ots.columns]
-                tabla_html(mis_ots.sort_values("Fecha_Creacion", ascending=False)[_c].reset_index(drop=True),
+                _c = [c for c in ["ID","Fecha_Creacion","Sede","Servicio","Tecnico","Fecha_Ejecucion","Estado"] if c in _ots_vis.columns]
+                tabla_html(_ots_vis.sort_values("Fecha_Creacion", ascending=False)[_c].reset_index(drop=True),
                            color_col="Estado", colores_estado=COLORES_OT_CLI)
                 st.divider()
                 _orep = mis_ots[mis_ots["Estado"].isin(["Finalizada","En revisión"])]
