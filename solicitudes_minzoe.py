@@ -6662,37 +6662,30 @@ elif pagina == "perfil_cliente":
 
             _sedes_ac_lista = sorted(_ac_vis["Sede"].unique().tolist()) if not _ac_vis.empty else []
 
-            # Tabla SEDE | CIUDAD | EQUIPOS | ACCION
-            _filas_t = ""
+            # Encabezado de tabla con columnas Streamlit
+            _h1, _h2, _h3, _h4 = st.columns([5, 2, 1, 1])
+            for _hc, _ht in zip([_h1,_h2,_h3,_h4], ["SEDE","CIUDAD","EQUIPOS","ACCION"]):
+                _hc.markdown(f"""<div style="background:#dc2626;color:white;font-weight:700;
+                    font-size:0.8rem;padding:8px 10px;text-align:center">{_ht}</div>""",
+                    unsafe_allow_html=True)
+
+            # Filas con botón VER EQ. en la celda correcta
             for _sd in _sedes_ac_lista:
                 _ac_sd2  = _ac_vis[_ac_vis["Sede"] == _sd]
                 _sd_info = _mis_sedes_df[_mis_sedes_df["Sede"] == _sd].iloc[0] if not _mis_sedes_df.empty and _sd in _mis_sedes_df["Sede"].values else None
-                _ciudad  = _sd_info.get("Direccion_Sede", "—") if _sd_info is not None else "—"
-                _row_bg  = "#fff5f5" if _sede_eq_sel == _sd else "white"
-                _filas_t += (f"<tr style='background:{_row_bg}'>"
-                             f"<td style='padding:8px 12px;border:1px solid #dee2e6;font-weight:600'>{_sd}</td>"
-                             f"<td style='padding:8px 12px;border:1px solid #dee2e6;text-align:center'>{_ciudad}</td>"
-                             f"<td style='padding:8px 12px;border:1px solid #dee2e6;text-align:center;"
-                             f"font-weight:700;color:#dc2626'>{len(_ac_sd2)}</td>"
-                             f"<td style='padding:8px 12px;border:1px solid #dee2e6;text-align:center'></td></tr>")
+                _ciudad  = _sd_info.get("Direccion_Sede","—") if _sd_info is not None else "—"
+                _activo  = _sede_eq_sel == _sd
+                _row_bg  = "#fff0f0" if _activo else ("white" if _sedes_ac_lista.index(_sd) % 2 == 0 else "#fafafa")
+                _style   = f"background:{_row_bg};padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:0.82rem"
 
-            st.markdown(f"""
-            <table style="width:100%;border-collapse:collapse;margin-bottom:6px">
-              <tr>
-                <th style="background:#dc2626;color:white;padding:9px 14px;border:1px solid #c01c1c;text-align:left">SEDE</th>
-                <th style="background:#dc2626;color:white;padding:9px 14px;border:1px solid #c01c1c;text-align:center">CIUDAD</th>
-                <th style="background:#dc2626;color:white;padding:9px 14px;border:1px solid #c01c1c;text-align:center">EQUIPOS</th>
-                <th style="background:#dc2626;color:white;padding:9px 14px;border:1px solid #c01c1c;text-align:center">ACCION</th>
-              </tr>{_filas_t}
-            </table>""", unsafe_allow_html=True)
-
-            # Botones VER EQ. alineados con columna ACCION
-            for _sd in _sedes_ac_lista:
-                _c_esp, _c_btn = st.columns([6, 1])
-                with _c_btn:
-                    _lbl_b = "✕ Cerrar" if _sede_eq_sel == _sd else "VER EQ."
+                _r1, _r2, _r3, _r4 = st.columns([5, 2, 1, 1])
+                _r1.markdown(f"<div style='{_style};font-weight:600'>{_sd}</div>", unsafe_allow_html=True)
+                _r2.markdown(f"<div style='{_style};text-align:center'>{_ciudad}</div>", unsafe_allow_html=True)
+                _r3.markdown(f"<div style='{_style};text-align:center;font-weight:700;color:#dc2626'>{len(_ac_sd2)}</div>", unsafe_allow_html=True)
+                with _r4:
+                    _lbl_b = "✕ Cerrar" if _activo else "VER EQ."
                     if st.button(_lbl_b, key=f"veq_{_sd}", use_container_width=True):
-                        if _sede_eq_sel == _sd:
+                        if _activo:
                             st.session_state.pop("_cli_sede_eq_sel", None)
                         else:
                             st.session_state["_cli_sede_eq_sel"] = _sd
