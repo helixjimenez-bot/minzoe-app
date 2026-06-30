@@ -6521,20 +6521,55 @@ elif pagina == "perfil_cliente":
         st.markdown("---")
 
         if _cli_seccion == "sedes":
-            st.markdown(f"### 🏪 Todas las sedes — {_total_sedes}")
-            for _sd in (sorted(_mis_sedes_df["Sede"].unique().tolist()) if not _mis_sedes_df.empty else []):
-                _sd_row = _mis_sedes_df[_mis_sedes_df["Sede"] == _sd].iloc[0]
-                _ac_cnt = len(_mis_ac[_mis_ac["Sede"] == _sd]) if not _mis_ac.empty else 0
-                _ots_cnt = int((mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()).sum()) if not mis_ots.empty else 0
-                _ac_tag = f" ❄️ {_ac_cnt} AC" if _ac_cnt > 0 else ""
-                with st.expander(f"📍 **{_sd}**{_ac_tag} · {_ots_cnt} OT(s)"):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.write(f"**Dirección:** {_sd_row.get('Direccion_Sede','—')}")
-                        st.write(f"**Contacto:** {_sd_row.get('Nombre_Contacto','—')}")
-                    with c2:
-                        st.write(f"**Celular:** {_sd_row.get('Celular_Contacto','—')}")
-                        st.write(f"**Correo:** {_sd_row.get('Correo_Contacto','—')}")
+            _sedes_lista = sorted(_mis_sedes_df["Sede"].unique().tolist()) if not _mis_sedes_df.empty else []
+            _POR_PAG_S = 20
+            _total_pag_s = max(1, -(-len(_sedes_lista) // _POR_PAG_S))
+            _pag_s = st.session_state.get("_cli_pag_sedes", 1)
+            _ini_s = (_pag_s - 1) * _POR_PAG_S
+            _sedes_pag = _sedes_lista[_ini_s:_ini_s + _POR_PAG_S]
+
+            sc1, sc2, sc3 = st.columns([1, 4, 1])
+            sc1.markdown(f"### 🏪 Sedes")
+            sc2.caption(f"{len(_sedes_lista)} sedes · Página {_pag_s} de {_total_pag_s}")
+
+            # Tarjetas en grilla 2 columnas
+            for i in range(0, len(_sedes_pag), 2):
+                col_a, col_b = st.columns(2)
+                for col_idx, col_w in enumerate([col_a, col_b]):
+                    if i + col_idx >= len(_sedes_pag):
+                        break
+                    _sd = _sedes_pag[i + col_idx]
+                    _sd_row = _mis_sedes_df[_mis_sedes_df["Sede"] == _sd].iloc[0]
+                    _ac_cnt  = len(_mis_ac[_mis_ac["Sede"] == _sd]) if not _mis_ac.empty else 0
+                    _ots_cnt = int((mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()).sum()) if not mis_ots.empty else 0
+                    _ac_badge = f"<span style='background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:20px;font-size:0.7rem;font-weight:700'>❄️ {_ac_cnt} AC</span>" if _ac_cnt > 0 else ""
+                    _ot_badge = f"<span style='background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:20px;font-size:0.7rem;font-weight:700'>🔧 {_ots_cnt} OT</span>" if _ots_cnt > 0 else ""
+                    with col_w:
+                        st.markdown(f"""
+                        <div style='background:white;border:1px solid #e5e7eb;border-radius:12px;
+                                    padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);
+                                    border-top:3px solid #dc2626;margin-bottom:10px'>
+                          <div style='font-weight:700;color:#111;font-size:0.92rem;margin-bottom:6px'>
+                            📍 {_sd}
+                          </div>
+                          <div style='margin-bottom:8px'>{_ac_badge} {_ot_badge}</div>
+                          <div style='font-size:0.8rem;color:#555;line-height:1.6'>
+                            🏠 {_sd_row.get('Direccion_Sede','—')}<br>
+                            👤 {_sd_row.get('Nombre_Contacto','—')}<br>
+                            📱 {_sd_row.get('Celular_Contacto','—')}
+                          </div>
+                        </div>""", unsafe_allow_html=True)
+
+            # Paginación
+            pa, pb, pc = st.columns([1, 3, 1])
+            with pa:
+                if st.button("◀ Anterior", key="s_prev", disabled=_pag_s <= 1):
+                    st.session_state["_cli_pag_sedes"] = _pag_s - 1; st.rerun()
+            with pb:
+                st.caption(f"Mostrando {_ini_s+1}–{min(_ini_s+_POR_PAG_S, len(_sedes_lista))} de {len(_sedes_lista)}")
+            with pc:
+                if st.button("Siguiente ▶", key="s_next", disabled=_pag_s >= _total_pag_s):
+                    st.session_state["_cli_pag_sedes"] = _pag_s + 1; st.rerun()
 
         elif _cli_seccion == "sedes_ac":
             st.markdown(f"### ❄️ Sedes con AC — {_sedes_con_ac} sedes · {_total_ac} equipos")
