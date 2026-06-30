@@ -6458,19 +6458,18 @@ elif pagina == "perfil_cliente":
                 if _ot_rep_sel_cli:
                     _rep_html_cli, _rep_meta_cli = cargar_reporte_sb(_ot_rep_sel_cli)
                     if _rep_html_cli:
-                        _pdf_cli = html_to_pdf(_rep_html_cli)
-                        dcc1, dcc2 = st.columns(2)
-                        with dcc1:
-                            if _pdf_cli:
-                                st.download_button("⬇️ Descargar PDF", data=_pdf_cli,
-                                    file_name=f"Reporte_{_ot_rep_sel_cli}.pdf", mime="application/pdf",
-                                    use_container_width=True, type="primary", key="cli_dl_pdf")
-                        with dcc2:
-                            st.download_button("⬇️ Descargar HTML", data=_rep_html_cli,
-                                file_name=f"Reporte_{_ot_rep_sel_cli}.html", mime="text/html",
-                                use_container_width=True, key="cli_dl_html")
+                        st.download_button(
+                            "⬇️ Descargar Reporte",
+                            data=_rep_html_cli,
+                            file_name=f"Reporte_{_ot_rep_sel_cli}.html",
+                            mime="text/html",
+                            use_container_width=True,
+                            type="primary",
+                            key="cli_dl_html",
+                        )
+                        st.caption("💡 Abre el archivo descargado en Chrome → clic en el botón **🖨️ Imprimir / Guardar como PDF** para obtener el PDF.")
                     else:
-                        st.info("El reporte de esta OT aún no está disponible para descarga.")
+                        st.info("El reporte de esta OT aún no está disponible.")
 
     with tab_eq_cli:
         if mis_eq.empty:
