@@ -6615,6 +6615,7 @@ elif pagina == "perfil_cliente":
                             # Descargar reportes disponibles
                             _ots_rep = _ots_eq[_ots_eq["Estado"].isin(["Finalizada","En revisión"])]
                             if not _ots_rep.empty:
+                                _eq_id_key = _eq.get("ID_Item","x")
                                 for _, _ot_r in _ots_rep.iterrows():
                                     _rh, _ = cargar_reporte_sb(_ot_r["ID"])
                                     if _rh:
@@ -6623,7 +6624,7 @@ elif pagina == "perfil_cliente":
                                             data=_rh,
                                             file_name=f"Reporte_{_ot_r['ID']}.html",
                                             mime="text/html",
-                                            key=f"dl_ac_{_ot_r['ID']}",
+                                            key=f"dl_ac_{_eq_id_key}_{_ot_r['ID']}",
                                         )
 
     # ── TAB 3: Solicitudes ────────────────────────────────────────────────────
