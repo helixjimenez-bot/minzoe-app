@@ -1954,15 +1954,18 @@ with st.sidebar:
         # ── Menú simplificado para clientes ───────────────────────────
         if st.button("🏢 Mi Portal", use_container_width=True, type="primary"):
             st.session_state["pagina"] = "perfil_cliente"
-            st.session_state.pop("_cli_tab", None)
+            for _k in ["_cli_seccion","_cli_sede_exp","_cli_sede_filtro","_cli_pag_sedes"]:
+                st.session_state.pop(_k, None)
             st.rerun()
         if st.button("📋 Mis Solicitudes", use_container_width=True):
             st.session_state["pagina"] = "perfil_cliente"
-            st.session_state["_cli_tab"] = "sol"
+            st.session_state["_cli_seccion"] = "solicitudes"
+            st.session_state.pop("_cli_sede_exp", None)
             st.rerun()
         if st.button("🛠️ Mis OTs", use_container_width=True):
             st.session_state["pagina"] = "perfil_cliente"
-            st.session_state["_cli_tab"] = "ots"
+            st.session_state["_cli_seccion"] = "ots"
+            st.session_state.pop("_cli_sede_exp", None)
             st.rerun()
         st.divider()
         st.caption(f"Empresa: **{st.session_state.get('user_empresa','')}**")
@@ -6425,7 +6428,7 @@ elif pagina == "perfil_cliente":
         except Exception:
             pass
 
-    _cli_seccion = st.session_state.pop("_cli_seccion", None)
+    _cli_seccion = st.session_state.get("_cli_seccion", None)
 
     COLORES_OT_CLI = {
         "Programada":("#e0e7ff","#1e3a8a"),"En ejecución":("#fef3c7","#78350f"),
@@ -6517,7 +6520,9 @@ elif pagina == "perfil_cliente":
 
     else:
         if st.button("← Volver al portal", key="cli_volver"):
-            st.session_state.pop("_cli_seccion", None); st.rerun()
+            for _k in ["_cli_seccion","_cli_sede_exp","_cli_sede_filtro","_cli_pag_sedes"]:
+                st.session_state.pop(_k, None)
+            st.rerun()
         st.markdown("---")
 
         if _cli_seccion == "sedes":
