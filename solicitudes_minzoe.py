@@ -6460,7 +6460,7 @@ elif pagina == "perfil_cliente":
     # HOME
     if _cli_seccion is None:
         st.markdown("#### Selecciona una opción")
-        r1c1, r1c2, r1c3 = st.columns(3)
+        r1c1, r1c2 = st.columns(2)
         with r1c1:
             st.markdown(f"""<div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:14px;
                 padding:20px;text-align:center">
@@ -6470,14 +6470,6 @@ elif pagina == "perfil_cliente":
             if st.button("Ver todas las sedes →", key="btn_sedes", use_container_width=True):
                 st.session_state["_cli_seccion"] = "sedes"; st.rerun()
         with r1c2:
-            st.markdown(f"""<div style="background:#e0f2fe;border:2px solid #0ea5e9;border-radius:14px;
-                padding:20px;text-align:center">
-              <div style="font-size:2.8rem;font-weight:900;color:#0369a1">{_sedes_con_ac}</div>
-              <div style="color:#075985;font-weight:600;margin-top:4px">❄️ Sedes con AC</div>
-            </div>""", unsafe_allow_html=True)
-            if st.button("Ver sedes con AC →", key="btn_sedes_ac", use_container_width=True):
-                st.session_state["_cli_seccion"] = "sedes_ac"; st.rerun()
-        with r1c3:
             st.markdown(f"""<div style="background:#fff7ed;border:2px solid #f97316;border-radius:14px;
                 padding:20px;text-align:center">
               <div style="font-size:2.8rem;font-weight:900;color:#c2410c">{_total_ac}</div>
