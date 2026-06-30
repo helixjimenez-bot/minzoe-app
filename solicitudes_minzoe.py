@@ -6666,33 +6666,84 @@ elif pagina == "perfil_cliente":
                     try:
                         _d = (datetime.strptime(_prox, "%Y-%m-%d") - ahora_colombia()).days
                         _alerta = "🔴 Vencido" if _d < 0 else (f"🟡 En {_d}d" if _d <= 15 else f"🟢 En {_d}d")
-                        _cbg = "#fef2f2" if _d < 0 else ("#fffbeb" if _d <= 15 else "#f0fdf4")
                         _cbr = "#dc2626" if _d < 0 else ("#f59e0b" if _d <= 15 else "#16a34a")
-                    except: _alerta, _cbg, _cbr = "Sin fecha", "#f9fafb", "#9ca3af"
-                    with st.expander(f"**{_eq.get('ID_Item','')}** — {_eq.get('Marca','')} {_eq.get('Modelo','')} | {_alerta}"):
-                        st.markdown(f"""<div style="background:{_cbg};border:1px solid {_cbr};
-                            border-radius:10px;padding:12px 16px;margin-bottom:8px">
-                          <div style="display:flex;flex-wrap:wrap;gap:14px">
-                            <div><span style="color:#666;font-size:0.72rem">SERIAL</span><br><b>{_eq.get('Numero_Serie','—')}</b></div>
-                            <div><span style="color:#666;font-size:0.72rem">CAPACIDAD</span><br><b>{_eq.get('Especificaciones','—')}</b></div>
-                            <div><span style="color:#666;font-size:0.72rem">UBICACION</span><br><b>{_eq.get('Ubicacion','—')}</b></div>
-                            <div><span style="color:#666;font-size:0.72rem">ULTIMO MTO.</span><br><b>{_ult or '—'}</b></div>
-                            <div><span style="color:#666;font-size:0.72rem">PROXIMO MTO.</span><br>
-                              <b style="color:{_cbr}">{_prox or '—'} — {_alerta}</b></div>
-                          </div></div>""", unsafe_allow_html=True)
+                    except: _alerta, _cbr = "Sin fecha", "#9ca3af"
+
+                    # Parsear campos almacenados
+                    _serial_raw  = _eq.get("Numero_Serie","")
+                    _specs_raw   = _eq.get("Especificaciones","")
+                    _ubic_raw    = _eq.get("Ubicacion","")
+                    _modelo_raw  = _eq.get("Modelo","")
+                    # Serial: "Cond: X | Evap: Y" o valor único
+                    _ser_cond = _ser_evap = _serial_raw
+                    if "Cond:" in _serial_raw and "Evap:" in _serial_raw:
+                        _pts = _serial_raw.split("|")
+                        _ser_cond = _pts[0].replace("Cond:","").strip() if len(_pts) > 0 else "—"
+                        _ser_evap = _pts[1].replace("Evap:","").strip() if len(_pts) > 1 else "—"
+                    # Specs: "18.000 | R-410A" o "18.000 BTU | R-410A"
+                    _btu = _refrig = ""
+                    if "|" in _specs_raw:
+                        _sp = _specs_raw.split("|")
+                        _btu   = _sp[0].strip()
+                        _refrig= _sp[1].strip()
+                    else:
+                        _btu = _specs_raw
+                    # Ubicacion: "Evap: X | Cond: Y" o valor único
+                    _ubic_evap = _ubic_cond = _ubic_raw
+                    if "Evap:" in _ubic_raw and "Cond:" in _ubic_raw:
+                        _up = _ubic_raw.split("|")
+                        _ubic_evap = _up[0].replace("Evap:","").strip() if len(_up) > 0 else "—"
+                        _ubic_cond = _up[1].replace("Cond:","").strip() if len(_up) > 1 else "—"
+                    # Tipo + Modelo: primera palabra = tipo (Minisplit, Cassette...)
+                    _tipo_eq = ""; _solo_modelo = _modelo_raw
+                    _tipos_conocidos = ["Minisplit","Cassette","Split","Manejadora","Paquete","Chiller","VRF","Fan","Portátil","Ventilador","Extractor"]
+                    for _tk in _tipos_conocidos:
+                        if _modelo_raw.startswith(_tk):
+                            _tipo_eq    = _tk
+                            _solo_modelo= _modelo_raw[len(_tk):].strip()
+                            break
+
+                    with st.expander(f"**{_eq.get('ID_Item','')}** — {_eq.get('Marca','')} {_modelo_raw} | {_alerta}"):
+                        # Tabla de datos estilo imagen
+                        def _fila(lbl, val):
+                            return f"<tr><td style='background:#f8f9fa;font-weight:600;padding:7px 12px;border:1px solid #dee2e6;font-size:0.8rem;white-space:nowrap'>{lbl}</td><td style='padding:7px 12px;border:1px solid #dee2e6;font-size:0.82rem'>{val or '—'}</td></tr>"
+
+                        st.markdown(f"""
+                        <table style='width:100%;border-collapse:collapse;margin-bottom:12px'>
+                          <tr><th colspan='2' style='background:#dc2626;color:white;padding:9px 12px;
+                              text-align:center;font-size:0.85rem;letter-spacing:1px'>
+                            DATOS DEL EQUIPO
+                          </th></tr>
+                          {_fila("TIPO DE EQUIPO",  _tipo_eq)}
+                          {_fila("MARCA",           _eq.get("Marca",""))}
+                          {_fila("MODELO",          _solo_modelo)}
+                          {_fila("SERIAL CONDENSADORA",  _ser_cond)}
+                          {_fila("SERIAL EVAPORADORA",   _ser_evap)}
+                          {_fila("CAPACIDAD EN BTU",      _btu)}
+                          {_fila("TIPO DE REFRIGERANTE",  _refrig)}
+                          {_fila("UBICACIÓN EVAPORADORA", _ubic_evap)}
+                          {_fila("UBICACIÓN CONDENSADORA",_ubic_cond)}
+                          {_fila("ÚLTIMO MANTENIMIENTO",  _ult)}
+                          {_fila("PRÓXIMO MANTENIMIENTO", f'<span style="color:{_cbr};font-weight:700">{_prox} — {_alerta}</span>' if _prox else '—')}
+                        </table>""", unsafe_allow_html=True)
+
+                        # Historial de servicios
+                        _ots_eq = pd.DataFrame()
                         if not mis_ots.empty:
                             _ots_eq = mis_ots[
                                 (mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()) &
                                 (mis_ots["Servicio"] == "Aires Acondicionados")]
-                            if not _ots_eq.empty:
-                                st.markdown("**Historial de servicios**")
+                        with st.expander(f"📋 Ver historial de servicios ({len(_ots_eq)} registro(s))"):
+                            if _ots_eq.empty:
+                                st.info("Sin servicios registrados.")
+                            else:
                                 _c = [c for c in ["ID","Fecha_Creacion","Descripcion","Tecnico","Fecha_Ejecucion","Estado"] if c in _ots_eq.columns]
                                 tabla_html(_ots_eq.sort_values("Fecha_Creacion", ascending=False)[_c].reset_index(drop=True),
                                            color_col="Estado", colores_estado=COLORES_OT_CLI)
                                 for _, _or in _ots_eq[_ots_eq["Estado"].isin(["Finalizada","En revisión"])].iterrows():
                                     _rh, _ = cargar_reporte_sb(_or["ID"])
                                     if _rh:
-                                        st.download_button(f"Reporte {_or['ID']}",
+                                        st.download_button(f"⬇️ Reporte {_or['ID']}",
                                             data=_rh, file_name=f"Reporte_{_or['ID']}.html",
                                             mime="text/html", key=f"dl3_{_eq.get('ID_Item','x')}_{_or['ID']}")
 
