@@ -6403,6 +6403,15 @@ elif pagina == "perfil_cliente":
     mis_ots  = ots_cli[ots_cli["Cliente"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not ots_cli.empty else pd.DataFrame()
     mis_eq   = equipos_cli[equipos_cli["Cliente"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not equipos_cli.empty else pd.DataFrame()
 
+    # ── Datos de contexto ────────────────────────────────────────────────────
+    _cli_info   = get_cli()
+    _mis_sedes_df = _cli_info[_cli_info["Empresa"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not _cli_info.empty else pd.DataFrame()
+    _total_sedes  = _mis_sedes_df["Sede"].nunique() if not _mis_sedes_df.empty else 0
+    _mis_ac       = mis_eq[mis_eq["Servicio"] == "Aires Acondicionados"] if not mis_eq.empty else pd.DataFrame()
+    _sedes_con_ac = _mis_ac["Sede"].nunique() if not _mis_ac.empty else 0
+    _total_ac     = len(_mis_ac)
+
+    # ── Header ───────────────────────────────────────────────────────────────
     st.markdown(f"""
     <div style='background:#dc2626;color:white;padding:18px 24px;border-radius:12px;margin-bottom:16px'>
       <div style='font-size:1.5rem;font-weight:900'>🏢 {_mi_empresa}</div>
@@ -6410,17 +6419,18 @@ elif pagina == "perfil_cliente":
     </div>
     """, unsafe_allow_html=True)
 
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("📋 Solicitudes", len(mis_sols))
-    k2.metric("🛠️ OTs Totales", len(mis_ots))
+    # ── Métricas resumen ──────────────────────────────────────────────────────
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
+    k1.metric("🏪 Sedes totales",     _total_sedes)
+    k2.metric("❄️ Sedes con AC",      _sedes_con_ac)
+    k3.metric("🔧 Equipos AC",        _total_ac)
+    k4.metric("📋 Solicitudes",       len(mis_sols))
     _n_activas = int((mis_ots["Estado"].isin(["Programada","En ejecución","En revisión"])).sum()) if not mis_ots.empty else 0
-    k3.metric("🔄 En proceso", _n_activas)
+    k5.metric("🔄 OTs en proceso",    _n_activas)
     _n_fin = int((mis_ots["Estado"] == "Finalizada").sum()) if not mis_ots.empty else 0
-    k4.metric("✅ Finalizadas", _n_fin)
+    k6.metric("✅ OTs finalizadas",   _n_fin)
 
     st.divider()
-
-    tab_sol_cli, tab_ot_cli, tab_eq_cli = st.tabs(["📋 Mis Solicitudes", "🛠️ Mis OTs", "🔧 Mis Equipos"])
 
     COLORES_OT_CLI = {
         "Programada":   ("#e0e7ff","#1e3a8a"), "En ejecución": ("#fef3c7","#78350f"),
@@ -6432,6 +6442,110 @@ elif pagina == "perfil_cliente":
         "Completado":("#cfe2ff","#0a3678"),"Cancelado":("#f8d7da","#7f1d1d"),
     }
 
+    tab_sedes_cli, tab_ac_cli, tab_sol_cli, tab_ot_cli = st.tabs([
+        "🏪 Mis Sedes", "❄️ Aires Acondicionados", "📋 Solicitudes", "🛠️ OTs & Reportes"
+    ])
+
+    # ── TAB 1: Mis Sedes ─────────────────────────────────────────────────────
+    with tab_sedes_cli:
+        st.markdown(f"**{_total_sedes} sedes registradas — {_sedes_con_ac} con Aires Acondicionados**")
+        if _mis_sedes_df.empty:
+            st.info("No hay sedes registradas.")
+        else:
+            sedes_unicas = sorted(_mis_sedes_df["Sede"].unique().tolist())
+            for _sd in sedes_unicas:
+                _sd_row = _mis_sedes_df[_mis_sedes_df["Sede"] == _sd].iloc[0]
+                _ac_sd  = _mis_ac[_mis_ac["Sede"] == _sd] if not _mis_ac.empty else pd.DataFrame()
+                _ots_sd = mis_ots[mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()] if not mis_ots.empty else pd.DataFrame()
+                _sols_sd= mis_sols[mis_sols["Sede"].str.strip().str.lower() == _sd.strip().lower()] if not mis_sols.empty else pd.DataFrame()
+                _tiene_ac = "❄️" if not _ac_sd.empty else "  "
+
+                with st.expander(f"{_tiene_ac} **{_sd}** — {len(_ac_sd)} equipo(s) AC · {len(_ots_sd)} OT(s) · {len(_sols_sd)} SOL(s)"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.write(f"**Dirección:** {_sd_row.get('Direccion_Sede','—')}")
+                        st.write(f"**Contacto:** {_sd_row.get('Nombre_Contacto','—')}")
+                        st.write(f"**Celular:** {_sd_row.get('Celular_Contacto','—')}")
+                    with c2:
+                        st.write(f"**Correo:** {_sd_row.get('Correo_Contacto','—')}")
+                        _n_ot_act = int((_ots_sd["Estado"].isin(["Programada","En ejecución","En revisión"])).sum()) if not _ots_sd.empty else 0
+                        st.write(f"**OTs activas:** {_n_ot_act}")
+                        st.write(f"**Equipos AC:** {len(_ac_sd)}")
+
+    # ── TAB 2: Aires Acondicionados ───────────────────────────────────────────
+    with tab_ac_cli:
+        if _mis_ac.empty:
+            st.info("No tienes equipos de Aires Acondicionados registrados.")
+        else:
+            sedes_ac = sorted(_mis_ac["Sede"].unique().tolist())
+            st.caption(f"{_total_ac} equipo(s) en {_sedes_con_ac} sede(s)")
+            for _sd in sedes_ac:
+                _ac_sd = _mis_ac[_mis_ac["Sede"] == _sd]
+                st.markdown(f"""
+                <div style='background:#fff5f5;border-left:4px solid #dc2626;
+                            padding:6px 14px;border-radius:0 6px 6px 0;margin:8px 0 4px'>
+                  <span style='font-weight:700;color:#dc2626'>📍 {_sd}</span>
+                  <span style='color:#888;font-size:0.8rem;margin-left:10px'>{len(_ac_sd)} equipo(s)</span>
+                </div>""", unsafe_allow_html=True)
+
+                for _, _eq in _ac_sd.iterrows():
+                    _prox = _eq.get("Proximo_Mantenimiento","")
+                    _ult  = _eq.get("Ultimo_Mantenimiento","")
+                    try:
+                        _dias = (datetime.strptime(_prox, "%Y-%m-%d") - ahora_colombia()).days
+                        _alerta = "🔴 Vencido" if _dias < 0 else (f"🟡 En {_dias}d" if _dias <= 15 else f"🟢 En {_dias}d")
+                    except Exception:
+                        _alerta = "⚪ Sin fecha"
+
+                    # OTs de este equipo
+                    _ots_eq = pd.DataFrame()
+                    if not mis_ots.empty:
+                        _ots_eq = mis_ots[
+                            (mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()) &
+                            (mis_ots["Servicio"] == "Aires Acondicionados")
+                        ]
+                        if "ID_Item" in mis_ots.columns:
+                            _ots_dir = mis_ots[mis_ots["ID_Item"] == _eq.get("ID_Item","")]
+                            if not _ots_dir.empty:
+                                _ots_eq = pd.concat([_ots_dir, _ots_eq[~_ots_eq["ID"].isin(_ots_dir["ID"])]], ignore_index=True)
+
+                    with st.expander(
+                        f"**{_eq.get('ID_Item','')}** — {_eq.get('Marca','')} {_eq.get('Modelo','')} | "
+                        f"{_eq.get('Especificaciones','')} | {_alerta}"
+                    ):
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            st.write(f"**Serial:** {_eq.get('Numero_Serie','—')}")
+                            st.write(f"**Ubicación:** {_eq.get('Ubicacion','—')}")
+                        with c2:
+                            st.write(f"**Último mantenimiento:** {_ult or '—'}")
+                            st.write(f"**Próximo mantenimiento:** {_prox or '—'} — {_alerta}")
+
+                        # Historial de servicios del equipo
+                        st.markdown("**📋 Historial de servicios**")
+                        if _ots_eq.empty:
+                            st.caption("Sin servicios registrados aún.")
+                        else:
+                            _cols_h = [c for c in ["ID","Fecha_Creacion","Descripcion","Tecnico","Fecha_Ejecucion","Estado"] if c in _ots_eq.columns]
+                            tabla_html(
+                                _ots_eq.sort_values("Fecha_Creacion", ascending=False)[_cols_h].reset_index(drop=True),
+                                color_col="Estado", colores_estado=COLORES_OT_CLI
+                            )
+                            # Descargar reportes disponibles
+                            _ots_rep = _ots_eq[_ots_eq["Estado"].isin(["Finalizada","En revisión"])]
+                            if not _ots_rep.empty:
+                                for _, _ot_r in _ots_rep.iterrows():
+                                    _rh, _ = cargar_reporte_sb(_ot_r["ID"])
+                                    if _rh:
+                                        st.download_button(
+                                            f"⬇️ Reporte {_ot_r['ID']} ({_ot_r.get('Fecha_Ejecucion','—')})",
+                                            data=_rh,
+                                            file_name=f"Reporte_{_ot_r['ID']}.html",
+                                            mime="text/html",
+                                            key=f"dl_ac_{_ot_r['ID']}",
+                                        )
+
+    # ── TAB 3: Solicitudes ────────────────────────────────────────────────────
     with tab_sol_cli:
         if mis_sols.empty:
             st.info("No tienes solicitudes registradas todavía.")
@@ -6440,6 +6554,7 @@ elif pagina == "perfil_cliente":
             tabla_html(mis_sols.sort_values("Fecha", ascending=False)[_cols_sol_cli].reset_index(drop=True),
                        color_col="Estado", colores_estado=COLORES_SOL_CLI)
 
+    # ── TAB 4: OTs & Reportes ─────────────────────────────────────────────────
     with tab_ot_cli:
         if mis_ots.empty:
             st.info("No tienes órdenes de trabajo registradas todavía.")
@@ -6452,43 +6567,18 @@ elif pagina == "perfil_cliente":
             st.markdown("**📄 Descargar reporte de servicio**")
             _ots_con_reporte = mis_ots[mis_ots["Estado"].isin(["Finalizada","En revisión"])]
             if _ots_con_reporte.empty:
-                st.caption("Aún no hay reportes disponibles para descargar.")
+                st.caption("Aún no hay reportes disponibles.")
             else:
                 _ot_rep_sel_cli = st.selectbox("Selecciona la OT", _ots_con_reporte["ID"].tolist(), key="cli_ot_rep_sel")
                 if _ot_rep_sel_cli:
-                    _rep_html_cli, _rep_meta_cli = cargar_reporte_sb(_ot_rep_sel_cli)
+                    _rep_html_cli, _ = cargar_reporte_sb(_ot_rep_sel_cli)
                     if _rep_html_cli:
-                        st.download_button(
-                            "⬇️ Descargar Reporte",
-                            data=_rep_html_cli,
-                            file_name=f"Reporte_{_ot_rep_sel_cli}.html",
-                            mime="text/html",
-                            use_container_width=True,
-                            type="primary",
-                            key="cli_dl_html",
-                        )
-                        st.caption("💡 Abre el archivo descargado en Chrome → clic en el botón **🖨️ Imprimir / Guardar como PDF** para obtener el PDF.")
+                        st.download_button("⬇️ Descargar Reporte", data=_rep_html_cli,
+                            file_name=f"Reporte_{_ot_rep_sel_cli}.html", mime="text/html",
+                            use_container_width=True, type="primary", key="cli_dl_html")
+                        st.caption("💡 Abre en Chrome → 🖨️ Imprimir → Guardar como PDF")
                     else:
                         st.info("El reporte de esta OT aún no está disponible.")
-
-    with tab_eq_cli:
-        if mis_eq.empty:
-            st.info("No tienes equipos registrados todavía.")
-        else:
-            _sedes_eq_cli = sorted(mis_eq["Sede"].unique().tolist())
-            for _sd in _sedes_eq_cli:
-                _eq_sd = mis_eq[mis_eq["Sede"] == _sd]
-                st.markdown(f"**📍 {_sd}** — {len(_eq_sd)} equipo(s)")
-                for _, _eq in _eq_sd.iterrows():
-                    _prox = _eq.get("Proximo_Mantenimiento","")
-                    try:
-                        _dias = (datetime.strptime(_prox, "%Y-%m-%d") - ahora_colombia()).days
-                        _alerta = "🔴" if _dias < 0 else ("🟡" if _dias <= 15 else "🟢")
-                    except Exception:
-                        _alerta = "⚪"
-                    st.write(f"{_alerta} **{_eq.get('ID_Item','')}** — {_eq.get('Marca','')} {_eq.get('Modelo','')} "
-                             f"| {_eq.get('Especificaciones','')} | Próx. mantenimiento: {_prox or '—'}")
-                st.divider()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
