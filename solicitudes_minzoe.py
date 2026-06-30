@@ -6396,31 +6396,27 @@ elif pagina == "calendario":
 # ══════════════════════════════════════════════════════════════════════════════
 elif pagina == "perfil_cliente":
     if st.session_state.get("user_rol") != "cliente":
-        st.warning("⛔ Esta sección es solo para clientes.")
+        st.warning("Esta sección es solo para clientes.")
         st.stop()
 
     _mi_empresa = st.session_state.get("user_empresa", "")
     if not _mi_empresa:
-        st.error("Tu usuario no tiene una empresa vinculada. Contacta al administrador de Minzoe.")
+        st.error("Tu usuario no tiene empresa vinculada. Contacta al administrador.")
         st.stop()
 
-    df_sol_cli  = get_df()
-    ots_cli     = get_ots()
-    equipos_cli = get_equipos()
+    df_sol_cli  = get_df(); ots_cli = get_ots()
+    equipos_cli = get_equipos(); _cli_info = get_cli()
 
     mis_sols = df_sol_cli[df_sol_cli["Cliente"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not df_sol_cli.empty else pd.DataFrame()
     mis_ots  = ots_cli[ots_cli["Cliente"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not ots_cli.empty else pd.DataFrame()
     mis_eq   = equipos_cli[equipos_cli["Cliente"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not equipos_cli.empty else pd.DataFrame()
-
-    # ── Datos de contexto ────────────────────────────────────────────────────
-    _cli_info   = get_cli()
     _mis_sedes_df = _cli_info[_cli_info["Empresa"].str.strip().str.lower() == _mi_empresa.strip().lower()] if not _cli_info.empty else pd.DataFrame()
+
     _total_sedes  = _mis_sedes_df["Sede"].nunique() if not _mis_sedes_df.empty else 0
     _mis_ac       = mis_eq[mis_eq["Servicio"] == "Aires Acondicionados"] if not mis_eq.empty else pd.DataFrame()
     _sedes_con_ac = _mis_ac["Sede"].nunique() if not _mis_ac.empty else 0
     _total_ac     = len(_mis_ac)
     _n_activas    = int((mis_ots["Estado"].isin(["Programada","En ejecución","En revisión"])).sum()) if not mis_ots.empty else 0
-    _n_fin        = int((mis_ots["Estado"] == "Finalizada").sum()) if not mis_ots.empty else 0
     _n_vencidos   = 0
     for _, _qe in _mis_ac.iterrows():
         try:
@@ -6429,238 +6425,225 @@ elif pagina == "perfil_cliente":
         except Exception:
             pass
 
-    # ── Header con logo y empresa ─────────────────────────────────────────────
-    st.markdown(f"""
-    <div style='background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);
-                color:white;padding:28px 32px;border-radius:16px;margin-bottom:24px;
-                box-shadow:0 8px 24px rgba(220,38,38,0.3)'>
-      <div style='display:flex;align-items:center;gap:16px'>
-        <div style='font-size:3rem'>🏢</div>
-        <div>
-          <div style='font-size:1.6rem;font-weight:900;letter-spacing:-0.5px'>{_mi_empresa}</div>
-          <div style='font-size:0.85rem;opacity:0.85;margin-top:2px'>
-            Portal de Cliente &nbsp;·&nbsp; Construcciones Minzoe SAS
-          </div>
-        </div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── Tarjetas de resumen ───────────────────────────────────────────────────
-    def _kcard(icon, label, value, bg, fg):
-        return f"""<div style='background:{bg};border-radius:12px;padding:16px 18px;
-                               border-left:5px solid {fg};box-shadow:0 2px 8px rgba(0,0,0,0.06)'>
-          <div style='font-size:1.8rem;font-weight:900;color:{fg}'>{value}</div>
-          <div style='font-size:0.8rem;color:#555;margin-top:2px'>{icon} {label}</div>
-        </div>"""
-
-    _k1,_k2,_k3,_k4,_k5,_k6 = st.columns(6)
-    _k1.markdown(_kcard("🏪","Sedes",         _total_sedes, "#f0f4ff","#1e3a8a"), unsafe_allow_html=True)
-    _k2.markdown(_kcard("❄️","Sedes con AC",  _sedes_con_ac,"#f0f9ff","#0369a1"), unsafe_allow_html=True)
-    _k3.markdown(_kcard("🔧","Equipos AC",     _total_ac,    "#fff7ed","#c2410c"), unsafe_allow_html=True)
-    _k4.markdown(_kcard("📋","Solicitudes",    len(mis_sols),"#fafafa","#374151"), unsafe_allow_html=True)
-    _k5.markdown(_kcard("🔄","En proceso",     _n_activas,   "#fdf4ff","#7e22ce"), unsafe_allow_html=True)
-    _venc_bg = "#fef2f2" if _n_vencidos > 0 else "#f0fdf4"
-    _venc_fg = "#dc2626" if _n_vencidos > 0 else "#16a34a"
-    _k6.markdown(_kcard("⚠️" if _n_vencidos else "✅","Mttos vencidos", _n_vencidos, _venc_bg, _venc_fg), unsafe_allow_html=True)
-
-    if _n_vencidos > 0:
-        st.markdown(f"""
-        <div style='background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;
-                    padding:12px 18px;margin-top:12px;display:flex;align-items:center;gap:10px'>
-          <span style='font-size:1.3rem'>🚨</span>
-          <span style='color:#dc2626;font-weight:600'>
-            {_n_vencidos} equipo(s) con mantenimiento vencido. Contacta a Minzoe para programar la visita.
-          </span>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
+    _cli_seccion = st.session_state.pop("_cli_seccion", None)
 
     COLORES_OT_CLI = {
-        "Programada":   ("#e0e7ff","#1e3a8a"), "En ejecución": ("#fef3c7","#78350f"),
-        "En revisión":  ("#ede9fe","#4c1d95"), "Finalizada":   ("#d1fae5","#064e3b"),
-        "Cancelada":    ("#fee2e2","#7f1d1d"),
+        "Programada":("#e0e7ff","#1e3a8a"),"En ejecución":("#fef3c7","#78350f"),
+        "En revisión":("#ede9fe","#4c1d95"),"Finalizada":("#d1fae5","#064e3b"),
+        "Cancelada":("#fee2e2","#7f1d1d"),
     }
     COLORES_SOL_CLI = {
         "Pendiente":("#fff3cd","#7d5a00"),"Aprobado":("#d1e7dd","#0a5c36"),
         "Completado":("#cfe2ff","#0a3678"),"Cancelado":("#f8d7da","#7f1d1d"),
     }
 
-    # Reordenar tabs según botón del sidebar que se haya presionado
-    _cli_tab = st.session_state.pop("_cli_tab", None)
-    _tabs_ord = ["🏪 Mis Sedes", "❄️ Aires Acondicionados", "📋 Solicitudes", "🛠️ OTs & Reportes"]
-    if _cli_tab == "sol":
-        _tabs_ord = ["📋 Solicitudes", "🏪 Mis Sedes", "❄️ Aires Acondicionados", "🛠️ OTs & Reportes"]
-    elif _cli_tab == "ots":
-        _tabs_ord = ["🛠️ OTs & Reportes", "🏪 Mis Sedes", "❄️ Aires Acondicionados", "📋 Solicitudes"]
+    # Header siempre visible
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);
+                color:white;padding:24px 32px;border-radius:16px;margin-bottom:20px;
+                box-shadow:0 8px 24px rgba(220,38,38,0.3)">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="font-size:2.8rem">🏢</div>
+        <div>
+          <div style="font-size:1.5rem;font-weight:900">{_mi_empresa}</div>
+          <div style="font-size:0.82rem;opacity:0.85;margin-top:2px">
+            Portal de Cliente · Construcciones Minzoe SAS
+          </div>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    _tabs_result = st.tabs(_tabs_ord)
-    _tab_map = {name: _tabs_result[i] for i, name in enumerate(_tabs_ord)}
-    tab_sedes_cli = _tab_map["🏪 Mis Sedes"]
-    tab_ac_cli    = _tab_map["❄️ Aires Acondicionados"]
-    tab_sol_cli   = _tab_map["📋 Solicitudes"]
-    tab_ot_cli    = _tab_map["🛠️ OTs & Reportes"]
+    # HOME
+    if _cli_seccion is None:
+        st.markdown("#### Selecciona una opción")
+        r1c1, r1c2, r1c3 = st.columns(3)
+        with r1c1:
+            st.markdown(f"""<div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:14px;
+                padding:20px;text-align:center">
+              <div style="font-size:2.8rem;font-weight:900;color:#1d4ed8">{_total_sedes}</div>
+              <div style="color:#1e40af;font-weight:600;margin-top:4px">🏪 Sedes totales</div>
+            </div>""", unsafe_allow_html=True)
+            if st.button("Ver todas las sedes →", key="btn_sedes", use_container_width=True):
+                st.session_state["_cli_seccion"] = "sedes"; st.rerun()
+        with r1c2:
+            st.markdown(f"""<div style="background:#e0f2fe;border:2px solid #0ea5e9;border-radius:14px;
+                padding:20px;text-align:center">
+              <div style="font-size:2.8rem;font-weight:900;color:#0369a1">{_sedes_con_ac}</div>
+              <div style="color:#075985;font-weight:600;margin-top:4px">❄️ Sedes con AC</div>
+            </div>""", unsafe_allow_html=True)
+            if st.button("Ver sedes con AC →", key="btn_sedes_ac", use_container_width=True):
+                st.session_state["_cli_seccion"] = "sedes_ac"; st.rerun()
+        with r1c3:
+            st.markdown(f"""<div style="background:#fff7ed;border:2px solid #f97316;border-radius:14px;
+                padding:20px;text-align:center">
+              <div style="font-size:2.8rem;font-weight:900;color:#c2410c">{_total_ac}</div>
+              <div style="color:#9a3412;font-weight:600;margin-top:4px">🔧 Equipos AC</div>
+            </div>""", unsafe_allow_html=True)
+            if st.button("Ver hojas de vida →", key="btn_equipos_ac", use_container_width=True):
+                st.session_state["_cli_seccion"] = "equipos_ac"; st.rerun()
 
-    # ── TAB 1: Mis Sedes ─────────────────────────────────────────────────────
-    with tab_sedes_cli:
-        if _mis_sedes_df.empty:
-            st.info("No hay sedes registradas.")
-        else:
-            sedes_unicas = sorted(_mis_sedes_df["Sede"].unique().tolist())
-            st.markdown(f"<p style='color:#666;font-size:0.85rem'>{_total_sedes} sedes — {_sedes_con_ac} con Aires Acondicionados</p>", unsafe_allow_html=True)
-            for _sd in sedes_unicas:
+        st.markdown("<br>", unsafe_allow_html=True)
+        r2c1, r2c2, r2c3 = st.columns(3)
+        with r2c1:
+            st.markdown(f"""<div style="background:#f9fafb;border:2px solid #9ca3af;border-radius:14px;
+                padding:20px;text-align:center">
+              <div style="font-size:2.8rem;font-weight:900;color:#374151">{len(mis_sols)}</div>
+              <div style="color:#4b5563;font-weight:600;margin-top:4px">📋 Solicitudes</div>
+            </div>""", unsafe_allow_html=True)
+            if st.button("Ver solicitudes →", key="btn_sols", use_container_width=True):
+                st.session_state["_cli_seccion"] = "solicitudes"; st.rerun()
+        with r2c2:
+            st.markdown(f"""<div style="background:#faf5ff;border:2px solid #a855f7;border-radius:14px;
+                padding:20px;text-align:center">
+              <div style="font-size:2.8rem;font-weight:900;color:#7e22ce">{_n_activas}</div>
+              <div style="color:#6b21a8;font-weight:600;margin-top:4px">🔄 OTs en proceso</div>
+            </div>""", unsafe_allow_html=True)
+            if st.button("Ver OTs y reportes →", key="btn_ots", use_container_width=True):
+                st.session_state["_cli_seccion"] = "ots"; st.rerun()
+        with r2c3:
+            _vbg = "#fef2f2" if _n_vencidos > 0 else "#f0fdf4"
+            _vbr = "#dc2626" if _n_vencidos > 0 else "#16a34a"
+            _vtx = "#b91c1c" if _n_vencidos > 0 else "#15803d"
+            _vlbl = "⚠️ Mttos vencidos" if _n_vencidos > 0 else "✅ Sin vencimientos"
+            st.markdown(f"""<div style="background:{_vbg};border:2px solid {_vbr};border-radius:14px;
+                padding:20px;text-align:center">
+              <div style="font-size:2.8rem;font-weight:900;color:{_vbr}">{_n_vencidos}</div>
+              <div style="color:{_vtx};font-weight:600;margin-top:4px">{_vlbl}</div>
+            </div>""", unsafe_allow_html=True)
+            if _n_vencidos > 0:
+                if st.button("Ver equipos vencidos →", key="btn_vencidos", use_container_width=True):
+                    st.session_state["_cli_seccion"] = "vencidos"; st.rerun()
+
+    else:
+        if st.button("← Volver al portal", key="cli_volver"):
+            st.session_state.pop("_cli_seccion", None); st.rerun()
+        st.markdown("---")
+
+        if _cli_seccion == "sedes":
+            st.markdown(f"### 🏪 Todas las sedes — {_total_sedes}")
+            for _sd in (sorted(_mis_sedes_df["Sede"].unique().tolist()) if not _mis_sedes_df.empty else []):
                 _sd_row = _mis_sedes_df[_mis_sedes_df["Sede"] == _sd].iloc[0]
-                _ac_sd  = _mis_ac[_mis_ac["Sede"] == _sd] if not _mis_ac.empty else pd.DataFrame()
-                _ots_sd = mis_ots[mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()] if not mis_ots.empty else pd.DataFrame()
-                _sols_sd= mis_sols[mis_sols["Sede"].str.strip().str.lower() == _sd.strip().lower()] if not mis_sols.empty else pd.DataFrame()
-                _n_ot_act = int((_ots_sd["Estado"].isin(["Programada","En ejecución","En revisión"])).sum()) if not _ots_sd.empty else 0
-                _tiene_ac = len(_ac_sd) > 0
-                _ac_badge = f"<span style='background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:20px;font-size:0.72rem;font-weight:600'>❄️ {len(_ac_sd)} AC</span>" if _tiene_ac else ""
-                _ot_badge = f"<span style='background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:20px;font-size:0.72rem;font-weight:600'>🔄 {_n_ot_act} activa(s)</span>" if _n_ot_act > 0 else ""
-
-                with st.expander(f"📍 {_sd}"):
-                    st.markdown(f"{_ac_badge} {_ot_badge}", unsafe_allow_html=True)
+                _ac_cnt = len(_mis_ac[_mis_ac["Sede"] == _sd]) if not _mis_ac.empty else 0
+                _ots_cnt = int((mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()).sum()) if not mis_ots.empty else 0
+                _ac_tag = f" ❄️ {_ac_cnt} AC" if _ac_cnt > 0 else ""
+                with st.expander(f"📍 **{_sd}**{_ac_tag} · {_ots_cnt} OT(s)"):
                     c1, c2 = st.columns(2)
                     with c1:
-                        st.write(f"**📍 Dirección:** {_sd_row.get('Direccion_Sede','—')}")
-                        st.write(f"**👤 Contacto:** {_sd_row.get('Nombre_Contacto','—')}")
-                        st.write(f"**📱 Celular:** {_sd_row.get('Celular_Contacto','—')}")
+                        st.write(f"**Dirección:** {_sd_row.get('Direccion_Sede','—')}")
+                        st.write(f"**Contacto:** {_sd_row.get('Nombre_Contacto','—')}")
                     with c2:
-                        st.write(f"**✉️ Correo:** {_sd_row.get('Correo_Contacto','—')}")
-                        st.write(f"**❄️ Equipos AC:** {len(_ac_sd)}")
-                        st.write(f"**🛠️ OTs activas:** {_n_ot_act}")
+                        st.write(f"**Celular:** {_sd_row.get('Celular_Contacto','—')}")
+                        st.write(f"**Correo:** {_sd_row.get('Correo_Contacto','—')}")
 
-    # ── TAB 2: Aires Acondicionados ───────────────────────────────────────────
-    with tab_ac_cli:
-        if _mis_ac.empty:
-            st.info("No tienes equipos de Aires Acondicionados registrados.")
-        else:
-            sedes_ac = sorted(_mis_ac["Sede"].unique().tolist())
-            st.caption(f"{_total_ac} equipo(s) en {_sedes_con_ac} sede(s)")
-            for _sd in sedes_ac:
+        elif _cli_seccion == "sedes_ac":
+            st.markdown(f"### ❄️ Sedes con AC — {_sedes_con_ac} sedes · {_total_ac} equipos")
+            for _sd in (sorted(_mis_ac["Sede"].unique().tolist()) if not _mis_ac.empty else []):
                 _ac_sd = _mis_ac[_mis_ac["Sede"] == _sd]
-                st.markdown(f"""
-                <div style='background:linear-gradient(90deg,#fff0f0,#fff8f8);
-                            border-left:4px solid #dc2626;padding:10px 16px;
-                            border-radius:0 10px 10px 0;margin:10px 0 6px;
-                            box-shadow:0 2px 6px rgba(220,38,38,0.08)'>
-                  <span style='font-weight:800;color:#dc2626;font-size:1rem'>📍 {_sd}</span>
-                  <span style='background:#dc2626;color:white;padding:2px 10px;
-                               border-radius:20px;font-size:0.72rem;margin-left:10px'>
-                    {len(_ac_sd)} equipo(s)
-                  </span>
-                </div>""", unsafe_allow_html=True)
+                _dias_list = []
+                for _, _q in _ac_sd.iterrows():
+                    try: _dias_list.append((datetime.strptime(_q.get("Proximo_Mantenimiento",""), "%Y-%m-%d") - ahora_colombia()).days)
+                    except Exception: pass
+                _sem = "🔴" if any(d < 0 for d in _dias_list) else ("🟡" if any(d <= 15 for d in _dias_list) else "🟢")
+                with st.expander(f"{_sem} **{_sd}** — {len(_ac_sd)} equipo(s)"):
+                    for _, _eq in _ac_sd.iterrows():
+                        _p = _eq.get("Proximo_Mantenimiento","")
+                        try:
+                            _d = (datetime.strptime(_p, "%Y-%m-%d") - ahora_colombia()).days
+                            _a = "🔴 Vencido" if _d < 0 else (f"🟡 {_d}d" if _d <= 15 else f"🟢 {_d}d")
+                        except: _a = "⚪"
+                        st.write(f"**{_eq.get('ID_Item','')}** — {_eq.get('Marca','')} {_eq.get('Modelo','')} | {_eq.get('Especificaciones','')} | {_a}")
 
+        elif _cli_seccion == "equipos_ac":
+            st.markdown(f"### 🔧 Hojas de vida AC — {_total_ac} equipo(s)")
+            for _sd in (sorted(_mis_ac["Sede"].unique().tolist()) if not _mis_ac.empty else []):
+                _ac_sd = _mis_ac[_mis_ac["Sede"] == _sd]
+                st.markdown(f"""<div style="background:#fff0f0;border-left:4px solid #dc2626;
+                    padding:8px 16px;border-radius:0 8px 8px 0;margin:10px 0 4px;
+                    font-weight:700;color:#dc2626">📍 {_sd} — {len(_ac_sd)} equipo(s)</div>""",
+                    unsafe_allow_html=True)
                 for _, _eq in _ac_sd.iterrows():
-                    _prox = _eq.get("Proximo_Mantenimiento","")
-                    _ult  = _eq.get("Ultimo_Mantenimiento","")
+                    _prox = _eq.get("Proximo_Mantenimiento",""); _ult = _eq.get("Ultimo_Mantenimiento","")
                     try:
-                        _dias = (datetime.strptime(_prox, "%Y-%m-%d") - ahora_colombia()).days
-                        if _dias < 0:
-                            _alerta = "🔴 Vencido"
-                            _card_bg = "#fef2f2"; _card_border = "#dc2626"
-                        elif _dias <= 15:
-                            _alerta = f"🟡 En {_dias} días"
-                            _card_bg = "#fffbeb"; _card_border = "#f59e0b"
-                        else:
-                            _alerta = f"🟢 En {_dias} días"
-                            _card_bg = "#f0fdf4"; _card_border = "#16a34a"
-                    except Exception:
-                        _alerta = "⚪ Sin fecha"
-                        _card_bg = "#f9fafb"; _card_border = "#9ca3af"
-
-                    # OTs de este equipo
-                    _ots_eq = pd.DataFrame()
-                    if not mis_ots.empty:
-                        _ots_eq = mis_ots[
-                            (mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()) &
-                            (mis_ots["Servicio"] == "Aires Acondicionados")
-                        ]
-                        if "ID_Item" in mis_ots.columns:
-                            _ots_dir = mis_ots[mis_ots["ID_Item"] == _eq.get("ID_Item","")]
-                            if not _ots_dir.empty:
-                                _ots_eq = pd.concat([_ots_dir, _ots_eq[~_ots_eq["ID"].isin(_ots_dir["ID"])]], ignore_index=True)
-
-                    with st.expander(
-                        f"**{_eq.get('ID_Item','')}** — {_eq.get('Marca','')} {_eq.get('Modelo','')} | "
-                        f"{_eq.get('Especificaciones','')} | {_alerta}"
-                    ):
-                        st.markdown(f"""
-                        <div style='background:{_card_bg};border:1px solid {_card_border};
-                                    border-radius:10px;padding:14px 18px;margin-bottom:10px'>
-                          <div style='display:flex;flex-wrap:wrap;gap:16px'>
-                            <div><span style='color:#666;font-size:0.75rem'>🔑 SERIAL</span><br>
-                              <span style='font-weight:700'>{_eq.get('Numero_Serie','—')}</span></div>
-                            <div><span style='color:#666;font-size:0.75rem'>📐 CAPACIDAD</span><br>
-                              <span style='font-weight:700'>{_eq.get('Especificaciones','—')}</span></div>
-                            <div><span style='color:#666;font-size:0.75rem'>📍 UBICACIÓN</span><br>
-                              <span style='font-weight:700'>{_eq.get('Ubicacion','—')}</span></div>
-                            <div><span style='color:#666;font-size:0.75rem'>🔧 ÚLTIMO MTO.</span><br>
-                              <span style='font-weight:700'>{_ult or '—'}</span></div>
-                            <div><span style='color:#666;font-size:0.75rem'>📅 PRÓXIMO MTO.</span><br>
-                              <span style='font-weight:700;color:{_card_border}'>{_prox or '—'} — {_alerta}</span></div>
-                          </div>
-                        </div>""", unsafe_allow_html=True)
-
-                        # Historial de servicios del equipo
-                        st.markdown("**📋 Historial de servicios**")
-                        if _ots_eq.empty:
-                            st.caption("Sin servicios registrados aún.")
-                        else:
-                            _cols_h = [c for c in ["ID","Fecha_Creacion","Descripcion","Tecnico","Fecha_Ejecucion","Estado"] if c in _ots_eq.columns]
-                            tabla_html(
-                                _ots_eq.sort_values("Fecha_Creacion", ascending=False)[_cols_h].reset_index(drop=True),
-                                color_col="Estado", colores_estado=COLORES_OT_CLI
-                            )
-                            # Descargar reportes disponibles
-                            _ots_rep = _ots_eq[_ots_eq["Estado"].isin(["Finalizada","En revisión"])]
-                            if not _ots_rep.empty:
-                                _eq_id_key = _eq.get("ID_Item","x")
-                                for _, _ot_r in _ots_rep.iterrows():
-                                    _rh, _ = cargar_reporte_sb(_ot_r["ID"])
+                        _d = (datetime.strptime(_prox, "%Y-%m-%d") - ahora_colombia()).days
+                        _alerta = "🔴 Vencido" if _d < 0 else (f"🟡 En {_d}d" if _d <= 15 else f"🟢 En {_d}d")
+                        _cbg = "#fef2f2" if _d < 0 else ("#fffbeb" if _d <= 15 else "#f0fdf4")
+                        _cbr = "#dc2626" if _d < 0 else ("#f59e0b" if _d <= 15 else "#16a34a")
+                    except: _alerta, _cbg, _cbr = "Sin fecha", "#f9fafb", "#9ca3af"
+                    with st.expander(f"**{_eq.get('ID_Item','')}** — {_eq.get('Marca','')} {_eq.get('Modelo','')} | {_alerta}"):
+                        st.markdown(f"""<div style="background:{_cbg};border:1px solid {_cbr};
+                            border-radius:10px;padding:12px 16px;margin-bottom:8px">
+                          <div style="display:flex;flex-wrap:wrap;gap:14px">
+                            <div><span style="color:#666;font-size:0.72rem">SERIAL</span><br><b>{_eq.get('Numero_Serie','—')}</b></div>
+                            <div><span style="color:#666;font-size:0.72rem">CAPACIDAD</span><br><b>{_eq.get('Especificaciones','—')}</b></div>
+                            <div><span style="color:#666;font-size:0.72rem">UBICACION</span><br><b>{_eq.get('Ubicacion','—')}</b></div>
+                            <div><span style="color:#666;font-size:0.72rem">ULTIMO MTO.</span><br><b>{_ult or '—'}</b></div>
+                            <div><span style="color:#666;font-size:0.72rem">PROXIMO MTO.</span><br>
+                              <b style="color:{_cbr}">{_prox or '—'} — {_alerta}</b></div>
+                          </div></div>""", unsafe_allow_html=True)
+                        if not mis_ots.empty:
+                            _ots_eq = mis_ots[
+                                (mis_ots["Sede"].str.strip().str.lower() == _sd.strip().lower()) &
+                                (mis_ots["Servicio"] == "Aires Acondicionados")]
+                            if not _ots_eq.empty:
+                                st.markdown("**Historial de servicios**")
+                                _c = [c for c in ["ID","Fecha_Creacion","Descripcion","Tecnico","Fecha_Ejecucion","Estado"] if c in _ots_eq.columns]
+                                tabla_html(_ots_eq.sort_values("Fecha_Creacion", ascending=False)[_c].reset_index(drop=True),
+                                           color_col="Estado", colores_estado=COLORES_OT_CLI)
+                                for _, _or in _ots_eq[_ots_eq["Estado"].isin(["Finalizada","En revisión"])].iterrows():
+                                    _rh, _ = cargar_reporte_sb(_or["ID"])
                                     if _rh:
-                                        st.download_button(
-                                            f"⬇️ Reporte {_ot_r['ID']} ({_ot_r.get('Fecha_Ejecucion','—')})",
-                                            data=_rh,
-                                            file_name=f"Reporte_{_ot_r['ID']}.html",
-                                            mime="text/html",
-                                            key=f"dl_ac_{_eq_id_key}_{_ot_r['ID']}",
-                                        )
+                                        st.download_button(f"Reporte {_or['ID']}",
+                                            data=_rh, file_name=f"Reporte_{_or['ID']}.html",
+                                            mime="text/html", key=f"dl3_{_eq.get('ID_Item','x')}_{_or['ID']}")
 
-    # ── TAB 3: Solicitudes ────────────────────────────────────────────────────
-    with tab_sol_cli:
-        if mis_sols.empty:
-            st.info("No tienes solicitudes registradas todavía.")
-        else:
-            _cols_sol_cli = [c for c in ["ID","Fecha","Sede","Servicio","SLA","Descripcion","Estado"] if c in mis_sols.columns]
-            tabla_html(mis_sols.sort_values("Fecha", ascending=False)[_cols_sol_cli].reset_index(drop=True),
-                       color_col="Estado", colores_estado=COLORES_SOL_CLI)
-
-    # ── TAB 4: OTs & Reportes ─────────────────────────────────────────────────
-    with tab_ot_cli:
-        if mis_ots.empty:
-            st.info("No tienes órdenes de trabajo registradas todavía.")
-        else:
-            _cols_ot_cli = [c for c in ["ID","Fecha_Creacion","Sede","Servicio","Tecnico","Fecha_Ejecucion","Estado"] if c in mis_ots.columns]
-            tabla_html(mis_ots.sort_values("Fecha_Creacion", ascending=False)[_cols_ot_cli].reset_index(drop=True),
-                       color_col="Estado", colores_estado=COLORES_OT_CLI)
-
-            st.divider()
-            st.markdown("**📄 Descargar reporte de servicio**")
-            _ots_con_reporte = mis_ots[mis_ots["Estado"].isin(["Finalizada","En revisión"])]
-            if _ots_con_reporte.empty:
-                st.caption("Aún no hay reportes disponibles.")
+        elif _cli_seccion == "solicitudes":
+            st.markdown(f"### 📋 Mis Solicitudes — {len(mis_sols)}")
+            if mis_sols.empty: st.info("No tienes solicitudes.")
             else:
-                _ot_rep_sel_cli = st.selectbox("Selecciona la OT", _ots_con_reporte["ID"].tolist(), key="cli_ot_rep_sel")
-                if _ot_rep_sel_cli:
-                    _rep_html_cli, _ = cargar_reporte_sb(_ot_rep_sel_cli)
-                    if _rep_html_cli:
-                        st.download_button("⬇️ Descargar Reporte", data=_rep_html_cli,
-                            file_name=f"Reporte_{_ot_rep_sel_cli}.html", mime="text/html",
-                            use_container_width=True, type="primary", key="cli_dl_html")
-                        st.caption("💡 Abre en Chrome → 🖨️ Imprimir → Guardar como PDF")
-                    else:
-                        st.info("El reporte de esta OT aún no está disponible.")
+                _c = [c for c in ["ID","Fecha","Sede","Servicio","SLA","Descripcion","Estado"] if c in mis_sols.columns]
+                tabla_html(mis_sols.sort_values("Fecha", ascending=False)[_c].reset_index(drop=True),
+                           color_col="Estado", colores_estado=COLORES_SOL_CLI)
+
+        elif _cli_seccion in ("ots", "tab_ots"):
+            st.markdown(f"### 🛠️ Mis OTs — {len(mis_ots)}")
+            if mis_ots.empty: st.info("No tienes OTs.")
+            else:
+                _c = [c for c in ["ID","Fecha_Creacion","Sede","Servicio","Tecnico","Fecha_Ejecucion","Estado"] if c in mis_ots.columns]
+                tabla_html(mis_ots.sort_values("Fecha_Creacion", ascending=False)[_c].reset_index(drop=True),
+                           color_col="Estado", colores_estado=COLORES_OT_CLI)
+                st.divider()
+                _orep = mis_ots[mis_ots["Estado"].isin(["Finalizada","En revisión"])]
+                if not _orep.empty:
+                    st.markdown("**Descargar reporte**")
+                    _osel = st.selectbox("OT", _orep["ID"].tolist(), key="cli_ot_rep_sel3")
+                    if _osel:
+                        _rh2, _ = cargar_reporte_sb(_osel)
+                        if _rh2:
+                            st.download_button("Descargar Reporte", data=_rh2,
+                                file_name=f"Reporte_{_osel}.html", mime="text/html",
+                                use_container_width=True, type="primary", key="cli_dl3")
+                            st.caption("Abre en Chrome y presiona Imprimir para guardar como PDF")
+
+        elif _cli_seccion == "vencidos":
+            st.markdown("### ⚠️ Equipos con mantenimiento vencido")
+            _vlist = []
+            for _, _qe in _mis_ac.iterrows():
+                try:
+                    if (datetime.strptime(_qe.get("Proximo_Mantenimiento",""), "%Y-%m-%d") - ahora_colombia()).days < 0:
+                        _vlist.append(_qe)
+                except Exception:
+                    pass
+            if not _vlist:
+                st.success("No tienes equipos con mantenimiento vencido.")
+            else:
+                for _qv in _vlist:
+                    st.markdown(f"""<div style="background:#fef2f2;border:2px solid #dc2626;
+                        border-radius:10px;padding:12px 16px;margin:6px 0">
+                      <b style="color:#dc2626">🔴 {_qv.get('ID_Item','')} — {_qv.get('Marca','')} {_qv.get('Modelo','')}</b><br>
+                      <span style="color:#555">Sede: {_qv.get('Sede','—')} | Vencio: {_qv.get('Proximo_Mantenimiento','—')}</span>
+                    </div>""", unsafe_allow_html=True)
+                st.warning("Comunicate con Minzoe para programar el mantenimiento.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
