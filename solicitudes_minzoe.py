@@ -4683,11 +4683,16 @@ elif pagina == "ots":
                                     # La firma se agrega en fase 2 (después del form)
                                     _firma_hvac_html = "<!--FIRMA_CLIENTE-->"
 
-                                    # ── Filas dinámicas cliente/equipo (solo campos con valor) ──
-                                    _cli_rows = []
-                                    if fila_ot.get('Cliente',''): _cli_rows.append(("Cliente:", fila_ot['Cliente']))
-                                    if fila_ot.get('Sede',''): _cli_rows.append(("Sucursal:", fila_ot.get('Sede','')))
-                                    if fila_ot.get('Nombre_Contacto',''): _cli_rows.append(("Contacto:", fila_ot.get('Nombre_Contacto','')))
+                                    # ── Datos cliente (inline) y equipo (tabla) ──
+                                    _cli_parts = []
+                                    if fila_ot.get('Cliente',''): _cli_parts.append(f"<b>Cliente:</b> {fila_ot['Cliente']}")
+                                    if fila_ot.get('Sede',''): _cli_parts.append(f"<b>Sucursal:</b> {fila_ot.get('Sede','')}")
+                                    if fila_ot.get('Nombre_Contacto',''): _cli_parts.append(f"<b>Contacto:</b> {fila_ot.get('Nombre_Contacto','')}")
+                                    _datos_cliente_html = (
+                                        '<div style="padding:2px 0 5px;font-size:9pt">'
+                                        + " &nbsp;|&nbsp; ".join(_cli_parts)
+                                        + "</div>"
+                                    )
 
                                     _eq_rows = []
                                     if _tipo_eq_sel.strip(): _eq_rows.append(("Tipo de equipo:", _tipo_eq_sel))
@@ -4704,11 +4709,10 @@ elif pagina == "ots":
                                         if r_serial_vent.strip(): _eq_rows.append(("Serial:", r_serial_vent))
                                         if r_ubic_vent.strip():   _eq_rows.append(("Ubicación:", r_ubic_vent))
 
-                                    _rows_ce = ""
-                                    for _i in range(max(len(_cli_rows), len(_eq_rows))):
-                                        _cl = f"<td><b>{_cli_rows[_i][0]}</b></td><td>{_cli_rows[_i][1]}</td>" if _i < len(_cli_rows) else "<td></td><td></td>"
-                                        _eq = f"<td><b>{_eq_rows[_i][0]}</b></td><td>{_eq_rows[_i][1]}</td>" if _i < len(_eq_rows) else "<td></td><td></td>"
-                                        _rows_ce += f"<tr>{_cl}{_eq}</tr>\n"
+                                    _rows_ce = "".join(
+                                        f"<tr><td style='white-space:nowrap;font-weight:bold;width:42%'>{_lb}</td><td>{_vl}</td></tr>"
+                                        for _lb, _vl in _eq_rows
+                                    )
 
                                     # Sección medición según tipo de equipo
                                     if not _es_vent_ext and not _es_portatil:
@@ -4836,11 +4840,10 @@ elif pagina == "ots":
 
     <div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto}</div>
 
-    <table><tr>
-      <th colspan="2">DATOS DEL CLIENTE</th>
-      <th colspan="2">DATOS DEL EQUIPO</th>
-    </tr>
-    {_rows_ce}</table>
+    <div class="section" style="margin-top:2px">DATOS DEL CLIENTE</div>
+    {_datos_cliente_html}
+    <div class="section">DATOS DEL EQUIPO</div>
+    <table style="width:60%">{_rows_ce}</table>
 
     {_seccion_medicion}
 
@@ -5322,24 +5325,10 @@ elif pagina == "ots":
 
 <div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto} &nbsp;&nbsp; <b>Sistema:</b> {sistemas}</div>
 
-<table style="table-layout:fixed;width:100%"><tr>
-  <th colspan="2">DATOS DEL CLIENTE</th>
-</tr><tr>
-  <td style="width:28%;white-space:nowrap;font-weight:bold">Cliente:</td>
-  <td>{fila_ot['Cliente']}</td>
-</tr><tr>
-  <td style="font-weight:bold">Ciudad:</td>
-  <td>{fila_ot.get('Sede','')}</td>
-</tr><tr>
-  <td style="font-weight:bold">Sucursal:</td>
-  <td>{fila_ot.get('Sede','')}</td>
-</tr><tr>
-  <td style="font-weight:bold">Contacto:</td>
-  <td>{fila_ot.get('Nombre_Contacto','')}</td>
-</tr><tr>
-  <td style="font-weight:bold">Área intervenida:</td>
-  <td>{l_area}</td>
-</tr></table>
+<div class="section" style="margin-top:2px">DATOS DEL CLIENTE</div>
+<div style="padding:2px 0 5px;font-size:9pt">
+  <b>Cliente:</b> {fila_ot['Cliente']} &nbsp;|&nbsp; <b>Sucursal:</b> {fila_ot.get('Sede','')} &nbsp;|&nbsp; <b>Contacto:</b> {fila_ot.get('Nombre_Contacto','')}{"&nbsp;|&nbsp; <b>Área intervenida:</b> " + l_area if l_area.strip() else ""}
+</div>
 
 <div style="background:#f8f8f8;border:0.5pt solid #ccc;padding:4pt;margin:4pt 0;font-size:7pt">
 EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
