@@ -5145,37 +5145,6 @@ elif pagina == "ots":
                                     st.rerun()
                             st.stop()
 
-                        # ── Fotos del trabajo Locativos (máx. 25) ─────────
-                        _fotos_key = f"fotos_rep_{id_ot_sel}"
-                        if _fotos_key not in st.session_state:
-                            st.session_state[_fotos_key] = []
-                        _n_fotos = len(st.session_state[_fotos_key])
-                        st.divider()
-                        st.markdown(f"**📷 Fotos del trabajo** — {_n_fotos}/25")
-                        _cam_foto = st.camera_input("Tomar foto", key=f"cam_rep_{id_ot_sel}_{_n_fotos}")
-                        if _cam_foto:
-                            _fc1, _fc2 = st.columns([1, 3])
-                            with _fc1:
-                                if st.button("📷 Agregar foto", key=f"add_foto_{id_ot_sel}",
-                                             disabled=_n_fotos >= 25, use_container_width=True):
-                                    import base64 as _b64mod
-                                    _b64 = _b64mod.b64encode(_cam_foto.getvalue()).decode()
-                                    st.session_state[_fotos_key].append(_b64)
-                                    st.rerun()
-                            with _fc2:
-                                if _n_fotos >= 25:
-                                    st.warning("Máximo 25 fotos alcanzado.")
-                        if st.session_state[_fotos_key]:
-                            _thumb_cols = st.columns(4)
-                            for _fi, _fb in enumerate(st.session_state[_fotos_key]):
-                                with _thumb_cols[_fi % 4]:
-                                    st.image(f"data:image/jpeg;base64,{_fb}", use_container_width=True)
-                                    if st.button("🗑️", key=f"del_foto_{id_ot_sel}_{_fi}",
-                                                 use_container_width=True):
-                                        st.session_state[_fotos_key].pop(_fi)
-                                        st.rerun()
-                        st.divider()
-
                         with st.form(f"form_reporte_loc_{id_ot_sel}", clear_on_submit=False):
 
                             # Tipo de mantenimiento
@@ -5217,23 +5186,21 @@ elif pagina == "ots":
                                 "Sillas","Puestos de Trabajo","Otro",
                             ]
                             l_act = {}
-                            hdr = st.columns([2,1,1,1,1,3])
+                            hdr = st.columns([3,1,1,2,2])
                             hdr[0].markdown("**Ítem**")
                             hdr[1].markdown("**Buen Estado**")
                             hdr[2].markdown("**Mal Estado**")
                             hdr[3].markdown("**Req. Reparación**")
                             hdr[4].markdown("**Inst. Repuestos**")
-                            hdr[5].markdown("**Observaciones**")
                             for item in ITEMS_LOC:
                                 k = item.lower().replace(" ","_").replace(".","")
-                                cols = st.columns([2,1,1,1,1,3])
+                                cols = st.columns([3,1,1,2,2])
                                 cols[0].markdown(item)
                                 buen = cols[1].checkbox("", key=f"l_b_{k}")
                                 mal  = cols[2].checkbox("", key=f"l_m_{k}")
                                 req  = cols[3].checkbox("", key=f"l_r_{k}")
                                 inst = cols[4].checkbox("", key=f"l_i_{k}")
-                                obs  = cols[5].text_input("", key=f"l_o_{k}", label_visibility="collapsed")
-                                l_act[item] = {"buen":buen,"mal":mal,"req":req,"inst":inst,"obs":obs}
+                                l_act[item] = {"buen":buen,"mal":mal,"req":req,"inst":inst}
 
                             st.divider()
                             # ── Observaciones generales del técnico ────────
@@ -5291,27 +5258,40 @@ elif pagina == "ots":
                                     f"<td style='text-align:center;font-size:10pt'>{ck(v['mal'])}</td>"
                                     f"<td style='text-align:center;font-size:10pt'>{ck(v['req'])}</td>"
                                     f"<td style='text-align:center;font-size:10pt'>{ck(v['inst'])}</td>"
-                                    f"<td style='word-wrap:break-word'>{v['obs']}</td>"
                                     f"</tr>"
                                     for item,v in l_act.items()
                                 )
                                 _logo_b64 = get_logo_base64()
                                 _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
 
-                                # Galería de fotos para el reporte
+                                # Fotos Locativos: páginas de 6, tabla 3×2
                                 _fotos_list = st.session_state.get(f"fotos_rep_{id_ot_sel}", [])
                                 if _fotos_list:
-                                    _fotos_imgs = "".join(
-                                        f'<img src="data:image/jpeg;base64,{_fb}" '
-                                        f'style="width:165px;height:124px;object-fit:cover;'
-                                        f'border:1px solid #ccc;border-radius:3px;margin:3px">'
-                                        for _fb in _fotos_list
-                                    )
-                                    _fotos_html = (
-                                        '<div class="section">REGISTRO FOTOGRÁFICO</div>'
-                                        f'<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0">'
-                                        f'{_fotos_imgs}</div>'
-                                    )
+                                    _loc_foto_pages = []
+                                    for _p0 in range(0, len(_fotos_list), 6):
+                                        _chunk = _fotos_list[_p0:_p0 + 6]
+                                        _rows_html = ""
+                                        for _r in range(0, len(_chunk), 3):
+                                            _three = _chunk[_r:_r + 3]
+                                            _tds = "".join(
+                                                f'<td style="width:33%;padding:5px;text-align:center;vertical-align:top">'
+                                                f'<img src="data:image/jpeg;base64,{_fb}" '
+                                                f'style="width:99%;height:175px;object-fit:cover;'
+                                                f'border:1px solid #ccc;border-radius:3px">'
+                                                f'</td>'
+                                                for _fb in _three
+                                            )
+                                            for _ in range(3 - len(_three)):
+                                                _tds += '<td></td>'
+                                            _rows_html += f'<tr>{_tds}</tr>'
+                                        _pnum = _p0 // 6 + 1
+                                        _loc_foto_pages.append(
+                                            f'<div style="page-break-before:always;padding:4px">'
+                                            f'<div class="section">REGISTRO FOTOGRÁFICO — Página {_pnum}</div>'
+                                            f'<table style="width:100%;border-collapse:collapse">{_rows_html}</table>'
+                                            f'</div>'
+                                        )
+                                    _fotos_html = "".join(_loc_foto_pages)
                                 else:
                                     _fotos_html = ""
 
@@ -5369,12 +5349,11 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 <div class="section">ACTIVIDADES DE TRABAJO</div>
 <table style="table-layout:fixed;width:100%">
 <colgroup>
-  <col style="width:22%">
-  <col style="width:9%">
-  <col style="width:9%">
-  <col style="width:12%">
-  <col style="width:12%">
-  <col style="width:36%">
+  <col style="width:30%">
+  <col style="width:14%">
+  <col style="width:14%">
+  <col style="width:21%">
+  <col style="width:21%">
 </colgroup>
 <tr>
   <th>Ítem</th>
@@ -5382,7 +5361,6 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
   <th style="text-align:center">Mal Estado</th>
   <th style="text-align:center">Req. Reparación</th>
   <th style="text-align:center">Inst. Repuestos</th>
-  <th>Observaciones</th>
 </tr>
 {filas_act}
 </table>
@@ -5420,8 +5398,6 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
   <td>{l_oper}</td>
 </tr></table>
 
-{_fotos_html}
-
 <div style="display:flex;justify-content:space-between;margin-top:20px">
   <div>
     <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA TÉCNICO</div>
@@ -5445,6 +5421,7 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
   </button>
 </div>
 </div>
+{_fotos_html}
 </body></html>"""
 
                                 st.session_state[f"loc_html_raw_{id_ot_sel}"] = html_loc
@@ -5452,6 +5429,36 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                                 st.session_state[f"loc_sede_{id_ot_sel}"] = fila_ot.get("Sede","")
                                 st.session_state[f"loc_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
                                 st.rerun()
+
+                        # ── Fotos del trabajo Locativos (después de Observaciones) ──
+                        _fotos_key = f"fotos_rep_{id_ot_sel}"
+                        if _fotos_key not in st.session_state:
+                            st.session_state[_fotos_key] = []
+                        _n_fotos = len(st.session_state[_fotos_key])
+                        st.divider()
+                        st.markdown(f"**📷 Fotos del trabajo** — {_n_fotos}/25")
+                        _cam_foto = st.camera_input("Tomar foto", key=f"cam_rep_{id_ot_sel}_{_n_fotos}")
+                        if _cam_foto:
+                            _fc1, _fc2 = st.columns([1, 3])
+                            with _fc1:
+                                if st.button("📷 Agregar foto", key=f"add_foto_{id_ot_sel}",
+                                             disabled=_n_fotos >= 25, use_container_width=True):
+                                    import base64 as _b64mod
+                                    _b64 = _b64mod.b64encode(_cam_foto.getvalue()).decode()
+                                    st.session_state[_fotos_key].append(_b64)
+                                    st.rerun()
+                            with _fc2:
+                                if _n_fotos >= 25:
+                                    st.warning("Máximo 25 fotos alcanzado.")
+                        if st.session_state[_fotos_key]:
+                            _thumb_cols = st.columns(4)
+                            for _fi, _fb in enumerate(st.session_state[_fotos_key]):
+                                with _thumb_cols[_fi % 4]:
+                                    st.image(f"data:image/jpeg;base64,{_fb}", use_container_width=True)
+                                    if st.button("🗑️", key=f"del_foto_{id_ot_sel}_{_fi}",
+                                                 use_container_width=True):
+                                        st.session_state[_fotos_key].pop(_fi)
+                                        st.rerun()
 
                         # ── FUERA del form: guardar locativos ─────────────
                         _loc_key = f"loc_html_{id_ot_sel}"
