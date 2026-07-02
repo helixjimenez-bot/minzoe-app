@@ -4281,6 +4281,36 @@ elif pagina == "ots":
                         tc4.checkbox("Emergencia",    key=f"r_emer_{id_ot_sel}")
                         tc5.checkbox("Instalación",   key=f"r_inst_{id_ot_sel}")
 
+                        # ── Fotos del trabajo (máx. 12) ───────────────────
+                        _fotos_key = f"fotos_rep_{id_ot_sel}"
+                        if _fotos_key not in st.session_state:
+                            st.session_state[_fotos_key] = []
+                        _n_fotos = len(st.session_state[_fotos_key])
+                        st.divider()
+                        st.markdown(f"**📷 Fotos del trabajo** — {_n_fotos}/12")
+                        _cam_foto = st.camera_input("Tomar foto", key=f"cam_rep_{id_ot_sel}_{_n_fotos}")
+                        if _cam_foto:
+                            _fc1, _fc2 = st.columns([1, 3])
+                            with _fc1:
+                                if st.button("📷 Agregar foto", key=f"add_foto_{id_ot_sel}",
+                                             disabled=_n_fotos >= 12, use_container_width=True):
+                                    import base64 as _b64mod
+                                    _b64 = _b64mod.b64encode(_cam_foto.getvalue()).decode()
+                                    st.session_state[_fotos_key].append(_b64)
+                                    st.rerun()
+                            with _fc2:
+                                if _n_fotos >= 12:
+                                    st.warning("Máximo 12 fotos alcanzado.")
+                        if st.session_state[_fotos_key]:
+                            _thumb_cols = st.columns(4)
+                            for _fi, _fb in enumerate(st.session_state[_fotos_key]):
+                                with _thumb_cols[_fi % 4]:
+                                    st.image(f"data:image/jpeg;base64,{_fb}", use_container_width=True)
+                                    if st.button("🗑️", key=f"del_foto_{id_ot_sel}_{_fi}",
+                                                 use_container_width=True):
+                                        st.session_state[_fotos_key].pop(_fi)
+                                        st.rerun()
+
                         st.divider()
                         # ── Datos del equipo ──────────────────────────────
                         st.markdown("**🔧 Datos del equipo**")
@@ -4584,6 +4614,23 @@ elif pagina == "ots":
                                     _logo_b64 = get_logo_base64()
                                     _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
 
+                                    # Galería de fotos para el reporte
+                                    _fotos_list = st.session_state.get(f"fotos_rep_{id_ot_sel}", [])
+                                    if _fotos_list:
+                                        _fotos_imgs = "".join(
+                                            f'<img src="data:image/jpeg;base64,{_fb}" '
+                                            f'style="width:165px;height:124px;object-fit:cover;'
+                                            f'border:1px solid #ccc;border-radius:3px;margin:3px">'
+                                            for _fb in _fotos_list
+                                        )
+                                        _fotos_html = (
+                                            '<div class="section">REGISTRO FOTOGRÁFICO</div>'
+                                            f'<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0">'
+                                            f'{_fotos_imgs}</div>'
+                                        )
+                                    else:
+                                        _fotos_html = ""
+
                                     # La firma se agrega en fase 2 (después del form)
                                     _firma_hvac_html = "<!--FIRMA_CLIENTE-->"
 
@@ -4802,6 +4849,8 @@ elif pagina == "ots":
       <td>{r_oper}</td>
     </tr></table>
 
+    {_fotos_html}
+
     <div style="display:flex;justify-content:space-between;margin-top:20px">
       <div>
         <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA TÉCNICO</div>
@@ -4851,7 +4900,8 @@ elif pagina == "ots":
                             ok_h, res_h = guardar_reporte_local(_html, _cli, _sede, id_ot_sel, _fec)
                             msg_fin = _finalizar_ot_y_sol(id_ot_sel)
                             del st.session_state[_html_key]
-                            for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect"]:
+                            for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect",
+                                       f"fotos_rep_{id_ot_sel}"]:
                                 st.session_state.pop(_k, None)
                             st.session_state["_msg_tec_ok"] = f"✅ {msg_fin}"
                             st.rerun()
@@ -4952,6 +5002,37 @@ elif pagina == "ots":
                                     del st.session_state[_loc_raw_key]
                                     st.rerun()
                             st.stop()
+
+                        # ── Fotos del trabajo Locativos (máx. 12) ─────────
+                        _fotos_key = f"fotos_rep_{id_ot_sel}"
+                        if _fotos_key not in st.session_state:
+                            st.session_state[_fotos_key] = []
+                        _n_fotos = len(st.session_state[_fotos_key])
+                        st.divider()
+                        st.markdown(f"**📷 Fotos del trabajo** — {_n_fotos}/12")
+                        _cam_foto = st.camera_input("Tomar foto", key=f"cam_rep_{id_ot_sel}_{_n_fotos}")
+                        if _cam_foto:
+                            _fc1, _fc2 = st.columns([1, 3])
+                            with _fc1:
+                                if st.button("📷 Agregar foto", key=f"add_foto_{id_ot_sel}",
+                                             disabled=_n_fotos >= 12, use_container_width=True):
+                                    import base64 as _b64mod
+                                    _b64 = _b64mod.b64encode(_cam_foto.getvalue()).decode()
+                                    st.session_state[_fotos_key].append(_b64)
+                                    st.rerun()
+                            with _fc2:
+                                if _n_fotos >= 12:
+                                    st.warning("Máximo 12 fotos alcanzado.")
+                        if st.session_state[_fotos_key]:
+                            _thumb_cols = st.columns(4)
+                            for _fi, _fb in enumerate(st.session_state[_fotos_key]):
+                                with _thumb_cols[_fi % 4]:
+                                    st.image(f"data:image/jpeg;base64,{_fb}", use_container_width=True)
+                                    if st.button("🗑️", key=f"del_foto_{id_ot_sel}_{_fi}",
+                                                 use_container_width=True):
+                                        st.session_state[_fotos_key].pop(_fi)
+                                        st.rerun()
+                        st.divider()
 
                         with st.form(f"form_reporte_loc_{id_ot_sel}", clear_on_submit=False):
 
@@ -5075,6 +5156,23 @@ elif pagina == "ots":
                                 _logo_b64 = get_logo_base64()
                                 _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
 
+                                # Galería de fotos para el reporte
+                                _fotos_list = st.session_state.get(f"fotos_rep_{id_ot_sel}", [])
+                                if _fotos_list:
+                                    _fotos_imgs = "".join(
+                                        f'<img src="data:image/jpeg;base64,{_fb}" '
+                                        f'style="width:165px;height:124px;object-fit:cover;'
+                                        f'border:1px solid #ccc;border-radius:3px;margin:3px">'
+                                        for _fb in _fotos_list
+                                    )
+                                    _fotos_html = (
+                                        '<div class="section">REGISTRO FOTOGRÁFICO</div>'
+                                        f'<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0">'
+                                        f'{_fotos_imgs}</div>'
+                                    )
+                                else:
+                                    _fotos_html = ""
+
                                 # La firma se agrega en fase 2 (después del form)
                                 _firma_loc_html = "<!--FIRMA_CLIENTE-->"
 
@@ -5180,6 +5278,8 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
   <td>{l_oper}</td>
 </tr></table>
 
+{_fotos_html}
+
 <div style="display:flex;justify-content:space-between;margin-top:20px">
   <div>
     <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA TÉCNICO</div>
@@ -5224,7 +5324,8 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             _tocar_ot(ots, id_ot_sel)
                             save_ots(ots)
                             del st.session_state[_loc_key]
-                            for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect"]:
+                            for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect",
+                                       f"fotos_rep_{id_ot_sel}"]:
                                 st.session_state.pop(_k, None)
                             st.session_state["_msg_tec_ok"] = f"✅ OT **{id_ot_sel}** enviada a revisión."
                             st.rerun()
