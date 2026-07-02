@@ -5209,6 +5209,7 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                                 st.session_state[f"loc_cli_{id_ot_sel}"]  = fila_ot["Cliente"]
                                 st.session_state[f"loc_sede_{id_ot_sel}"] = fila_ot.get("Sede","")
                                 st.session_state[f"loc_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
+                                st.rerun()
 
                         # ── FUERA del form: guardar locativos ─────────────
                         _loc_key = f"loc_html_{id_ot_sel}"
