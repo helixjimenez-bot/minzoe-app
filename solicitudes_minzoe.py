@@ -4573,264 +4573,265 @@ elif pagina == "ots":
                                         f"Si no puedes tomar el dato escribe **N/A**:\n\n"
                                         + "\n".join(f"• {c}" for c in _campos_vacios)
                                     )
-                                    st.stop()
-                                tipo_mto = " | ".join(filter(None,[
-                                    "Preventivo" if r_prev else "",
-                                    "Correctivo" if r_corr else "",
-                                    "Visita Técnica" if r_vis else "",
-                                    "Emergencia" if r_emer else "",
-                                    "Instalación" if r_inst else "",
-                                ]))
-                                _logo_b64 = get_logo_base64()
-                                _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
-
-                                # La firma se agrega en fase 2 (después del form)
-                                _firma_hvac_html = "<!--FIRMA_CLIENTE-->"
-
-                                # ── Filas dinámicas cliente/equipo (solo campos con valor) ──
-                                _cli_rows = []
-                                if fila_ot.get('Cliente',''): _cli_rows.append(("Cliente:", fila_ot['Cliente']))
-                                if fila_ot.get('Sede',''): _cli_rows.append(("Sucursal:", fila_ot.get('Sede','')))
-                                if fila_ot.get('Nombre_Contacto',''): _cli_rows.append(("Contacto:", fila_ot.get('Nombre_Contacto','')))
-
-                                _eq_rows = []
-                                if _tipo_eq_sel.strip(): _eq_rows.append(("Tipo de equipo:", _tipo_eq_sel))
-                                if r_marca.strip(): _eq_rows.append(("Marca:", r_marca))
-                                if r_modelo.strip(): _eq_rows.append(("Modelo:", r_modelo))
-                                if not _es_vent_ext:
-                                    if r_ser_cond.strip(): _eq_rows.append(("Serial Condensadora:", r_ser_cond))
-                                    if r_ser_evap.strip(): _eq_rows.append(("Serial Evaporadora:", r_ser_evap))
-                                    if r_btu.strip(): _eq_rows.append(("Capacidad BTU/CFM:", r_btu))
-                                    if r_refrig.strip(): _eq_rows.append(("Tipo de Refrigerante:", r_refrig))
-                                    if r_ubic_evap.strip(): _eq_rows.append(("Ubic. Evaporadora:", r_ubic_evap))
-                                    if r_ubic_cond.strip(): _eq_rows.append(("Ubic. Condensadora:", r_ubic_cond))
                                 else:
-                                    if r_serial_vent.strip(): _eq_rows.append(("Serial:", r_serial_vent))
-                                    if r_ubic_vent.strip():   _eq_rows.append(("Ubicación:", r_ubic_vent))
+                                    tipo_mto = " | ".join(filter(None,[
+                                        "Preventivo" if r_prev else "",
+                                        "Correctivo" if r_corr else "",
+                                        "Visita Técnica" if r_vis else "",
+                                        "Emergencia" if r_emer else "",
+                                        "Instalación" if r_inst else "",
+                                    ]))
+                                    _logo_b64 = get_logo_base64()
+                                    _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
 
-                                _rows_ce = ""
-                                for _i in range(max(len(_cli_rows), len(_eq_rows))):
-                                    _cl = f"<td><b>{_cli_rows[_i][0]}</b></td><td>{_cli_rows[_i][1]}</td>" if _i < len(_cli_rows) else "<td></td><td></td>"
-                                    _eq = f"<td><b>{_eq_rows[_i][0]}</b></td><td>{_eq_rows[_i][1]}</td>" if _i < len(_eq_rows) else "<td></td><td></td>"
-                                    _rows_ce += f"<tr>{_cl}{_eq}</tr>\n"
+                                    # La firma se agrega en fase 2 (después del form)
+                                    _firma_hvac_html = "<!--FIRMA_CLIENTE-->"
 
-                                # Sección medición según tipo de equipo
-                                if not _es_vent_ext and not _es_portatil:
-                                    # Medición AC completa
-                                    _med_vals = [m_cond_v,m_cond_a,m_cond_f,m_vcond_v,m_vcond_a,
-                                                 m_vcond_f,m_vcond_hp,m_vcond_r,m_psi_a,m_psi_b,
-                                                 m_psi_f,m_evap_v,m_evap_a,m_evap_f,m_vevap_v,
-                                                 m_vevap_a,m_vevap_f,m_vevap_h,m_vevap_r,
-                                                 m_t_sum,m_t_ret,m_t_amb]
-                                    if any(v.strip() for v in _med_vals):
-                                        _seccion_medicion = (
-                                            '<div class="section">DATOS DE MEDICIÓN</div>'
-                                            '<table><tr>'
-                                            '<th colspan="2">Unidad Condensadora</th>'
-                                            '<th colspan="2">Unidad Manejadora</th>'
-                                            '<th colspan="2">Presiones Refrig.</th>'
-                                            '<th colspan="2">Temperatura</th>'
-                                            f'</tr><tr>'
-                                            f'<td>Voltaje</td><td>{m_cond_v}</td>'
-                                            f'<td>Voltaje</td><td>{m_evap_v}</td>'
-                                            f'<td>PSI Alta</td><td>{m_psi_a}</td>'
-                                            f'<td>Suministro</td><td>{m_t_sum}</td>'
-                                            f'</tr><tr>'
-                                            f'<td>Amperaje</td><td>{m_cond_a}</td>'
-                                            f'<td>Amperaje</td><td>{m_evap_a}</td>'
-                                            f'<td>PSI Baja</td><td>{m_psi_b}</td>'
-                                            f'<td>Retorno</td><td>{m_t_ret}</td>'
-                                            f'</tr><tr>'
-                                            f'<td>N° Fase</td><td>{m_cond_f}</td>'
-                                            f'<td>N° Fase</td><td>{m_evap_f}</td>'
-                                            f'<td>Últ. Med.</td><td>{m_psi_f}</td>'
-                                            f'<td>Ambiente</td><td>{m_t_amb}</td>'
-                                            f'</tr><tr>'
-                                            f'<td>V. Motor Vent.</td><td>{m_vcond_v}</td>'
-                                            f'<td>V. Motor Vent.</td><td>{m_vevap_v}</td>'
-                                            '<td></td><td></td><td></td><td></td>'
-                                            f'</tr><tr>'
-                                            f'<td>A. Motor Vent.</td><td>{m_vcond_a}</td>'
-                                            f'<td>A. Motor Vent.</td><td>{m_vevap_a}</td>'
-                                            '<td></td><td></td><td></td><td></td>'
-                                            f'</tr><tr>'
-                                            f'<td>HP</td><td>{m_vcond_hp}</td>'
-                                            f'<td>HP</td><td>{m_vevap_h}</td>'
-                                            '<td></td><td></td><td></td><td></td>'
-                                            f'</tr><tr>'
-                                            f'<td>RPM</td><td>{m_vcond_r}</td>'
-                                            f'<td>RPM</td><td>{m_vevap_r}</td>'
-                                            '<td></td><td></td><td></td><td></td>'
-                                            '</tr></table>'
-                                        )
-                                    else:
-                                        _seccion_medicion = ""
-                                elif _es_portatil:
-                                    # Medición Portátil
-                                    _med_vals_p = [m_cond_v, m_cond_a, m_cond_f, m_t_sum, m_t_ret, m_t_amb]
-                                    if any(v.strip() for v in _med_vals_p):
-                                        _seccion_medicion = (
-                                            '<div class="section">DATOS DE MEDICIÓN</div>'
-                                            '<table><tr>'
-                                            '<th colspan="2">Eléctricos</th>'
-                                            '<th colspan="2">Temperatura</th>'
-                                            f'</tr><tr>'
-                                            f'<td>Voltaje</td><td>{m_cond_v}</td>'
-                                            f'<td>Suministro</td><td>{m_t_sum}</td>'
-                                            f'</tr><tr>'
-                                            f'<td>Amperaje</td><td>{m_cond_a}</td>'
-                                            f'<td>Retorno</td><td>{m_t_ret}</td>'
-                                            f'</tr><tr>'
-                                            f'<td>N° de Fase</td><td>{m_cond_f}</td>'
-                                            f'<td>Ambiente</td><td>{m_t_amb}</td>'
-                                            '</tr></table>'
-                                        )
-                                    else:
-                                        _seccion_medicion = ""
-                                else:
-                                    # Medición Ventilador / Extractor
-                                    _med_vals_v = [m_ext_v, m_ext_a, m_ext_f, m_ext_h, m_ext_r, m_caudal]
-                                    if any(v.strip() for v in _med_vals_v):
-                                        _seccion_medicion = (
-                                            '<div class="section">DATOS DE MEDICIÓN</div>'
-                                            '<table><tr>'
-                                            f'<th colspan="2">{_tipo_eq_sel}</th>'
-                                            '<th colspan="2">Ductos / Rejillas</th>'
-                                            f'</tr><tr>'
-                                            f'<td>Voltaje</td><td>{m_ext_v}</td>'
-                                            f'<td>Caudal de Aire</td><td>{m_caudal}</td>'
-                                            f'</tr><tr>'
-                                            f'<td>Amperaje</td><td>{m_ext_a}</td>'
-                                            '<td></td><td></td>'
-                                            f'</tr><tr>'
-                                            f'<td>N° de Fase</td><td>{m_ext_f}</td>'
-                                            '<td></td><td></td>'
-                                            f'</tr><tr>'
-                                            f'<td>HP</td><td>{m_ext_h}</td>'
-                                            '<td></td><td></td>'
-                                            f'</tr><tr>'
-                                            f'<td>RPM</td><td>{m_ext_r}</td>'
-                                            '<td></td><td></td>'
-                                            '</tr></table>'
-                                        )
-                                    else:
-                                        _seccion_medicion = ""
+                                    # ── Filas dinámicas cliente/equipo (solo campos con valor) ──
+                                    _cli_rows = []
+                                    if fila_ot.get('Cliente',''): _cli_rows.append(("Cliente:", fila_ot['Cliente']))
+                                    if fila_ot.get('Sede',''): _cli_rows.append(("Sucursal:", fila_ot.get('Sede','')))
+                                    if fila_ot.get('Nombre_Contacto',''): _cli_rows.append(("Contacto:", fila_ot.get('Nombre_Contacto','')))
 
-                                html = f"""<!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8">
-<title>Reporte HVAC {id_ot_sel}</title>
-<style>{css_formato_carta()}</style>
-</head><body>
-<div class="pagina">
-<div class="header">
-  <div style="display:flex;align-items:center;gap:12px">
-    {_logo_tag}
-    <div>
-      <div class="logo">CONSTRUCCIONES MINZOE SAS</div>
-      <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
-      <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+                                    _eq_rows = []
+                                    if _tipo_eq_sel.strip(): _eq_rows.append(("Tipo de equipo:", _tipo_eq_sel))
+                                    if r_marca.strip(): _eq_rows.append(("Marca:", r_marca))
+                                    if r_modelo.strip(): _eq_rows.append(("Modelo:", r_modelo))
+                                    if not _es_vent_ext:
+                                        if r_ser_cond.strip(): _eq_rows.append(("Serial Condensadora:", r_ser_cond))
+                                        if r_ser_evap.strip(): _eq_rows.append(("Serial Evaporadora:", r_ser_evap))
+                                        if r_btu.strip(): _eq_rows.append(("Capacidad BTU/CFM:", r_btu))
+                                        if r_refrig.strip(): _eq_rows.append(("Tipo de Refrigerante:", r_refrig))
+                                        if r_ubic_evap.strip(): _eq_rows.append(("Ubic. Evaporadora:", r_ubic_evap))
+                                        if r_ubic_cond.strip(): _eq_rows.append(("Ubic. Condensadora:", r_ubic_cond))
+                                    else:
+                                        if r_serial_vent.strip(): _eq_rows.append(("Serial:", r_serial_vent))
+                                        if r_ubic_vent.strip():   _eq_rows.append(("Ubicación:", r_ubic_vent))
+
+                                    _rows_ce = ""
+                                    for _i in range(max(len(_cli_rows), len(_eq_rows))):
+                                        _cl = f"<td><b>{_cli_rows[_i][0]}</b></td><td>{_cli_rows[_i][1]}</td>" if _i < len(_cli_rows) else "<td></td><td></td>"
+                                        _eq = f"<td><b>{_eq_rows[_i][0]}</b></td><td>{_eq_rows[_i][1]}</td>" if _i < len(_eq_rows) else "<td></td><td></td>"
+                                        _rows_ce += f"<tr>{_cl}{_eq}</tr>\n"
+
+                                    # Sección medición según tipo de equipo
+                                    if not _es_vent_ext and not _es_portatil:
+                                        # Medición AC completa
+                                        _med_vals = [m_cond_v,m_cond_a,m_cond_f,m_vcond_v,m_vcond_a,
+                                                     m_vcond_f,m_vcond_hp,m_vcond_r,m_psi_a,m_psi_b,
+                                                     m_psi_f,m_evap_v,m_evap_a,m_evap_f,m_vevap_v,
+                                                     m_vevap_a,m_vevap_f,m_vevap_h,m_vevap_r,
+                                                     m_t_sum,m_t_ret,m_t_amb]
+                                        if any(v.strip() for v in _med_vals):
+                                            _seccion_medicion = (
+                                                '<div class="section">DATOS DE MEDICIÓN</div>'
+                                                '<table><tr>'
+                                                '<th colspan="2">Unidad Condensadora</th>'
+                                                '<th colspan="2">Unidad Manejadora</th>'
+                                                '<th colspan="2">Presiones Refrig.</th>'
+                                                '<th colspan="2">Temperatura</th>'
+                                                f'</tr><tr>'
+                                                f'<td>Voltaje</td><td>{m_cond_v}</td>'
+                                                f'<td>Voltaje</td><td>{m_evap_v}</td>'
+                                                f'<td>PSI Alta</td><td>{m_psi_a}</td>'
+                                                f'<td>Suministro</td><td>{m_t_sum}</td>'
+                                                f'</tr><tr>'
+                                                f'<td>Amperaje</td><td>{m_cond_a}</td>'
+                                                f'<td>Amperaje</td><td>{m_evap_a}</td>'
+                                                f'<td>PSI Baja</td><td>{m_psi_b}</td>'
+                                                f'<td>Retorno</td><td>{m_t_ret}</td>'
+                                                f'</tr><tr>'
+                                                f'<td>N° Fase</td><td>{m_cond_f}</td>'
+                                                f'<td>N° Fase</td><td>{m_evap_f}</td>'
+                                                f'<td>Últ. Med.</td><td>{m_psi_f}</td>'
+                                                f'<td>Ambiente</td><td>{m_t_amb}</td>'
+                                                f'</tr><tr>'
+                                                f'<td>V. Motor Vent.</td><td>{m_vcond_v}</td>'
+                                                f'<td>V. Motor Vent.</td><td>{m_vevap_v}</td>'
+                                                '<td></td><td></td><td></td><td></td>'
+                                                f'</tr><tr>'
+                                                f'<td>A. Motor Vent.</td><td>{m_vcond_a}</td>'
+                                                f'<td>A. Motor Vent.</td><td>{m_vevap_a}</td>'
+                                                '<td></td><td></td><td></td><td></td>'
+                                                f'</tr><tr>'
+                                                f'<td>HP</td><td>{m_vcond_hp}</td>'
+                                                f'<td>HP</td><td>{m_vevap_h}</td>'
+                                                '<td></td><td></td><td></td><td></td>'
+                                                f'</tr><tr>'
+                                                f'<td>RPM</td><td>{m_vcond_r}</td>'
+                                                f'<td>RPM</td><td>{m_vevap_r}</td>'
+                                                '<td></td><td></td><td></td><td></td>'
+                                                '</tr></table>'
+                                            )
+                                        else:
+                                            _seccion_medicion = ""
+                                    elif _es_portatil:
+                                        # Medición Portátil
+                                        _med_vals_p = [m_cond_v, m_cond_a, m_cond_f, m_t_sum, m_t_ret, m_t_amb]
+                                        if any(v.strip() for v in _med_vals_p):
+                                            _seccion_medicion = (
+                                                '<div class="section">DATOS DE MEDICIÓN</div>'
+                                                '<table><tr>'
+                                                '<th colspan="2">Eléctricos</th>'
+                                                '<th colspan="2">Temperatura</th>'
+                                                f'</tr><tr>'
+                                                f'<td>Voltaje</td><td>{m_cond_v}</td>'
+                                                f'<td>Suministro</td><td>{m_t_sum}</td>'
+                                                f'</tr><tr>'
+                                                f'<td>Amperaje</td><td>{m_cond_a}</td>'
+                                                f'<td>Retorno</td><td>{m_t_ret}</td>'
+                                                f'</tr><tr>'
+                                                f'<td>N° de Fase</td><td>{m_cond_f}</td>'
+                                                f'<td>Ambiente</td><td>{m_t_amb}</td>'
+                                                '</tr></table>'
+                                            )
+                                        else:
+                                            _seccion_medicion = ""
+                                    else:
+                                        # Medición Ventilador / Extractor
+                                        _med_vals_v = [m_ext_v, m_ext_a, m_ext_f, m_ext_h, m_ext_r, m_caudal]
+                                        if any(v.strip() for v in _med_vals_v):
+                                            _seccion_medicion = (
+                                                '<div class="section">DATOS DE MEDICIÓN</div>'
+                                                '<table><tr>'
+                                                f'<th colspan="2">{_tipo_eq_sel}</th>'
+                                                '<th colspan="2">Ductos / Rejillas</th>'
+                                                f'</tr><tr>'
+                                                f'<td>Voltaje</td><td>{m_ext_v}</td>'
+                                                f'<td>Caudal de Aire</td><td>{m_caudal}</td>'
+                                                f'</tr><tr>'
+                                                f'<td>Amperaje</td><td>{m_ext_a}</td>'
+                                                '<td></td><td></td>'
+                                                f'</tr><tr>'
+                                                f'<td>N° de Fase</td><td>{m_ext_f}</td>'
+                                                '<td></td><td></td>'
+                                                f'</tr><tr>'
+                                                f'<td>HP</td><td>{m_ext_h}</td>'
+                                                '<td></td><td></td>'
+                                                f'</tr><tr>'
+                                                f'<td>RPM</td><td>{m_ext_r}</td>'
+                                                '<td></td><td></td>'
+                                                '</tr></table>'
+                                            )
+                                        else:
+                                            _seccion_medicion = ""
+
+                                    html = f"""<!DOCTYPE html>
+    <html lang="es"><head><meta charset="UTF-8">
+    <title>Reporte HVAC {id_ot_sel}</title>
+    <style>{css_formato_carta()}</style>
+    </head><body>
+    <div class="pagina">
+    <div class="header">
+      <div style="display:flex;align-items:center;gap:12px">
+        {_logo_tag}
+        <div>
+          <div class="logo">CONSTRUCCIONES MINZOE SAS</div>
+          <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
+          <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <b>FORMATO MANTENIMIENTO HVAC</b><br>
+        <b>OT: {id_ot_sel}</b><br>
+        Fecha: {r_fec_firma}
+      </div>
     </div>
-  </div>
-  <div style="text-align:right">
-    <b>FORMATO MANTENIMIENTO HVAC</b><br>
-    <b>OT: {id_ot_sel}</b><br>
-    Fecha: {r_fec_firma}
-  </div>
-</div>
 
-<div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto}</div>
+    <div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto}</div>
 
-<table><tr>
-  <th colspan="2">DATOS DEL CLIENTE</th>
-  <th colspan="2">DATOS DEL EQUIPO</th>
-</tr>
-{_rows_ce}</table>
+    <table><tr>
+      <th colspan="2">DATOS DEL CLIENTE</th>
+      <th colspan="2">DATOS DEL EQUIPO</th>
+    </tr>
+    {_rows_ce}</table>
 
-{_seccion_medicion}
+    {_seccion_medicion}
 
-<div class="section">LISTA DE CHEQUEO</div>
-<table><tr>
-  <th colspan="3">UNIDAD MANEJADORA</th>
-  <th colspan="3">UNIDAD CONDENSADORA</th>
-  <th colspan="3">MOTORES Y VENTILADORES</th>
-</tr>
-{''.join(f"<tr><td class='ck'>{ck(v)}</td><td>{k}</td><td></td>" +
-         (f"<td class='ck'>{ck(list(ck_co.values())[i])}</td><td>{list(ck_co.keys())[i]}</td><td></td>" if i < len(ck_co) else "<td></td><td></td><td></td>") +
-         (f"<td class='ck'>{ck(list(ck_vent.values())[i])}</td><td>{list(ck_vent.keys())[i]}</td><td></td></tr>" if i < len(ck_vent) else "<td></td><td></td><td></td></tr>")
-         for i,(k,v) in enumerate(ck_ev.items()))}
-</table>
+    <div class="section">LISTA DE CHEQUEO</div>
+    <table><tr>
+      <th colspan="3">UNIDAD MANEJADORA</th>
+      <th colspan="3">UNIDAD CONDENSADORA</th>
+      <th colspan="3">MOTORES Y VENTILADORES</th>
+    </tr>
+    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td>{k}</td><td></td>" +
+             (f"<td class='ck'>{ck(list(ck_co.values())[i])}</td><td>{list(ck_co.keys())[i]}</td><td></td>" if i < len(ck_co) else "<td></td><td></td><td></td>") +
+             (f"<td class='ck'>{ck(list(ck_vent.values())[i])}</td><td>{list(ck_vent.keys())[i]}</td><td></td></tr>" if i < len(ck_vent) else "<td></td><td></td><td></td></tr>")
+             for i,(k,v) in enumerate(ck_ev.items()))}
+    </table>
 
-<table><tr>
-  <th colspan="3">TUBERÍA REFRIGERACIÓN Y DESAGÜE</th>
-  <th colspan="3">DUCTOS Y REJILLAS</th>
-</tr>
-{''.join(f"<tr><td class='ck'>{ck(v)}</td><td>{k}</td><td></td>" +
-         (f"<td class='ck'>{ck(list(ck_duc.values())[i])}</td><td>{list(ck_duc.keys())[i]}</td><td></td></tr>" if i < len(ck_duc) else "<td></td><td></td><td></td></tr>")
-         for i,(k,v) in enumerate(ck_tub.items()))}
-</table>
+    <table><tr>
+      <th colspan="3">TUBERÍA REFRIGERACIÓN Y DESAGÜE</th>
+      <th colspan="3">DUCTOS Y REJILLAS</th>
+    </tr>
+    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td>{k}</td><td></td>" +
+             (f"<td class='ck'>{ck(list(ck_duc.values())[i])}</td><td>{list(ck_duc.keys())[i]}</td><td></td></tr>" if i < len(ck_duc) else "<td></td><td></td><td></td></tr>")
+             for i,(k,v) in enumerate(ck_tub.items()))}
+    </table>
 
-<div class="section">OBSERVACIONES GENERALES DEL TÉCNICO</div>
-<table><tr><td style="min-height:50px">{r_obs}</td></tr></table>
+    <div class="section">OBSERVACIONES GENERALES DEL TÉCNICO</div>
+    <table><tr><td style="min-height:50px">{r_obs}</td></tr></table>
 
-<div class="section">ENCUESTA DE SATISFACCIÓN DEL SERVICIO</div>
-<table>
-<tr>
-  <th style="width:22%">TÉCNICOS</th>
-  <th>CONCEPTO</th>
-  <th style="width:8%;text-align:center">PESO</th>
-  <th style="width:10%;text-align:center">PUNTAJE</th>
-  <th style="width:28%">OBSERVACIONES DEL SERVICIO</th>
-</tr>
-<tr>
-  <td rowspan="5" style="vertical-align:middle;text-align:center">{r_nom_tec}</td>
-  <td>Experiencia de los Técnicos</td><td style="text-align:center">20</td><td style="text-align:center">{enc_exp if enc_exp else ""}</td>
-  <td rowspan="5" style="vertical-align:top">{enc_obs_cli}</td>
-</tr>
-<tr><td>Calidad de Servicio y Bienes</td><td style="text-align:center">20</td><td style="text-align:center">{enc_cal if enc_cal else ""}</td></tr>
-<tr><td>Cumplimiento</td><td style="text-align:center">20</td><td style="text-align:center">{enc_cum if enc_cum else ""}</td></tr>
-<tr><td>Presentación Personal</td><td style="text-align:center">20</td><td style="text-align:center">{enc_pre if enc_pre else ""}</td></tr>
-<tr><td>Comunicación</td><td style="text-align:center">20</td><td style="text-align:center">{enc_com if enc_com else ""}</td></tr>
-<tr><td></td><td><b>TOTAL</b></td><td style="text-align:center"><b>100</b></td><td style="text-align:center"><b>{enc_total if enc_total else ""}</b></td><td></td></tr>
-</table>
-<p style="font-size:7.5px;margin:3px 0">*La suma de los conceptos determinará la continuidad del personal: 0-50 Puntos: Malo &nbsp;|&nbsp; 51-84 Puntos: Regular &nbsp;|&nbsp; 85-100 Puntos: Bueno</p>
+    <div class="section">ENCUESTA DE SATISFACCIÓN DEL SERVICIO</div>
+    <table>
+    <tr>
+      <th style="width:22%">TÉCNICOS</th>
+      <th>CONCEPTO</th>
+      <th style="width:8%;text-align:center">PESO</th>
+      <th style="width:10%;text-align:center">PUNTAJE</th>
+      <th style="width:28%">OBSERVACIONES DEL SERVICIO</th>
+    </tr>
+    <tr>
+      <td rowspan="5" style="vertical-align:middle;text-align:center">{r_nom_tec}</td>
+      <td>Experiencia de los Técnicos</td><td style="text-align:center">20</td><td style="text-align:center">{enc_exp if enc_exp else ""}</td>
+      <td rowspan="5" style="vertical-align:top">{enc_obs_cli}</td>
+    </tr>
+    <tr><td>Calidad de Servicio y Bienes</td><td style="text-align:center">20</td><td style="text-align:center">{enc_cal if enc_cal else ""}</td></tr>
+    <tr><td>Cumplimiento</td><td style="text-align:center">20</td><td style="text-align:center">{enc_cum if enc_cum else ""}</td></tr>
+    <tr><td>Presentación Personal</td><td style="text-align:center">20</td><td style="text-align:center">{enc_pre if enc_pre else ""}</td></tr>
+    <tr><td>Comunicación</td><td style="text-align:center">20</td><td style="text-align:center">{enc_com if enc_com else ""}</td></tr>
+    <tr><td></td><td><b>TOTAL</b></td><td style="text-align:center"><b>100</b></td><td style="text-align:center"><b>{enc_total if enc_total else ""}</b></td><td></td></tr>
+    </table>
+    <p style="font-size:7.5px;margin:3px 0">*La suma de los conceptos determinará la continuidad del personal: 0-50 Puntos: Malo &nbsp;|&nbsp; 51-84 Puntos: Regular &nbsp;|&nbsp; 85-100 Puntos: Bueno</p>
 
-<table style="margin-top:6px"><tr>
-  <th>TIEMPO DE SERVICIO</th><th>TRABAJO PENDIENTE</th><th>EQ. EN OPERACIÓN</th>
-</tr><tr>
-  <td>Llegada: {r_hora_lleg}<br>Salida: {r_hora_sal}</td>
-  <td>{r_pend}</td>
-  <td>{r_oper}</td>
-</tr></table>
+    <table style="margin-top:6px"><tr>
+      <th>TIEMPO DE SERVICIO</th><th>TRABAJO PENDIENTE</th><th>EQ. EN OPERACIÓN</th>
+    </tr><tr>
+      <td>Llegada: {r_hora_lleg}<br>Salida: {r_hora_sal}</td>
+      <td>{r_pend}</td>
+      <td>{r_oper}</td>
+    </tr></table>
 
-<div style="display:flex;justify-content:space-between;margin-top:20px">
-  <div>
-    <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA TÉCNICO</div>
-    <div style="font-size:9px;margin-top:3px">Nombre: {r_nom_tec}</div>
-    <div style="font-size:9px">Supervisor: {r_superv}</div>
-  </div>
-  <div>
-    <div>
-      {_firma_hvac_html}
-      <div style="font-size:9px;margin-top:2px;font-weight:600">FIRMA Y SELLO CLIENTE</div>
-      <div style="font-size:9px;margin-top:2px">Nombre: {r_nom_cli}</div>
-      <div style="font-size:9px">Fecha: {r_fec_firma}</div>
+    <div style="display:flex;justify-content:space-between;margin-top:20px">
+      <div>
+        <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA TÉCNICO</div>
+        <div style="font-size:9px;margin-top:3px">Nombre: {r_nom_tec}</div>
+        <div style="font-size:9px">Supervisor: {r_superv}</div>
+      </div>
+      <div>
+        <div>
+          {_firma_hvac_html}
+          <div style="font-size:9px;margin-top:2px;font-weight:600">FIRMA Y SELLO CLIENTE</div>
+          <div style="font-size:9px;margin-top:2px">Nombre: {r_nom_cli}</div>
+          <div style="font-size:9px">Fecha: {r_fec_firma}</div>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<div class="no-print" style="margin-top:16px;text-align:center">
-  <button onclick="window.print()" style="background:#dc2626;color:white;border:none;padding:10px 30px;font-size:14px;border-radius:6px;cursor:pointer">
-    🖨️ Imprimir / Guardar como PDF
-  </button>
-</div>
-</div>
-</body></html>"""
+    <div class="no-print" style="margin-top:16px;text-align:center">
+      <button onclick="window.print()" style="background:#dc2626;color:white;border:none;padding:10px 30px;font-size:14px;border-radius:6px;cursor:pointer">
+        🖨️ Imprimir / Guardar como PDF
+      </button>
+    </div>
+    </div>
+    </body></html>"""
 
-                                # Guardar HTML con placeholder — la firma se agrega en fase 2
-                                st.session_state[f"hvac_html_raw_{id_ot_sel}"] = html
-                                st.session_state[f"hvac_cli_{id_ot_sel}"]  = fila_ot["Cliente"]
-                                st.session_state[f"hvac_sede_{id_ot_sel}"] = fila_ot.get("Sede","")
-                                st.session_state[f"hvac_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
+                                    # Guardar HTML con placeholder — la firma se agrega en fase 2
+                                    st.session_state[f"hvac_html_raw_{id_ot_sel}"] = html
+                                    st.session_state[f"hvac_cli_{id_ot_sel}"]  = fila_ot["Cliente"]
+                                    st.session_state[f"hvac_sede_{id_ot_sel}"] = fila_ot.get("Sede","")
+                                    st.session_state[f"hvac_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
+                                    st.rerun()
 
                         # ── FUERA del form: guardar ──────────────────────
                         _html_key = f"hvac_html_{id_ot_sel}"
