@@ -4650,18 +4650,18 @@ elif pagina == "ots":
                                         for _p0 in range(0, len(_all_foto_pairs), 6):
                                             _chunk = _all_foto_pairs[_p0:_p0 + 6]
                                             _rows_html = ""
-                                            for _r in range(0, len(_chunk), 3):
-                                                _three = _chunk[_r:_r + 3]
+                                            for _r in range(0, len(_chunk), 2):
+                                                _two = _chunk[_r:_r + 2]
                                                 _tds = "".join(
-                                                    f'<td style="width:33%;padding:5px;text-align:center;vertical-align:top">'
+                                                    f'<td style="width:50%;padding:5px;text-align:center;vertical-align:top">'
                                                     f'<img src="data:image/jpeg;base64,{_fb}" '
-                                                    f'style="width:99%;height:175px;object-fit:cover;'
+                                                    f'style="width:99%;height:250px;object-fit:cover;'
                                                     f'border:1px solid #ccc;border-radius:3px">'
-                                                    f'<div style="font-size:8px;margin-top:3px;font-weight:600;color:#444">{_fl}</div>'
+                                                    f'<div style="font-size:9px;margin-top:3px;font-weight:600;color:#444">{_fl}</div>'
                                                     f'</td>'
-                                                    for _fl, _fb in _three
+                                                    for _fl, _fb in _two
                                                 )
-                                                for _ in range(3 - len(_three)):
+                                                for _ in range(2 - len(_two)):
                                                     _tds += '<td></td>'
                                                 _rows_html += f'<tr>{_tds}</tr>'
                                             _pnum = _p0 // 6 + 1
@@ -5265,17 +5265,17 @@ elif pagina == "ots":
                                     for _p0 in range(0, len(_fotos_list), 6):
                                         _chunk = _fotos_list[_p0:_p0 + 6]
                                         _rows_html = ""
-                                        for _r in range(0, len(_chunk), 3):
-                                            _three = _chunk[_r:_r + 3]
+                                        for _r in range(0, len(_chunk), 2):
+                                            _two = _chunk[_r:_r + 2]
                                             _tds = "".join(
-                                                f'<td style="width:33%;padding:5px;text-align:center;vertical-align:top">'
+                                                f'<td style="width:50%;padding:5px;text-align:center;vertical-align:top">'
                                                 f'<img src="data:image/jpeg;base64,{_fb}" '
-                                                f'style="width:99%;height:175px;object-fit:cover;'
+                                                f'style="width:99%;height:250px;object-fit:cover;'
                                                 f'border:1px solid #ccc;border-radius:3px">'
                                                 f'</td>'
-                                                for _fb in _three
+                                                for _fb in _two
                                             )
-                                            for _ in range(3 - len(_three)):
+                                            for _ in range(2 - len(_two)):
                                                 _tds += '<td></td>'
                                             _rows_html += f'<tr>{_tds}</tr>'
                                         _pnum = _p0 // 6 + 1
