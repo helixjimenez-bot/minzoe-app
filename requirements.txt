@@ -10,3 +10,5 @@ plotly
 supabase
 streamlit-drawable-canvas
 xhtml2pdf
+Pillow
+streamlit-geolocation

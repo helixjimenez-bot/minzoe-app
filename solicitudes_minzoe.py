@@ -202,6 +202,40 @@ def _sb_insert(tabla, registro):
     except Exception:
         return False
 
+def _foto_con_marca_agua(img_bytes, lat=None, lon=None):
+    """Dibuja barra con GPS + fecha/hora Colombia en la parte inferior de la imagen."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        import io as _io_mw
+        img = Image.open(_io_mw.BytesIO(img_bytes)).convert("RGB")
+        w, h = img.size
+        bar_h = max(int(h * 0.09), 44)
+        font_sz = max(int(bar_h * 0.37), 13)
+        try:
+            fnt = ImageFont.truetype(
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_sz)
+        except Exception:
+            fnt = ImageFont.load_default()
+        ts = ahora_colombia().strftime("%d/%m/%Y  %H:%M")
+        if lat is not None and lon is not None:
+            gps = (f"● {abs(lat):.5f}°{'N' if lat>=0 else 'S'}"
+                   f"  {abs(lon):.5f}°{'O' if lon<0 else 'E'}")
+        else:
+            gps = "● GPS no disponible"
+        texto = f"{gps}    {ts}    MINZOE"
+        overlay = Image.new("RGBA", (w, bar_h), (0, 0, 0, 195))
+        img_rgba = img.convert("RGBA")
+        img_rgba.paste(overlay, (0, h - bar_h), overlay)
+        img_out = img_rgba.convert("RGB")
+        draw = ImageDraw.Draw(img_out)
+        pad = int(bar_h * 0.12)
+        draw.text((pad, h - bar_h + pad), texto, fill=(255, 220, 40), font=fnt)
+        buf = _io_mw.BytesIO()
+        img_out.save(buf, format="JPEG", quality=92)
+        return buf.getvalue()
+    except Exception:
+        return img_bytes  # si falla PIL, retorna imagen sin marca
+
 def guardar_reporte_sb(ot_id, tipo, cliente, fecha, html):
     """Guarda el reporte en Supabase sin el logo embebido (ahorra espacio)."""
     import re
@@ -4945,6 +4979,24 @@ elif pagina == "ots":
                         _fotos_extra_l = st.session_state[_fotos_extra_key]
                         _n_total_fotos = len(_fotos_oblig_d) + len(_fotos_extra_l)
 
+                        # ── Ubicación GPS para marca de agua ──
+                        _gps_key = f"gps_{id_ot_sel}"
+                        if _gps_key not in st.session_state:
+                            st.session_state[_gps_key] = (None, None)
+                        try:
+                            from streamlit_geolocation import streamlit_geolocation as _get_loc
+                            _loc_data = _get_loc(key=f"geo_{id_ot_sel}")
+                            if _loc_data and _loc_data.get("latitude"):
+                                st.session_state[_gps_key] = (
+                                    _loc_data["latitude"], _loc_data["longitude"])
+                        except Exception:
+                            pass
+                        _gps_lat, _gps_lon = st.session_state[_gps_key]
+                        if _gps_lat:
+                            st.caption(f"📍 GPS: {_gps_lat:.5f}°, {_gps_lon:.5f}° — las fotos llevarán esta ubicación")
+                        else:
+                            st.caption("📍 Activa la ubicación en tu celular para que las fotos tengan GPS")
+
                         st.divider()
                         _n_oblig_ok = sum(1 for _k, _ in _items_oblig if _k in _fotos_oblig_d)
                         st.markdown(
@@ -4989,7 +5041,9 @@ elif pagina == "ots":
                             )
                             if _cam_oblig and _sel_item_key:
                                 import base64 as _b64mod
-                                _b64 = _b64mod.b64encode(_cam_oblig.getvalue()).decode()
+                                _img_proc = _foto_con_marca_agua(
+                                    _cam_oblig.getvalue(), _gps_lat, _gps_lon)
+                                _b64 = _b64mod.b64encode(_img_proc).decode()
                                 if _sel_item_key == "__extra__":
                                     st.session_state[_fotos_extra_key].append(_b64)
                                 else:
@@ -5004,7 +5058,9 @@ elif pagina == "ots":
                                 )
                                 if _cam_extra:
                                     import base64 as _b64mod
-                                    _b64 = _b64mod.b64encode(_cam_extra.getvalue()).decode()
+                                    _img_proc = _foto_con_marca_agua(
+                                        _cam_extra.getvalue(), _gps_lat, _gps_lon)
+                                    _b64 = _b64mod.b64encode(_img_proc).decode()
                                     st.session_state[_fotos_extra_key].append(_b64)
                                     st.rerun()
 
@@ -5423,6 +5479,25 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                         if _fotos_key not in st.session_state:
                             st.session_state[_fotos_key] = []
                         _n_fotos = len(st.session_state[_fotos_key])
+
+                        # GPS para marca de agua (reutiliza clave del OT)
+                        _gps_key_l = f"gps_{id_ot_sel}"
+                        if _gps_key_l not in st.session_state:
+                            st.session_state[_gps_key_l] = (None, None)
+                        try:
+                            from streamlit_geolocation import streamlit_geolocation as _get_loc_l
+                            _loc_dl = _get_loc_l(key=f"geo_l_{id_ot_sel}")
+                            if _loc_dl and _loc_dl.get("latitude"):
+                                st.session_state[_gps_key_l] = (
+                                    _loc_dl["latitude"], _loc_dl["longitude"])
+                        except Exception:
+                            pass
+                        _l_lat, _l_lon = st.session_state[_gps_key_l]
+                        if _l_lat:
+                            st.caption(f"📍 GPS: {_l_lat:.5f}°, {_l_lon:.5f}° — las fotos llevarán esta ubicación")
+                        else:
+                            st.caption("📍 Activa la ubicación en tu celular para que las fotos tengan GPS")
+
                         st.divider()
                         st.markdown(f"**📷 Fotos del trabajo** — {_n_fotos}/25")
                         _cam_foto = st.camera_input("Tomar foto", key=f"cam_rep_{id_ot_sel}_{_n_fotos}")
@@ -5432,7 +5507,9 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                                 if st.button("📷 Agregar foto", key=f"add_foto_{id_ot_sel}",
                                              disabled=_n_fotos >= 25, use_container_width=True):
                                     import base64 as _b64mod
-                                    _b64 = _b64mod.b64encode(_cam_foto.getvalue()).decode()
+                                    _img_proc_l = _foto_con_marca_agua(
+                                        _cam_foto.getvalue(), _l_lat, _l_lon)
+                                    _b64 = _b64mod.b64encode(_img_proc_l).decode()
                                     st.session_state[_fotos_key].append(_b64)
                                     st.rerun()
                             with _fc2:
