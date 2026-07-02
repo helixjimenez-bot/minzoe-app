@@ -5186,20 +5186,14 @@ elif pagina == "ots":
                                 "Sillas","Puestos de Trabajo","Otro",
                             ]
                             l_act = {}
-                            hdr = st.columns([3,1,1,2,2])
-                            hdr[0].markdown("**Ítem**")
-                            hdr[1].markdown("**Buen Estado**")
-                            hdr[2].markdown("**Mal Estado**")
-                            hdr[3].markdown("**Req. Reparación**")
-                            hdr[4].markdown("**Inst. Repuestos**")
                             for item in ITEMS_LOC:
                                 k = item.lower().replace(" ","_").replace(".","")
-                                cols = st.columns([3,1,1,2,2])
-                                cols[0].markdown(item)
-                                buen = cols[1].checkbox("", key=f"l_b_{k}")
-                                mal  = cols[2].checkbox("", key=f"l_m_{k}")
-                                req  = cols[3].checkbox("", key=f"l_r_{k}")
-                                inst = cols[4].checkbox("", key=f"l_i_{k}")
+                                st.markdown(f"**{item}**")
+                                bc1, bc2, bc3, bc4 = st.columns(4)
+                                buen = bc1.checkbox("Buen Estado",    key=f"l_b_{k}")
+                                mal  = bc2.checkbox("Mal Estado",     key=f"l_m_{k}")
+                                req  = bc3.checkbox("Req. Reparación",key=f"l_r_{k}")
+                                inst = bc4.checkbox("Inst. Repuestos",key=f"l_i_{k}")
                                 l_act[item] = {"buen":buen,"mal":mal,"req":req,"inst":inst}
 
                             st.divider()
