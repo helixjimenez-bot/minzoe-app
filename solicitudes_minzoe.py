@@ -4041,7 +4041,12 @@ elif pagina == "ots":
 
                     # ── Reporte guardado en Supabase ──────────────────────
                     _rep_sb_html, _rep_sb_meta = cargar_reporte_sb(id_ot_sel)
-                    if _rep_sb_html:
+                    # No mostrar el bloqueo si estamos en fase de finalización
+                    _finalizando_ot = (
+                        f"hvac_html_{id_ot_sel}" in st.session_state or
+                        f"loc_html_{id_ot_sel}" in st.session_state
+                    )
+                    if _rep_sb_html and not _finalizando_ot:
                         st.success(f"✅ Reporte guardado — {_rep_sb_meta.get('tipo','')} | {_rep_sb_meta.get('fecha','')}")
                         st.download_button(
                             "📥 Descargar reporte guardado",
