@@ -4979,23 +4979,25 @@ elif pagina == "ots":
                         _fotos_extra_l = st.session_state[_fotos_extra_key]
                         _n_total_fotos = len(_fotos_oblig_d) + len(_fotos_extra_l)
 
-                        # ── Ubicación GPS para marca de agua ──
+                        # ── Ubicación GPS para marca de agua (automático) ──
                         _gps_key = f"gps_{id_ot_sel}"
                         if _gps_key not in st.session_state:
                             st.session_state[_gps_key] = (None, None)
-                        try:
-                            from streamlit_geolocation import streamlit_geolocation as _get_loc
-                            _loc_data = _get_loc(key=f"geo_{id_ot_sel}")
-                            if _loc_data and _loc_data.get("latitude"):
-                                st.session_state[_gps_key] = (
-                                    _loc_data["latitude"], _loc_data["longitude"])
-                        except Exception:
-                            pass
+                        if st.session_state[_gps_key] == (None, None):
+                            try:
+                                from streamlit_js_eval import get_geolocation as _get_geo
+                                _loc_data = _get_geo(key=f"geo_{id_ot_sel}")
+                                if _loc_data and _loc_data.get("coords"):
+                                    st.session_state[_gps_key] = (
+                                        _loc_data["coords"]["latitude"],
+                                        _loc_data["coords"]["longitude"])
+                            except Exception:
+                                pass
                         _gps_lat, _gps_lon = st.session_state[_gps_key]
                         if _gps_lat:
-                            st.caption(f"📍 GPS: {_gps_lat:.5f}°, {_gps_lon:.5f}° — las fotos llevarán esta ubicación")
+                            st.caption(f"📍 {_gps_lat:.5f}°, {_gps_lon:.5f}° — ubicación registrada en las fotos")
                         else:
-                            st.caption("📍 Activa la ubicación en tu celular para que las fotos tengan GPS")
+                            st.caption("📍 Permite el acceso a la ubicación cuando el celular lo solicite")
 
                         st.divider()
                         _n_oblig_ok = sum(1 for _k, _ in _items_oblig if _k in _fotos_oblig_d)
@@ -5480,23 +5482,25 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             st.session_state[_fotos_key] = []
                         _n_fotos = len(st.session_state[_fotos_key])
 
-                        # GPS para marca de agua (reutiliza clave del OT)
+                        # GPS para marca de agua automático (reutiliza clave del OT)
                         _gps_key_l = f"gps_{id_ot_sel}"
                         if _gps_key_l not in st.session_state:
                             st.session_state[_gps_key_l] = (None, None)
-                        try:
-                            from streamlit_geolocation import streamlit_geolocation as _get_loc_l
-                            _loc_dl = _get_loc_l(key=f"geo_l_{id_ot_sel}")
-                            if _loc_dl and _loc_dl.get("latitude"):
-                                st.session_state[_gps_key_l] = (
-                                    _loc_dl["latitude"], _loc_dl["longitude"])
-                        except Exception:
-                            pass
+                        if st.session_state[_gps_key_l] == (None, None):
+                            try:
+                                from streamlit_js_eval import get_geolocation as _get_geo_l
+                                _loc_dl = _get_geo_l(key=f"geo_l_{id_ot_sel}")
+                                if _loc_dl and _loc_dl.get("coords"):
+                                    st.session_state[_gps_key_l] = (
+                                        _loc_dl["coords"]["latitude"],
+                                        _loc_dl["coords"]["longitude"])
+                            except Exception:
+                                pass
                         _l_lat, _l_lon = st.session_state[_gps_key_l]
                         if _l_lat:
-                            st.caption(f"📍 GPS: {_l_lat:.5f}°, {_l_lon:.5f}° — las fotos llevarán esta ubicación")
+                            st.caption(f"📍 {_l_lat:.5f}°, {_l_lon:.5f}° — ubicación registrada en las fotos")
                         else:
-                            st.caption("📍 Activa la ubicación en tu celular para que las fotos tengan GPS")
+                            st.caption("📍 Permite el acceso a la ubicación cuando el celular lo solicite")
 
                         st.divider()
                         st.markdown(f"**📷 Fotos del trabajo** — {_n_fotos}/25")
