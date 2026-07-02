@@ -2001,6 +2001,8 @@ with st.sidebar:
         if st.button(_lbl_ots, use_container_width=True, type="primary" if _es_tecnico else "secondary"):
             st.session_state["pagina"] = "ots"
             st.session_state["accion_ot_radio"] = "📋 Ver OTs"
+            for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect"]:
+                st.session_state.pop(_k, None)
             st.rerun()
 
         if st.button("📅 Calendario de Visitas", use_container_width=True):
@@ -3568,8 +3570,9 @@ elif pagina == "ots":
 
         # ── VISTA ESPECIAL TÉCNICO ────────────────────────────────────────────
         elif _es_tec_ots:
-            ots_activas = ots[~ots["Estado"].isin(["Finalizada", "En revisión", "Cancelada"])].copy()
-            ots_todas   = ots.copy()
+            _ots_tec    = ots[ots["Tecnico"].str.strip().str.lower() == _nom_tec_ots.strip().lower()] if not ots.empty else ots
+            ots_activas = _ots_tec[~_ots_tec["Estado"].isin(["Finalizada", "En revisión", "Cancelada"])].copy()
+            ots_todas   = _ots_tec.copy()
 
             # Clasificar por urgencia según fecha límite
             def _urgencia(fl_str):
@@ -3584,6 +3587,9 @@ elif pagina == "ots":
 
             ots_activas["_urg"] = ots_activas["Fecha_Limite"].apply(_urgencia)
             ots_activas = ots_activas.sort_values("_urg")
+
+            if st.session_state.get("_msg_tec_ok"):
+                st.success(st.session_state.pop("_msg_tec_ok"))
 
             # Encabezado
             st.markdown("""
@@ -4844,32 +4850,9 @@ elif pagina == "ots":
                             ok_h, res_h = guardar_reporte_local(_html, _cli, _sede, id_ot_sel, _fec)
                             msg_fin = _finalizar_ot_y_sol(id_ot_sel)
                             del st.session_state[_html_key]
-                            st.success(f"✅ {msg_fin}")
-                            # ── Botones de descarga ──
-                            _pdf_bytes = html_to_pdf(_html)
-                            dc1, dc2 = st.columns(2)
-                            with dc1:
-                                if _pdf_bytes:
-                                    st.download_button(
-                                        "⬇️ Descargar PDF",
-                                        data=_pdf_bytes,
-                                        file_name=f"Reporte_HVAC_{id_ot_sel}.pdf",
-                                        mime="application/pdf",
-                                        use_container_width=True,
-                                        type="primary",
-                                    )
-                                else:
-                                    st.info("PDF no disponible — descarga el HTML")
-                            with dc2:
-                                st.download_button(
-                                    "⬇️ Descargar HTML",
-                                    data=_html,
-                                    file_name=f"Reporte_HVAC_{id_ot_sel}.html",
-                                    mime="text/html",
-                                    use_container_width=True,
-                                )
-                            if ok_h:
-                                st.caption(f"✅ También guardado en: `{res_h}`")
+                            for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect"]:
+                                st.session_state.pop(_k, None)
+                            st.session_state["_msg_tec_ok"] = f"✅ {msg_fin}"
                             st.rerun()
 
                     else:
@@ -5236,34 +5219,12 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             _fec_l  = st.session_state.get(f"loc_fec_{id_ot_sel}","")
                             ok_h, res_h = guardar_reporte_local(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
                             ots.loc[ots["ID"] == id_ot_sel, "Estado"] = "En revisión"
-                            ots = _tocar_ot(ots, id_ot_sel)
+                            _tocar_ot(ots, id_ot_sel)
                             save_ots(ots)
                             del st.session_state[_loc_key]
-                            st.success(f"✅ OT **{id_ot_sel}** enviada a revisión.")
-                            _pdf_bytes_l = html_to_pdf(_html_l)
-                            dl1, dl2 = st.columns(2)
-                            with dl1:
-                                if _pdf_bytes_l:
-                                    st.download_button(
-                                        "⬇️ Descargar PDF",
-                                        data=_pdf_bytes_l,
-                                        file_name=f"Reporte_Locativos_{id_ot_sel}.pdf",
-                                        mime="application/pdf",
-                                        use_container_width=True,
-                                        type="primary",
-                                    )
-                                else:
-                                    st.info("PDF no disponible — descarga el HTML")
-                            with dl2:
-                                st.download_button(
-                                    "⬇️ Descargar HTML",
-                                    data=_html_l,
-                                    file_name=f"Reporte_Locativos_{id_ot_sel}.html",
-                                    mime="text/html",
-                                    use_container_width=True,
-                                )
-                            if ok_h:
-                                st.caption(f"✅ También guardado en: `{res_h}`")
+                            for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect"]:
+                                st.session_state.pop(_k, None)
+                            st.session_state["_msg_tec_ok"] = f"✅ OT **{id_ot_sel}** enviada a revisión."
                             st.rerun()
 
                 with ot_com:
