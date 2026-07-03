@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
+from functools import lru_cache
 import os
 import hashlib
 import gspread
@@ -97,6 +98,7 @@ def ahora_colombia():
     return datetime.utcnow() - timedelta(hours=5)
 
 
+@lru_cache(maxsize=8)
 def festivos_colombia(año):
     """Festivos nacionales de Colombia para el año dado (set de date)."""
     from datetime import date
@@ -183,21 +185,23 @@ COLS_HISTORIAL   = ["ID_Log","Fecha","Usuario","Entidad","Entidad_ID","Campo","V
 COLS_COMENTARIOS = ["ID_Com","Fecha","Usuario","Entidad","Entidad_ID","Comentario"]
 
 def load_counters():
-    return sb_load("contadores", COLS_COUNTERS)
+    return sb_load("contadores", COLS_COUNTERS, _v=_ver_cache("contadores"))
 
 def save_counters(df):
     sb_save("contadores", df)
+    _invalidar_cache("contadores")
 
 def load_historial():
-    return sb_load("historial", COLS_HISTORIAL)
+    return sb_load("historial", COLS_HISTORIAL, _v=_ver_cache("historial"))
 
 def load_comentarios():
-    return sb_load("comentarios", COLS_COMENTARIOS)
+    return sb_load("comentarios", COLS_COMENTARIOS, _v=_ver_cache("comentarios"))
 
 def _sb_insert(tabla, registro):
     """Inserta un único registro sin truncar la tabla (para historial y comentarios)."""
     try:
         get_sb().table(tabla).insert(registro).execute()
+        _invalidar_cache(tabla)
         return True
     except Exception:
         return False
@@ -536,8 +540,10 @@ def get_sb():
     from supabase import create_client
     return create_client(st.secrets["supabase_url"], st.secrets["supabase_key"])
 
-def sb_load(table_name, cols):
-    """Carga datos desde Supabase paginando de 1000 en 1000 (sin límite)."""
+@st.cache_data(ttl=120)
+def sb_load(table_name, cols, _v=0):
+    """Carga datos desde Supabase paginando de 1000 en 1000 (sin límite).
+    _v se usa solo como clave de invalidación — cambia con _invalidar_cache()."""
     try:
         sb       = get_sb()
         all_data = []
@@ -627,14 +633,14 @@ def gs_save(tab_name, df):
 # ── Carga / guardado ──────────────────────────────────────────────────────────
 
 def load_sol():
-    return sb_load("solicitudes", COLS_SOL)
+    return sb_load("solicitudes", COLS_SOL, _v=_ver_cache("solicitudes"))
 
 def save_sol(df):
     sb_save("solicitudes", df)
     _invalidar_cache("solicitudes")
 
 def load_cli():
-    df = sb_load("clientes", COLS_CLI)
+    df = sb_load("clientes", COLS_CLI, _v=_ver_cache("clientes"))
     for col in df.columns:
         df[col] = df[col].str.strip()
     return df[df["Empresa"] != ""].reset_index(drop=True)
@@ -644,7 +650,7 @@ def save_cli(df):
     _invalidar_cache("clientes")
 
 def load_ots():
-    return sb_load("ordenes_trabajo", COLS_OT)
+    return sb_load("ordenes_trabajo", COLS_OT, _v=_ver_cache("ordenes_trabajo"))
 
 def save_ots(df):
     sb_save("ordenes_trabajo", df)
@@ -658,10 +664,11 @@ def _tocar_ot(df, ot_id):
 
 
 def load_cv():
-    return sb_load("compras_ventas", COLS_CV)
+    return sb_load("compras_ventas", COLS_CV, _v=_ver_cache("compras_ventas"))
 
 def save_cv(df):
     sb_save("compras_ventas", df)
+    _invalidar_cache("compras_ventas")
 
 def gen_cv_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
@@ -670,10 +677,11 @@ def gen_cv_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CV-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_ventas():
-    return sb_load("ventas", COLS_VENTA)
+    return sb_load("ventas", COLS_VENTA, _v=_ver_cache("ventas"))
 
 def save_ventas(df):
     sb_save("ventas", df)
+    _invalidar_cache("ventas")
 
 def gen_fac_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
@@ -682,10 +690,11 @@ def gen_fac_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'FAC-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_costos():
-    return sb_load("costos", COLS_COSTO)
+    return sb_load("costos", COLS_COSTO, _v=_ver_cache("costos"))
 
 def save_costos(df):
     sb_save("costos", df)
+    _invalidar_cache("costos")
 
 def gen_costo_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
@@ -702,7 +711,7 @@ def to_num(val):
 
 
 def load_contratos():
-    return sb_load("contratos", COLS_CONTRATO)
+    return sb_load("contratos", COLS_CONTRATO, _v=_ver_cache("contratos"))
 
 def save_contratos(df):
     ok = sb_save("contratos", df)
@@ -710,10 +719,11 @@ def save_contratos(df):
     return ok
 
 def load_equipos():
-    return sb_load("equipos", COLS_EQUIPO)
+    return sb_load("equipos", COLS_EQUIPO, _v=_ver_cache("equipos"))
 
 def save_equipos(df):
     sb_save("equipos", df)
+    _invalidar_cache("equipos")
 
 
 def gen_contrato_id(df):
@@ -1346,23 +1356,23 @@ def tabla_html(df_vista, color_col=None, colores_estado=None, fmt_cols=None):
         f"font-weight:700;font-size:0.82rem;text-align:left;white-space:nowrap;'>{c}</th>"
         for c in df_vista.columns
     )
-    rows = ""
+    row_parts = []
     for i, row in df_vista.iterrows():
         bg = "#fff5f5" if i % 2 == 0 else "#ffffff"
-        cells = ""
+        cell_parts = []
         for col, val in row.items():
             cell_bg = bg
             cell_color = "#111111"
             if col == color_col and colores_estado and val in colores_estado:
                 cell_bg, cell_color = colores_estado[val]
-            # Aplicar formato de pesos colombianos si corresponde
             display_val = fmt_cop(val) if fmt_cols and col in fmt_cols else val
-            cells += (
+            cell_parts.append(
                 f"<td style='background:{cell_bg};color:{cell_color};"
                 f"padding:7px 10px;font-size:0.83rem;border-bottom:1px solid #f0f0f0;"
                 f"white-space:nowrap;'>{display_val}</td>"
             )
-        rows += f"<tr>{cells}</tr>"
+        row_parts.append(f"<tr>{''.join(cell_parts)}</tr>")
+    rows = "".join(row_parts)
     html = (
         "<div style='overflow-x:auto;border:1px solid #dc2626;"
         "border-radius:8px;margin:4px 0;'>"
@@ -1466,10 +1476,12 @@ def hash_pwd(pwd):
     return hashlib.sha256(pwd.encode()).hexdigest()
 
 def load_usuarios():
-    return sb_load("usuarios", ["nombre", "correo", "password_hash", "rol", "Empresa_Vinculada"])
+    return sb_load("usuarios", ["nombre", "correo", "password_hash", "rol", "Empresa_Vinculada"],
+                   _v=_ver_cache("usuarios"))
 
 def save_usuarios(df):
     sb_save("usuarios", df)
+    _invalidar_cache("usuarios")
 
 def verificar_login(correo, pwd, usuarios):
     u = usuarios[usuarios["correo"].str.lower() == correo.strip().lower()]
