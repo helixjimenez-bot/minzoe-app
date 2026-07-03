@@ -4360,7 +4360,9 @@ elif pagina == "ots":
                         _cat_foto_ac = ("portatil" if _es_portatil
                                         else "ventilador" if _es_vent_ext
                                         else "split")
-                        _items_oblig = _FOTOS_OBLIG_AC[_cat_foto_ac]
+                        # Fotos obligatorias solo para mantenimiento Preventivo
+                        _es_preventivo_foto = st.session_state.get(f"r_prev_{id_ot_sel}", False)
+                        _items_oblig = _FOTOS_OBLIG_AC[_cat_foto_ac] if _es_preventivo_foto else []
 
 
                         st.divider()
@@ -5001,10 +5003,16 @@ elif pagina == "ots":
 
                         st.divider()
                         _n_oblig_ok = sum(1 for _k, _ in _items_oblig if _k in _fotos_oblig_d)
-                        st.markdown(
-                            f"**📷 Fotos del trabajo** — {_n_total_fotos}/25 "
-                            f"&nbsp;|&nbsp; Obligatorias: {_n_oblig_ok}/{len(_items_oblig)}"
-                        )
+                        if _items_oblig:
+                            st.markdown(
+                                f"**📷 Fotos del trabajo** — {_n_total_fotos}/25 "
+                                f"&nbsp;|&nbsp; Obligatorias: {_n_oblig_ok}/{len(_items_oblig)}"
+                            )
+                        else:
+                            st.markdown(
+                                f"**📷 Fotos del trabajo** — {_n_total_fotos}/25 "
+                                f"&nbsp;|&nbsp; _(correctivo/visita: fotos libres, no hay lista obligatoria)_"
+                            )
 
                         # Grid de estado por ítem obligatorio
                         _g_cols = st.columns(4)
