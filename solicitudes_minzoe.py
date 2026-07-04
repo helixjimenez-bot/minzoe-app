@@ -3422,7 +3422,8 @@ elif pagina == "ots":
         st.session_state["pagina"] = "perfil_cliente"
         st.rerun()
     import io
-    df = get_df(); ots = get_ots(); cli = get_cli(); equipos = get_equipos()
+    _invalidar_cache("ordenes_trabajo")
+    df = get_df(); ots = load_ots(); cli = get_cli(); equipos = get_equipos()
     _rol_ots     = st.session_state.get("user_rol", "usuario")
     _nom_tec_ots = st.session_state.get("user_nombre", "")
     # _tec_en_reporte: técnico abrió el formulario de reporte → mostrar vista completa
