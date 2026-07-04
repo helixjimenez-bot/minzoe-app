@@ -521,7 +521,7 @@ TEXTO_Z5 = {
 
 COLS_OT = [
     "ID", "Origen", "Creado_Por", "SOL_Ref", "Fecha_Creacion", "Fecha_Limite", "Cliente", "NIT", "Sede",
-    "Nombre_Contacto", "Celular_Contacto", "Ciudad",
+    "Nombre_Contacto", "Celular_Contacto",
     "Servicio", "Descripcion", "SLA", "Zona", "Tecnico", "Celular_Tecnico",
     "Fecha_Ejecucion", "Hora_Inicio", "Hora_Final", "Horas_Laboradas",
     "Materiales", "Valor_COP", "Estado", "Observaciones", "ID_Item", "Fecha_Modificacion",
@@ -1461,7 +1461,6 @@ def crear_ot_desde_sol(sol, ots):
         "Descripcion":      sol["Descripcion"],
         "SLA":              sol.get("SLA", ""),
         "Zona":             sol.get("Zona", ""),
-        "Ciudad":           sol.get("Ciudad", ""),
         "Tecnico":          "",
         "Celular_Tecnico":  "",
         "Fecha_Ejecucion":  "",
