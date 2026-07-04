@@ -4210,25 +4210,27 @@ elif pagina == "ots":
 
                         st.markdown(f"### 📄 Reporte HVAC — {id_ot_sel}")
 
+                        # ── GPS: iniciar tan pronto el técnico abre la OT ──────────────────
+                        _gps_key = f"gps_{id_ot_sel}"
+                        if _gps_key not in st.session_state:
+                            st.session_state[_gps_key] = (None, None)
+                        if st.session_state[_gps_key] == (None, None):
+                            try:
+                                from streamlit_js_eval import get_geolocation as _get_geo
+                                _loc_data = _get_geo(key=f"geo_{id_ot_sel}")
+                                if _loc_data and _loc_data.get("coords"):
+                                    st.session_state[_gps_key] = (
+                                        _loc_data["coords"]["latitude"],
+                                        _loc_data["coords"]["longitude"])
+                            except Exception:
+                                pass
+
                         # ── Fase 2: canvas de firma (aparece después de guardar el form) ──
                         _hvac_raw_key = f"hvac_html_raw_{id_ot_sel}"
                         if _hvac_raw_key in st.session_state:
                             st.success("✅ Datos técnicos guardados.")
 
                             # ── Fotos del trabajo (antes de finalizar) ──────────────────────
-                            _gps_key = f"gps_{id_ot_sel}"
-                            if _gps_key not in st.session_state:
-                                st.session_state[_gps_key] = (None, None)
-                            if st.session_state[_gps_key] == (None, None):
-                                try:
-                                    from streamlit_js_eval import get_geolocation as _get_geo
-                                    _loc_data = _get_geo(key=f"geo_{id_ot_sel}")
-                                    if _loc_data and _loc_data.get("coords"):
-                                        st.session_state[_gps_key] = (
-                                            _loc_data["coords"]["latitude"],
-                                            _loc_data["coords"]["longitude"])
-                                except Exception:
-                                    pass
                             _gps_lat, _gps_lon = st.session_state[_gps_key]
 
                             # Reconstruir items obligatorios desde session_state
@@ -4300,12 +4302,11 @@ elif pagina == "ots":
                             _pending2  = [(_k,_l) for _k,_l in _items_oblig2 if _k not in _fotos_oblig_d2]
                             _hay_esp2  = _n_total2 < 25
                             _opcs2 = (
-                                [("-- Selecciona el ítem a fotografiar --", "")]
-                                + [(f"⚠️ {_l}", _k) for _k, _l in _pending2]
+                                [(f"⚠️ {_l}", _k) for _k, _l in _pending2]
                                 + ([("➕ Foto adicional", "__extra__")] if _hay_esp2 else [])
                             )
                             if not _items_oblig2:
-                                _opcs2 = [("Tomar foto", "__extra__")]
+                                _opcs2 = [("Tomar foto", "__extra__")] if _hay_esp2 else []
                             if len(_opcs2) > 0:
                                 if _items_oblig2:
                                     _lbl2 = [_o[0] for _o in _opcs2]
@@ -4321,7 +4322,7 @@ elif pagina == "ots":
                                 _cam2 = st.camera_input(
                                     "Tomar foto",
                                     key=f"cam2_{id_ot_sel}_{_n_total2}",
-                                    disabled=(_sel_key2 == "" or _n_total2 >= 25),
+                                    disabled=(_n_total2 >= 25),
                                 )
                                 if _cam2 and _sel_key2:
                                     import base64 as _b64mod2
@@ -5154,25 +5155,27 @@ elif pagina == "ots":
                         # ── FORMATO LOCATIVOS ─────────────────────────────
                         st.markdown(f"### 📄 Reporte Locativos — {id_ot_sel}")
 
+                        # ── GPS: iniciar tan pronto el técnico abre la OT ──────────────────
+                        _gps_key_l = f"gps_{id_ot_sel}"
+                        if _gps_key_l not in st.session_state:
+                            st.session_state[_gps_key_l] = (None, None)
+                        if st.session_state[_gps_key_l] == (None, None):
+                            try:
+                                from streamlit_js_eval import get_geolocation as _get_geo_l
+                                _loc_data_l = _get_geo_l(key=f"geo_l_{id_ot_sel}")
+                                if _loc_data_l and _loc_data_l.get("coords"):
+                                    st.session_state[_gps_key_l] = (
+                                        _loc_data_l["coords"]["latitude"],
+                                        _loc_data_l["coords"]["longitude"])
+                            except Exception:
+                                pass
+
                         # ── Fase 2: canvas de firma (aparece después de guardar el form) ──
                         _loc_raw_key = f"loc_html_raw_{id_ot_sel}"
                         if _loc_raw_key in st.session_state:
                             st.success("✅ Datos técnicos guardados.")
 
                             # ── Fotos del trabajo (antes de finalizar) ──────────────────────
-                            _gps_key_l = f"gps_{id_ot_sel}"
-                            if _gps_key_l not in st.session_state:
-                                st.session_state[_gps_key_l] = (None, None)
-                            if st.session_state[_gps_key_l] == (None, None):
-                                try:
-                                    from streamlit_js_eval import get_geolocation as _get_geo_l
-                                    _loc_data_l = _get_geo_l(key=f"geo_l_{id_ot_sel}")
-                                    if _loc_data_l and _loc_data_l.get("coords"):
-                                        st.session_state[_gps_key_l] = (
-                                            _loc_data_l["coords"]["latitude"],
-                                            _loc_data_l["coords"]["longitude"])
-                                except Exception:
-                                    pass
                             _gps_lat_l, _gps_lon_l = st.session_state[_gps_key_l]
 
                             _fotos_loc_key = f"fotos_{id_ot_sel}"
