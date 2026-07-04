@@ -6105,10 +6105,12 @@ elif pagina == "contratos_mto":
         st.subheader(f"Generar OTs del mes — {hoy.strftime('%B %Y').capitalize()}")
 
         def vence_este_mes(fecha_str):
+            if not str(fecha_str).strip() or str(fecha_str).strip() in ("", "nan", "None"):
+                return True  # Sin fecha previa = pendiente
             try:
-                return datetime.strptime(fecha_str, "%Y-%m-%d").strftime("%Y-%m") <= mes_actual
+                return datetime.strptime(str(fecha_str).strip(), "%Y-%m-%d").strftime("%Y-%m") <= mes_actual
             except Exception:
-                return False
+                return True  # Fecha inválida = pendiente
 
         # ── Contratos SIN equipos (visita directa) ───────────────────────────
         contratos_visita = contratos[
