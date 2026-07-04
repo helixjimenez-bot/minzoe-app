@@ -521,7 +521,7 @@ TEXTO_Z5 = {
 
 COLS_OT = [
     "ID", "Origen", "Creado_Por", "SOL_Ref", "Fecha_Creacion", "Fecha_Limite", "Cliente", "NIT", "Sede",
-    "Nombre_Contacto", "Celular_Contacto",
+    "Nombre_Contacto", "Celular_Contacto", "Ciudad",
     "Servicio", "Descripcion", "SLA", "Zona", "Tecnico", "Celular_Tecnico",
     "Fecha_Ejecucion", "Hora_Inicio", "Hora_Final", "Horas_Laboradas",
     "Materiales", "Valor_COP", "Estado", "Observaciones", "ID_Item", "Fecha_Modificacion",
@@ -1438,6 +1438,7 @@ def crear_ot_desde_sol(sol, ots):
         "Descripcion":      sol["Descripcion"],
         "SLA":              sol.get("SLA", ""),
         "Zona":             sol.get("Zona", ""),
+        "Ciudad":           sol.get("Ciudad", ""),
         "Tecnico":          "",
         "Celular_Tecnico":  "",
         "Fecha_Ejecucion":  "",
@@ -4325,12 +4326,11 @@ elif pagina == "ots":
                                         _items_fin = _FOTOS_KEYS_FIN[_cat_fin] if _prev_fin else []
                                         _fob_fin  = st.session_state.get(f"fotos_oblig_{id_ot_sel}", {})
                                         _fex_fin  = st.session_state.get(f"fotos_extra_{id_ot_sel}", [])
-                                        # Validar obligatorias
+                                        # Advertencia si faltan fotos (no bloquea)
                                         _falt_fin = [_l for _k,_l in _items_fin if _k not in _fob_fin]
                                         if _falt_fin:
-                                            st.error(f"⚠️ Faltan {len(_falt_fin)} foto(s) obligatoria(s):\n"
-                                                     + "\n".join(f"• {_l}" for _l in _falt_fin))
-                                        else:
+                                            st.warning(f"⚠️ Faltan {len(_falt_fin)} foto(s): {', '.join(_falt_fin[:3])}{'...' if len(_falt_fin)>3 else ''}")
+                                        if True:
                                          _all_fp = (
                                             [(_l, _fob_fin[_k]) for _k,_l in _items_fin if _k in _fob_fin]
                                             + [("Adicional", _fb) for _fb in _fex_fin]
@@ -4846,7 +4846,11 @@ elif pagina == "ots":
                                     _cli_parts = []
                                     if fila_ot.get('Cliente',''): _cli_parts.append(f"<b>Cliente:</b> {fila_ot['Cliente']}")
                                     if fila_ot.get('Sede',''): _cli_parts.append(f"<b>Sucursal:</b> {fila_ot.get('Sede','')}")
-                                    if fila_ot.get('Nombre_Contacto',''): _cli_parts.append(f"<b>Contacto:</b> {fila_ot.get('Nombre_Contacto','')}")
+                                    if fila_ot.get('Ciudad',''): _cli_parts.append(f"<b>Ciudad:</b> {fila_ot.get('Ciudad','')}")
+                                    _contacto_str = fila_ot.get('Nombre_Contacto','')
+                                    _celular_str  = fila_ot.get('Celular_Contacto','')
+                                    if _contacto_str or _celular_str:
+                                        _cli_parts.append(f"<b>Contacto:</b> {_contacto_str}{(' — ' + _celular_str) if _celular_str else ''}")
                                     _datos_cliente_html = (
                                         '<div style="padding:2px 0 5px;font-size:9pt">'
                                         + " &nbsp;|&nbsp; ".join(_cli_parts)
@@ -5454,7 +5458,7 @@ elif pagina == "ots":
 
 <div class="section" style="margin-top:2px">DATOS DEL CLIENTE</div>
 <div style="padding:2px 0 5px;font-size:9pt">
-  <b>Cliente:</b> {fila_ot['Cliente']} &nbsp;|&nbsp; <b>Sucursal:</b> {fila_ot.get('Sede','')} &nbsp;|&nbsp; <b>Contacto:</b> {fila_ot.get('Nombre_Contacto','')}{"&nbsp;|&nbsp; <b>Área intervenida:</b> " + l_area if l_area.strip() else ""}
+  <b>Cliente:</b> {fila_ot['Cliente']} &nbsp;|&nbsp; <b>Sucursal:</b> {fila_ot.get('Sede','')}{"&nbsp;|&nbsp; <b>Ciudad:</b> " + fila_ot.get('Ciudad','') if fila_ot.get('Ciudad','') else ""} &nbsp;|&nbsp; <b>Contacto:</b> {fila_ot.get('Nombre_Contacto','')}{"&nbsp;—&nbsp;" + fila_ot.get('Celular_Contacto','') if fila_ot.get('Celular_Contacto','') else ""}{"&nbsp;|&nbsp; <b>Área intervenida:</b> " + l_area if l_area.strip() else ""}
 </div>
 
 <div style="background:#f8f8f8;border:0.5pt solid #ccc;padding:4pt;margin:4pt 0;font-size:7pt">
