@@ -6149,83 +6149,90 @@ elif pagina == "contratos_mto":
             st.divider()
             if st.button(f"⚡ Generar {total_pendientes} OT(s) pendientes del mes",
                          type="primary", use_container_width=True):
-                creadas = []
+                try:
+                    creadas = []
 
-                # OTs por contrato de visita
-                for _, con in pendientes_visita.iterrows():
-                    nueva_ot = {
-                        "ID":               generate_ot_id(ots),
-                        "Origen":           "Contrato Mantenimiento",
-                        "SOL_Ref":          con["ID_Contrato"],
-                        "Fecha_Creacion":   hoy.strftime("%Y-%m-%d %H:%M"),
-                        "Fecha_Limite":     "",
-                        "Cliente":          con["Cliente"],
-                        "NIT":              con["NIT"],
-                        "Sede":             con["Sede"],
-                        "Nombre_Contacto":  con["Nombre_Contacto"],
-                        "Celular_Contacto": con["Celular_Contacto"],
-                        "Servicio":         con["Servicio"],
-                        "Descripcion":      f"Mantenimiento preventivo {con['Frecuencia'].lower()} — Contrato {con['ID_Contrato']}",
-                        "SLA":              "Programado",
-                        "Zona":             "",
-                        "Tecnico":          con["Tecnico"],
-                        "Celular_Tecnico":  "",
-                        "Fecha_Ejecucion":  "",
-                        "Hora_Inicio":      "",
-                        "Hora_Final":       "",
-                        "Horas_Laboradas":  "",
-                        "Materiales":       "",
-                        "Valor_COP":        con.get("Valor_Contrato", ""),
-                        "Estado":           "Programada",
-                        "Observaciones":    "",
-                    }
-                    ots = pd.concat([ots, pd.DataFrame([nueva_ot])], ignore_index=True)
-                    creadas.append(nueva_ot["ID"])
+                    # OTs por contrato de visita
+                    for _, con in pendientes_visita.iterrows():
+                        nueva_ot = {
+                            "ID":               generate_ot_id(ots),
+                            "Origen":           "Contrato Mantenimiento",
+                            "SOL_Ref":          con["ID_Contrato"],
+                            "Fecha_Creacion":   hoy.strftime("%Y-%m-%d %H:%M"),
+                            "Fecha_Limite":     "",
+                            "Cliente":          con["Cliente"],
+                            "NIT":              con["NIT"],
+                            "Sede":             con["Sede"],
+                            "Nombre_Contacto":  con["Nombre_Contacto"],
+                            "Celular_Contacto": con["Celular_Contacto"],
+                            "Servicio":         con["Servicio"],
+                            "Descripcion":      f"Mantenimiento preventivo {con['Frecuencia'].lower()} — Contrato {con['ID_Contrato']}",
+                            "SLA":              "Programado",
+                            "Zona":             "",
+                            "Tecnico":          con["Tecnico"],
+                            "Celular_Tecnico":  "",
+                            "Fecha_Ejecucion":  "",
+                            "Hora_Inicio":      "",
+                            "Hora_Final":       "",
+                            "Horas_Laboradas":  "",
+                            "Materiales":       "",
+                            "Valor_COP":        con.get("Valor_Contrato", ""),
+                            "Estado":           "Programada",
+                            "Observaciones":    "",
+                        }
+                        ots = pd.concat([ots, pd.DataFrame([nueva_ot])], ignore_index=True)
+                        creadas.append(nueva_ot["ID"])
 
-                # OTs por ítem/equipo
-                for _, item in pendientes_items.iterrows():
-                    con_row    = contratos[contratos["ID_Contrato"] == item["ID_Contrato"]]
-                    frecuencia = con_row.iloc[0]["Frecuencia"] if not con_row.empty else "Mensual"
-                    tecnico    = con_row.iloc[0]["Tecnico"]    if not con_row.empty else ""
-                    nueva_ot = {
-                        "ID":               generate_ot_id(ots),
-                        "Origen":           "Contrato Mantenimiento",
-                        "SOL_Ref":          item["ID_Contrato"],
-                        "Fecha_Creacion":   hoy.strftime("%Y-%m-%d %H:%M"),
-                        "Fecha_Limite":     "",
-                        "Cliente":          item["Cliente"],
-                        "NIT":              con_row.iloc[0]["NIT"] if not con_row.empty else "",
-                        "Sede":             item["Sede"],
-                        "Nombre_Contacto":  con_row.iloc[0]["Nombre_Contacto"] if not con_row.empty else "",
-                        "Celular_Contacto": con_row.iloc[0]["Celular_Contacto"] if not con_row.empty else "",
-                        "Servicio":         item["Servicio"],
-                        "Descripcion":      (
-                            f"Mto. preventivo {frecuencia.lower()} — "
-                            f"{item['Marca']} {item['Modelo']} | S/N: {item['Numero_Serie']} | "
-                            f"{item['Especificaciones']} | Ubicación: {item['Ubicacion']}"
-                        ),
-                        "SLA":              "Programado",
-                        "Zona":             "",
-                        "Tecnico":          tecnico,
-                        "Celular_Tecnico":  "",
-                        "Fecha_Ejecucion":  "",
-                        "Hora_Inicio":      "",
-                        "Hora_Final":       "",
-                        "Horas_Laboradas":  "",
-                        "Materiales":       "",
-                        "Valor_COP":        con_row.iloc[0].get("Valor_Contrato", "") if not con_row.empty else "",
-                        "Estado":           "Programada",
-                        "Observaciones":    f"Ítem: {item['ID_Item']}",
-                    }
-                    ots = pd.concat([ots, pd.DataFrame([nueva_ot])], ignore_index=True)
-                    creadas.append(nueva_ot["ID"])
-                    idx_i = equipos[equipos["ID_Item"] == item["ID_Item"]].index[0]
-                    equipos.loc[idx_i, "Ultimo_Mantenimiento"]  = hoy.strftime("%Y-%m-%d")
-                    equipos.loc[idx_i, "Proximo_Mantenimiento"] = proxima_fecha(hoy.strftime("%Y-%m-%d"), frecuencia)
+                    # OTs por ítem/equipo
+                    for _, item in pendientes_items.iterrows():
+                        con_row    = contratos[contratos["ID_Contrato"] == item["ID_Contrato"]]
+                        frecuencia = con_row.iloc[0]["Frecuencia"] if not con_row.empty else "Mensual"
+                        tecnico    = con_row.iloc[0]["Tecnico"]    if not con_row.empty else ""
+                        nueva_ot = {
+                            "ID":               generate_ot_id(ots),
+                            "Origen":           "Contrato Mantenimiento",
+                            "SOL_Ref":          item["ID_Contrato"],
+                            "Fecha_Creacion":   hoy.strftime("%Y-%m-%d %H:%M"),
+                            "Fecha_Limite":     "",
+                            "Cliente":          item["Cliente"],
+                            "NIT":              con_row.iloc[0]["NIT"] if not con_row.empty else "",
+                            "Sede":             item["Sede"],
+                            "Nombre_Contacto":  con_row.iloc[0]["Nombre_Contacto"] if not con_row.empty else "",
+                            "Celular_Contacto": con_row.iloc[0]["Celular_Contacto"] if not con_row.empty else "",
+                            "Servicio":         item["Servicio"],
+                            "Descripcion":      (
+                                f"Mto. preventivo {frecuencia.lower()} — "
+                                f"{item['Marca']} {item['Modelo']} | S/N: {item['Numero_Serie']} | "
+                                f"{item['Especificaciones']} | Ubicación: {item['Ubicacion']}"
+                            ),
+                            "SLA":              "Programado",
+                            "Zona":             "",
+                            "Tecnico":          tecnico,
+                            "Celular_Tecnico":  "",
+                            "Fecha_Ejecucion":  "",
+                            "Hora_Inicio":      "",
+                            "Hora_Final":       "",
+                            "Horas_Laboradas":  "",
+                            "Materiales":       "",
+                            "Valor_COP":        con_row.iloc[0].get("Valor_Contrato", "") if not con_row.empty else "",
+                            "Estado":           "Programada",
+                            "Observaciones":    f"Ítem: {item['ID_Item']}",
+                        }
+                        ots = pd.concat([ots, pd.DataFrame([nueva_ot])], ignore_index=True)
+                        creadas.append(nueva_ot["ID"])
+                        idx_i = equipos[equipos["ID_Item"] == item["ID_Item"]].index[0]
+                        equipos.loc[idx_i, "Ultimo_Mantenimiento"]  = hoy.strftime("%Y-%m-%d")
+                        equipos.loc[idx_i, "Proximo_Mantenimiento"] = proxima_fecha(hoy.strftime("%Y-%m-%d"), frecuencia)
 
-                save_ots(ots)
-                save_equipos(equipos)
-                st.success(f"✅ {len(creadas)} OT(s) creadas: {', '.join(creadas)}")
+                    st.info(f"Armadas {len(creadas)} OTs en memoria. Guardando en Supabase...")
+                    ok_ot  = save_ots(ots)
+                    ok_eq  = save_equipos(equipos)
+                    if ok_ot is not False:
+                        st.success(f"✅ {len(creadas)} OT(s) creadas: {', '.join(creadas[:5])}{'...' if len(creadas)>5 else ''}")
+                    else:
+                        st.error("❌ Las OTs se armaron pero hubo un error al guardar en Supabase.")
+                except Exception as _e_gen:
+                    st.error(f"❌ Error al generar OTs: {_e_gen}")
                 st.info("Encuéntralas en 🛠️ Órdenes de Trabajo con origen 'Contrato Mantenimiento'.")
                 st.rerun()
 
