@@ -4230,135 +4230,6 @@ elif pagina == "ots":
                         if _hvac_raw_key in st.session_state:
                             st.success("✅ Datos técnicos guardados.")
 
-                            # ── Fotos del trabajo (antes de finalizar) ──────────────────────
-                            _gps_lat, _gps_lon = st.session_state[_gps_key]
-
-                            # Reconstruir items obligatorios desde session_state
-                            _FOTOS_OBLIG_AC2 = {
-                                "split": [
-                                    ("placa_manj","Foto placa manejadora"),("placa_cond","Foto placa condensadora"),
-                                    ("volt_manj","Voltaje manejadora"),("amp_manj","Amperaje manejadora"),
-                                    ("volt_cond","Voltaje condensadora"),("amp_cond","Amperaje condensadora"),
-                                    ("temp_sum","Temperatura suministro"),("temp_ret","Temperatura retorno"),
-                                    ("temp_amb","Temperatura ambiente"),("lav_filt","Lavado filtros (manj.)"),
-                                    ("lav_serp_m","Lavado serpentines (manj.)"),("limp_m","Limpieza int/ext (manj.)"),
-                                    ("rub_m","Revisión rubatex (manj.)"),("lav_serp_c","Lavado serpentín (cond.)"),
-                                    ("limp_c","Limpieza int/ext (cond.)"),("rub_c","Revisión rubatex (cond.)"),
-                                ],
-                                "portatil": [
-                                    ("volt_unit","Voltaje unidad"),("amp_unit","Amperaje unidad"),
-                                    ("temp_sum","Temperatura suministro"),("temp_ret","Temperatura retorno"),
-                                    ("temp_amb","Temperatura ambiente"),("lav_filt","Lavado de filtros"),
-                                    ("limp_unit","Limpieza int/ext"),("rev_dren","Revisión drenaje"),
-                                ],
-                                "ventilador": [
-                                    ("volt_unit","Voltaje unidad"),("amp_unit","Amperaje unidad"),
-                                    ("limp_unit","Limpieza int/ext"),("rev_fij","Revisión fijaciones"),
-                                ],
-                            }
-                            _cat2  = st.session_state.get(f"hvac_cat_{id_ot_sel}", "split")
-                            _prev2 = st.session_state.get(f"r_prev_{id_ot_sel}", False)
-                            _items_oblig2 = _FOTOS_OBLIG_AC2[_cat2] if _prev2 else []
-
-                            _fotos_oblig_key2 = f"fotos_oblig_{id_ot_sel}"
-                            _fotos_extra_key2 = f"fotos_extra_{id_ot_sel}"
-                            if _fotos_oblig_key2 not in st.session_state:
-                                st.session_state[_fotos_oblig_key2] = {}
-                            if _fotos_extra_key2 not in st.session_state:
-                                st.session_state[_fotos_extra_key2] = []
-                            _fotos_oblig_d2 = st.session_state[_fotos_oblig_key2]
-                            _fotos_extra_l2 = st.session_state[_fotos_extra_key2]
-                            _n_total2 = len(_fotos_oblig_d2) + len(_fotos_extra_l2)
-                            _n_oblig_ok2 = sum(1 for _k,_ in _items_oblig2 if _k in _fotos_oblig_d2)
-
-                            if _gps_lat:
-                                st.caption(f"📍 {_gps_lat:.5f}°, {_gps_lon:.5f}° — ubicación registrada en las fotos")
-                            else:
-                                st.caption("📍 Permite el acceso a la ubicación cuando el celular lo solicite")
-
-                            if _items_oblig2:
-                                st.markdown(
-                                    f"**📷 Fotos del trabajo — {id_ot_sel}** — {_n_total2}/25 "
-                                    f"&nbsp;|&nbsp; Obligatorias: {_n_oblig_ok2}/{len(_items_oblig2)}"
-                                )
-                            else:
-                                st.markdown(f"**📷 Fotos del trabajo — {id_ot_sel}** — {_n_total2}/25 "
-                                            f"&nbsp;|&nbsp; _(correctivo/visita: fotos libres)_")
-
-                            # Grid estado ítems obligatorios
-                            if _items_oblig2:
-                                _g2 = st.columns(4)
-                                for _gi2, (_gk2, _gl2) in enumerate(_items_oblig2):
-                                    with _g2[_gi2 % 4]:
-                                        _gok2 = _gk2 in _fotos_oblig_d2
-                                        st.markdown(
-                                            f"<div style='font-size:11px;padding:3px 5px;border-radius:4px;"
-                                            f"background:{'#d1fae5' if _gok2 else '#fee2e2'};"
-                                            f"border:1px solid {'#6ee7b7' if _gok2 else '#fca5a5'};margin:2px'>"
-                                            f"{'✅' if _gok2 else '❌'} {_gl2}</div>",
-                                            unsafe_allow_html=True)
-
-                            # Selector ítem + cámara
-                            _pending2  = [(_k,_l) for _k,_l in _items_oblig2 if _k not in _fotos_oblig_d2]
-                            _hay_esp2  = _n_total2 < 25
-                            _opcs2 = (
-                                [(f"⚠️ {_l}", _k) for _k, _l in _pending2]
-                                + ([("➕ Foto adicional", "__extra__")] if _hay_esp2 else [])
-                            )
-                            if not _items_oblig2:
-                                _opcs2 = [("Tomar foto", "__extra__")] if _hay_esp2 else []
-                            if len(_opcs2) > 0:
-                                if _items_oblig2:
-                                    _lbl2 = [_o[0] for _o in _opcs2]
-                                    _sel2 = st.selectbox(
-                                        "¿Qué ítem vas a fotografiar?",
-                                        options=range(len(_lbl2)),
-                                        format_func=lambda _i: _lbl2[_i],
-                                        key=f"sel_item2_{id_ot_sel}",
-                                    )
-                                    _sel_key2 = _opcs2[_sel2][1]
-                                else:
-                                    _sel_key2 = "__extra__"
-                                _cam2 = st.camera_input(
-                                    "Tomar foto",
-                                    key=f"cam2_{id_ot_sel}_{_n_total2}",
-                                    disabled=(_n_total2 >= 25),
-                                )
-                                if _cam2 and _sel_key2:
-                                    import base64 as _b64mod2
-                                    _img2 = _foto_con_marca_agua(_cam2.getvalue(), _gps_lat, _gps_lon)
-                                    _b642 = _b64mod2.b64encode(_img2).decode()
-                                    if _sel_key2 == "__extra__":
-                                        st.session_state[_fotos_extra_key2].append(_b642)
-                                    else:
-                                        st.session_state[_fotos_oblig_key2][_sel_key2] = _b642
-                                    st.rerun()
-
-                            # Miniaturas
-                            _all_disp2 = (
-                                [(_k, _fotos_oblig_d2[_k]) for _k,_ in _items_oblig2 if _k in _fotos_oblig_d2]
-                                + [("__extra__", _fb) for _fb in _fotos_extra_l2]
-                            )
-                            if _all_disp2:
-                                _n_ob_disp2 = len(_fotos_oblig_d2)
-                                _tc2 = st.columns(4)
-                                for _ti2, (_tk2, _tfb2) in enumerate(_all_disp2):
-                                    with _tc2[_ti2 % 4]:
-                                        _cap2 = (next((_l for _k,_l in _items_oblig2 if _k==_tk2), "Extra")
-                                                 if _tk2 != "__extra__" else "Extra")
-                                        st.image(f"data:image/jpeg;base64,{_tfb2}",
-                                                 use_container_width=True, caption=_cap2)
-                                        if st.button("🗑️", key=f"del2_{id_ot_sel}_{_ti2}",
-                                                     use_container_width=True):
-                                            if _tk2 == "__extra__":
-                                                _ix2 = _ti2 - _n_ob_disp2
-                                                if 0 <= _ix2 < len(st.session_state[_fotos_extra_key2]):
-                                                    st.session_state[_fotos_extra_key2].pop(_ix2)
-                                            else:
-                                                st.session_state[_fotos_oblig_key2].pop(_tk2, None)
-                                            st.rerun()
-                            st.divider()
-
                             # ── Encuesta de satisfacción (la llena el cliente — sin canvas) ──
                             st.markdown("""<div style='background:#dc2626;color:#fff;padding:10px 16px;
                                         border-radius:8px 8px 0 0;font-weight:700;font-size:0.95rem'>
@@ -4429,7 +4300,29 @@ elif pagina == "ots":
                                         # Generar HTML de fotos (obligatorias + extras con etiquetas)
                                         _cat_fin  = st.session_state.get(f"hvac_cat_{id_ot_sel}", "split")
                                         _prev_fin = st.session_state.get(f"r_prev_{id_ot_sel}", False)
-                                        _items_fin = _FOTOS_OBLIG_AC2[_cat_fin] if _prev_fin else []
+                                        _FOTOS_KEYS_FIN = {
+                                            "split": [
+                                                ("placa_manj","Foto placa manejadora"),("placa_cond","Foto placa condensadora"),
+                                                ("volt_manj","Voltaje manejadora"),("amp_manj","Amperaje manejadora"),
+                                                ("volt_cond","Voltaje condensadora"),("amp_cond","Amperaje condensadora"),
+                                                ("temp_sum","Temperatura suministro"),("temp_ret","Temperatura retorno"),
+                                                ("temp_amb","Temperatura ambiente"),("lav_filt","Lavado filtros (manj.)"),
+                                                ("lav_serp_m","Lavado serpentines (manj.)"),("limp_m","Limpieza int/ext (manj.)"),
+                                                ("rub_m","Revisión rubatex (manj.)"),("lav_serp_c","Lavado serpentín (cond.)"),
+                                                ("limp_c","Limpieza int/ext (cond.)"),("rub_c","Revisión rubatex (cond.)"),
+                                            ],
+                                            "portatil": [
+                                                ("volt_unit","Voltaje unidad"),("amp_unit","Amperaje unidad"),
+                                                ("temp_sum","Temperatura suministro"),("temp_ret","Temperatura retorno"),
+                                                ("temp_amb","Temperatura ambiente"),("lav_filt","Lavado de filtros"),
+                                                ("limp_unit","Limpieza int/ext"),("rev_dren","Revisión drenaje"),
+                                            ],
+                                            "ventilador": [
+                                                ("volt_unit","Voltaje unidad"),("amp_unit","Amperaje unidad"),
+                                                ("limp_unit","Limpieza int/ext"),("rev_fij","Revisión fijaciones"),
+                                            ],
+                                        }
+                                        _items_fin = _FOTOS_KEYS_FIN[_cat_fin] if _prev_fin else []
                                         _fob_fin  = st.session_state.get(f"fotos_oblig_{id_ot_sel}", {})
                                         _fex_fin  = st.session_state.get(f"fotos_extra_{id_ot_sel}", [])
                                         # Validar obligatorias
@@ -4558,6 +4451,98 @@ elif pagina == "ots":
                         _es_preventivo_foto = st.session_state.get(f"r_prev_{id_ot_sel}", False)
                         _items_oblig = _FOTOS_OBLIG_AC[_cat_foto_ac] if _es_preventivo_foto else []
 
+
+                        # ── Fotos del trabajo (antes de guardar) ─────────────────────────
+                        _gps_lat_p1, _gps_lon_p1 = st.session_state.get(_gps_key, (None, None))
+                        _fotos_oblig_key_p1 = f"fotos_oblig_{id_ot_sel}"
+                        _fotos_extra_key_p1 = f"fotos_extra_{id_ot_sel}"
+                        if _fotos_oblig_key_p1 not in st.session_state:
+                            st.session_state[_fotos_oblig_key_p1] = {}
+                        if _fotos_extra_key_p1 not in st.session_state:
+                            st.session_state[_fotos_extra_key_p1] = []
+                        _fotos_oblig_d_p1 = st.session_state[_fotos_oblig_key_p1]
+                        _fotos_extra_l_p1 = st.session_state[_fotos_extra_key_p1]
+                        _n_total_p1 = len(_fotos_oblig_d_p1) + len(_fotos_extra_l_p1)
+                        _n_oblig_ok_p1 = sum(1 for _k,_ in _items_oblig if _k in _fotos_oblig_d_p1)
+
+                        if _items_oblig:
+                            st.markdown(
+                                f"**📷 Fotos del trabajo — {id_ot_sel}** — {_n_total_p1}/25 "
+                                f"&nbsp;|&nbsp; Obligatorias: {_n_oblig_ok_p1}/{len(_items_oblig)}"
+                            )
+                            _g_p1 = st.columns(4)
+                            for _gi_p1, (_gk_p1, _gl_p1) in enumerate(_items_oblig):
+                                with _g_p1[_gi_p1 % 4]:
+                                    _gok_p1 = _gk_p1 in _fotos_oblig_d_p1
+                                    st.markdown(
+                                        f"<div style='font-size:11px;padding:3px 5px;border-radius:4px;"
+                                        f"background:{'#d1fae5' if _gok_p1 else '#fee2e2'};"
+                                        f"border:1px solid {'#6ee7b7' if _gok_p1 else '#fca5a5'};margin:2px'>"
+                                        f"{'✅' if _gok_p1 else '❌'} {_gl_p1}</div>",
+                                        unsafe_allow_html=True)
+                        else:
+                            st.markdown(
+                                f"**📷 Fotos del trabajo — {id_ot_sel}** — {_n_total_p1}/25 "
+                                f"&nbsp;|&nbsp; _(correctivo/visita: fotos libres)_"
+                            )
+
+                        _pending_p1 = [(_k,_l) for _k,_l in _items_oblig if _k not in _fotos_oblig_d_p1]
+                        _hay_esp_p1 = _n_total_p1 < 25
+                        _opcs_p1 = (
+                            [(f"⚠️ {_l}", _k) for _k, _l in _pending_p1]
+                            + ([("➕ Foto adicional", "__extra__")] if _hay_esp_p1 else [])
+                        )
+                        if not _items_oblig:
+                            _opcs_p1 = [("Tomar foto", "__extra__")] if _hay_esp_p1 else []
+                        if _opcs_p1:
+                            if _items_oblig:
+                                _lbl_p1 = [_o[0] for _o in _opcs_p1]
+                                _sel_p1_idx = st.selectbox(
+                                    "¿Qué ítem vas a fotografiar?",
+                                    options=range(len(_lbl_p1)),
+                                    format_func=lambda _i: _lbl_p1[_i],
+                                    key=f"sel_item_p1_{id_ot_sel}",
+                                )
+                                _sel_key_p1 = _opcs_p1[_sel_p1_idx][1]
+                            else:
+                                _sel_key_p1 = "__extra__"
+                            _cam_p1 = st.camera_input(
+                                "Tomar foto",
+                                key=f"cam_p1_{id_ot_sel}_{_n_total_p1}",
+                                disabled=(_n_total_p1 >= 25),
+                            )
+                            if _cam_p1 and _sel_key_p1:
+                                import base64 as _b64p1
+                                _img_p1 = _foto_con_marca_agua(_cam_p1.getvalue(), _gps_lat_p1, _gps_lon_p1)
+                                _b64val_p1 = _b64p1.b64encode(_img_p1).decode()
+                                if _sel_key_p1 == "__extra__":
+                                    st.session_state[_fotos_extra_key_p1].append(_b64val_p1)
+                                else:
+                                    st.session_state[_fotos_oblig_key_p1][_sel_key_p1] = _b64val_p1
+                                st.rerun()
+
+                        _all_p1 = (
+                            [(_k, _fotos_oblig_d_p1[_k]) for _k,_ in _items_oblig if _k in _fotos_oblig_d_p1]
+                            + [("__extra__", _fb) for _fb in _fotos_extra_l_p1]
+                        )
+                        if _all_p1:
+                            _n_ob_p1 = len(_fotos_oblig_d_p1)
+                            _tc_p1 = st.columns(4)
+                            for _ti_p1, (_tk_p1, _tfb_p1) in enumerate(_all_p1):
+                                with _tc_p1[_ti_p1 % 4]:
+                                    _cap_p1 = (next((_l for _k,_l in _items_oblig if _k==_tk_p1), "Extra")
+                                               if _tk_p1 != "__extra__" else "Extra")
+                                    st.image(f"data:image/jpeg;base64,{_tfb_p1}",
+                                             use_container_width=True, caption=_cap_p1)
+                                    if st.button("🗑️", key=f"del_p1_{id_ot_sel}_{_ti_p1}",
+                                                 use_container_width=True):
+                                        if _tk_p1 == "__extra__":
+                                            _ix_p1 = _ti_p1 - _n_ob_p1
+                                            if 0 <= _ix_p1 < len(st.session_state[_fotos_extra_key_p1]):
+                                                st.session_state[_fotos_extra_key_p1].pop(_ix_p1)
+                                        else:
+                                            st.session_state[_fotos_oblig_key_p1].pop(_tk_p1, None)
+                                        st.rerun()
 
                         st.divider()
                         # ── Datos del equipo ──────────────────────────────
