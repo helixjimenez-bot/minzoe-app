@@ -1123,8 +1123,7 @@ def css_formato_carta():
   }
 
   body { font-family: Arial, sans-serif; font-size: 7.5pt; color: #000; line-height: 1.2; }
-  .header { display:flex; justify-content:space-between; align-items:flex-start;
-            border-bottom: 2pt solid #dc2626; padding-bottom: 4pt; margin-bottom: 6pt; }
+  .header { border-bottom: 2pt solid #dc2626; padding-bottom: 4pt; margin-bottom: 6pt; }
   .logo { font-size: 11pt; font-weight: 900; color: #dc2626; }
   table { width:100%; border-collapse:collapse; margin-bottom:4pt; font-size:7pt; }
   td, th { border: 0.5pt solid #999; padding: 2pt 3pt; vertical-align: middle; }
@@ -4870,21 +4869,25 @@ elif pagina == "ots":
     <style>{css_formato_carta()}</style>
     </head><body>
     <div class="pagina">
-    <div class="header">
-      <div style="display:flex;align-items:center;gap:12px">
-        {_logo_tag}
-        <div>
-          <div class="logo">CONSTRUCCIONES MINZOE SAS</div>
-          <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
-          <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
-        </div>
-      </div>
-      <div style="text-align:right">
+    <table class="header" style="margin-bottom:6pt">
+    <tr>
+      <td style="border:none;border-bottom:2pt solid #dc2626;vertical-align:middle;padding:0 8pt 4pt 0;width:68%">
+        <table style="border:none;border-collapse:collapse;margin:0;width:auto"><tr>
+          <td style="border:none;padding:0 8pt 0 0;vertical-align:middle">{_logo_tag}</td>
+          <td style="border:none;padding:0;vertical-align:middle">
+            <div class="logo">CONSTRUCCIONES MINZOE SAS</div>
+            <div style="font-size:7pt">Soluciones integrales en construcción, mantenimiento y climatización.</div>
+            <div style="font-size:7pt">Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+          </td>
+        </tr></table>
+      </td>
+      <td style="border:none;border-bottom:2pt solid #dc2626;text-align:right;vertical-align:top;padding:0 0 4pt 0">
         <b>FORMATO MANTENIMIENTO HVAC</b><br>
         <b>OT: {id_ot_sel}</b><br>
         Fecha: {r_fec_firma}
-      </div>
-    </div>
+      </td>
+    </tr>
+    </table>
 
     <div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto}</div>
 
@@ -4897,27 +4900,27 @@ elif pagina == "ots":
 
     <div class="section">LISTA DE CHEQUEO</div>
     <table><tr>
-      <th colspan="3">UNIDAD MANEJADORA</th>
-      <th colspan="3">UNIDAD CONDENSADORA</th>
-      <th colspan="3">MOTORES Y VENTILADORES</th>
+      <th colspan="2">UNIDAD MANEJADORA</th>
+      <th colspan="2">UNIDAD CONDENSADORA</th>
+      <th colspan="2">MOTORES Y VENTILADORES</th>
     </tr>
-    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td>{k}</td><td></td>" +
-             (f"<td class='ck'>{ck(list(ck_co.values())[i])}</td><td>{list(ck_co.keys())[i]}</td><td></td>" if i < len(ck_co) else "<td></td><td></td><td></td>") +
-             (f"<td class='ck'>{ck(list(ck_vent.values())[i])}</td><td>{list(ck_vent.keys())[i]}</td><td></td></tr>" if i < len(ck_vent) else "<td></td><td></td><td></td></tr>")
+    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td style='border-right:2pt solid #dc2626'>{k}</td>" +
+             (f"<td class='ck'>{ck(list(ck_co.values())[i])}</td><td style='border-right:2pt solid #dc2626'>{list(ck_co.keys())[i]}</td>" if i < len(ck_co) else "<td></td><td style='border-right:2pt solid #dc2626'></td>") +
+             (f"<td class='ck'>{ck(list(ck_vent.values())[i])}</td><td>{list(ck_vent.keys())[i]}</td></tr>" if i < len(ck_vent) else "<td></td><td></td></tr>")
              for i,(k,v) in enumerate(ck_ev.items()))}
     </table>
 
     <table><tr>
-      <th colspan="3">TUBERÍA REFRIGERACIÓN Y DESAGÜE</th>
-      <th colspan="3">DUCTOS Y REJILLAS</th>
+      <th colspan="2">TUBERÍA REFRIGERACIÓN Y DESAGÜE</th>
+      <th colspan="2">DUCTOS Y REJILLAS</th>
     </tr>
-    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td>{k}</td><td></td>" +
-             (f"<td class='ck'>{ck(list(ck_duc.values())[i])}</td><td>{list(ck_duc.keys())[i]}</td><td></td></tr>" if i < len(ck_duc) else "<td></td><td></td><td></td></tr>")
+    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td style='border-right:2pt solid #dc2626'>{k}</td>" +
+             (f"<td class='ck'>{ck(list(ck_duc.values())[i])}</td><td>{list(ck_duc.keys())[i]}</td></tr>" if i < len(ck_duc) else "<td></td><td></td></tr>")
              for i,(k,v) in enumerate(ck_tub.items()))}
     </table>
 
     <div class="section">OBSERVACIONES GENERALES DEL TÉCNICO</div>
-    <table><tr><td style="min-height:50px">{r_obs}</td></tr></table>
+    <table><tr><td style="height:50px">{r_obs}</td></tr></table>
 
     <div class="section">ENCUESTA DE SATISFACCIÓN DEL SERVICIO</div>
     <table>
@@ -4949,21 +4952,21 @@ elif pagina == "ots":
       <td>{r_oper}</td>
     </tr></table>
 
-    <div style="display:flex;justify-content:space-between;margin-top:20px">
-      <div>
+    <table style="width:100%;margin-top:12pt;border:none;border-collapse:collapse">
+    <tr>
+      <td style="border:none;width:50%;vertical-align:top;padding:0">
         <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA TÉCNICO</div>
         <div style="font-size:9px;margin-top:3px">Nombre: {r_nom_tec}</div>
         <div style="font-size:9px">Supervisor: {r_superv}</div>
-      </div>
-      <div>
-        <div>
-          {_firma_hvac_html}
-          <div style="font-size:9px;margin-top:2px;font-weight:600">FIRMA Y SELLO CLIENTE</div>
-          <div style="font-size:9px;margin-top:2px">Nombre: {r_nom_cli}</div>
-          <div style="font-size:9px">Fecha: {r_fec_firma}</div>
-        </div>
-      </div>
-    </div>
+      </td>
+      <td style="border:none;width:50%;vertical-align:top;padding:0">
+        {_firma_hvac_html}
+        <div style="font-size:9px;margin-top:2px;font-weight:600">FIRMA Y SELLO CLIENTE</div>
+        <div style="font-size:9px;margin-top:2px">Nombre: {r_nom_cli}</div>
+        <div style="font-size:9px">Fecha: {r_fec_firma}</div>
+      </td>
+    </tr>
+    </table>
 
     <div class="no-print" style="margin-top:16px;text-align:center">
       <button onclick="window.print()" style="background:#dc2626;color:white;border:none;padding:10px 30px;font-size:14px;border-radius:6px;cursor:pointer">
@@ -5385,21 +5388,25 @@ elif pagina == "ots":
 </head><body>
 <div class="pagina">
 
-<div class="header">
-  <div style="display:flex;align-items:center;gap:12px">
-    {_logo_tag}
-    <div>
-      <div class="logo">CONSTRUCCIONES MINZOE SAS</div>
-      <div>Soluciones integrales en construcción, mantenimiento y climatización.</div>
-      <div>Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
-    </div>
-  </div>
-  <div style="text-align:right">
+<table class="header" style="margin-bottom:6pt">
+<tr>
+  <td style="border:none;border-bottom:2pt solid #dc2626;vertical-align:middle;padding:0 8pt 4pt 0;width:60%">
+    <table style="border:none;border-collapse:collapse;margin:0;width:auto"><tr>
+      <td style="border:none;padding:0 8pt 0 0;vertical-align:middle">{_logo_tag}</td>
+      <td style="border:none;padding:0;vertical-align:middle">
+        <div class="logo">CONSTRUCCIONES MINZOE SAS</div>
+        <div style="font-size:7pt">Soluciones integrales en construcción, mantenimiento y climatización.</div>
+        <div style="font-size:7pt">Cra 5 # 8a-18 &nbsp;|&nbsp; 3175102668 – 3173748665 &nbsp;|&nbsp; construminzoe@gmail.com</div>
+      </td>
+    </tr></table>
+  </td>
+  <td style="border:none;border-bottom:2pt solid #dc2626;text-align:right;vertical-align:top;padding:0 0 4pt 0">
     <b>FORMATO MANTENIMIENTO Y REPARACIONES LOCATIVAS</b><br>
     <b>OT: {id_ot_sel}</b><br>
     Fecha: {l_fec_fir}
-  </div>
-</div>
+  </td>
+</tr>
+</table>
 
 <div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto} &nbsp;&nbsp; <b>Sistema:</b> {sistemas}</div>
 
@@ -5432,7 +5439,7 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 </table>
 
 <div class="section">OBSERVACIONES GENERALES DEL TÉCNICO</div>
-<table><tr><td style="min-height:50px">{l_obs}</td></tr></table>
+<table><tr><td style="height:50px">{l_obs}</td></tr></table>
 
 <div class="section">ENCUESTA DE SATISFACCIÓN DEL SERVICIO</div>
 <table>
@@ -5464,21 +5471,21 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
   <td>{l_oper}</td>
 </tr></table>
 
-<div style="display:flex;justify-content:space-between;margin-top:20px">
-  <div>
+<table style="width:100%;margin-top:12pt;border:none;border-collapse:collapse">
+<tr>
+  <td style="border:none;width:50%;vertical-align:top;padding:0">
     <div class="firma-box" style="width:180px">&nbsp;<br>FIRMA TÉCNICO</div>
     <div style="font-size:9px;margin-top:3px">Nombre: {l_nom_tec}</div>
     <div style="font-size:9px">Supervisor: {l_superv}</div>
-  </div>
-  <div>
-    <div>
-      {_firma_loc_html}
-      <div style="font-size:9px;margin-top:2px;font-weight:600">FIRMA Y SELLO CLIENTE</div>
-      <div style="font-size:9px;margin-top:2px">Nombre: {l_nom_cli}</div>
-      <div style="font-size:9px">Fecha: {l_fec_fir}</div>
-    </div>
-  </div>
-</div>
+  </td>
+  <td style="border:none;width:50%;vertical-align:top;padding:0">
+    {_firma_loc_html}
+    <div style="font-size:9px;margin-top:2px;font-weight:600">FIRMA Y SELLO CLIENTE</div>
+    <div style="font-size:9px;margin-top:2px">Nombre: {l_nom_cli}</div>
+    <div style="font-size:9px">Fecha: {l_fec_fir}</div>
+  </td>
+</tr>
+</table>
 
 <div class="no-print" style="margin-top:16px;text-align:center">
   <button onclick="window.print()" style="background:#dc2626;color:white;border:none;
