@@ -521,7 +521,7 @@ TEXTO_Z5 = {
 
 COLS_OT = [
     "ID", "Origen", "Creado_Por", "SOL_Ref", "Fecha_Creacion", "Fecha_Limite", "Cliente", "NIT", "Sede",
-    "Nombre_Contacto", "Celular_Contacto", "Ciudad", "Direccion_Sede",
+    "Nombre_Contacto", "Celular_Contacto", "Ciudad",
     "Servicio", "Descripcion", "SLA", "Zona", "Tecnico", "Celular_Tecnico",
     "Fecha_Ejecucion", "Hora_Inicio", "Hora_Final", "Horas_Laboradas",
     "Materiales", "Valor_COP", "Estado", "Observaciones", "ID_Item", "Fecha_Modificacion",
@@ -569,17 +569,40 @@ def sb_load(table_name, cols, _v=0):
         return pd.DataFrame(columns=list(cols))
 
 def sb_save(table_name, df):
-    """Guarda dataframe en Supabase (truncate + insert por lotes de 200)."""
+    """Guarda dataframe en Supabase (truncate + insert por lotes de 200).
+    Si el insert falla, intenta restaurar los registros anteriores."""
+    sb = get_sb()
+    # Leer backup antes de borrar nada
     try:
-        sb = get_sb()
+        _bk = sb.table(table_name).select("*").range(0, 9999).execute()
+        _backup_records = _bk.data or []
+    except Exception:
+        _backup_records = []
+
+    try:
         sb.rpc("truncate_table", {"table_name": table_name}).execute()
-        if not df.empty:
-            records = df.fillna("").astype(str).to_dict("records")
-            for i in range(0, len(records), 200):
-                sb.table(table_name).insert(records[i:i+200]).execute()
+    except Exception as e:
+        st.error(f"❌ Error al limpiar tabla '{table_name}': {e}")
+        return False
+
+    if df.empty:
+        return True
+
+    records = df.fillna("").astype(str).to_dict("records")
+    try:
+        for i in range(0, len(records), 200):
+            sb.table(table_name).insert(records[i:i+200]).execute()
         return True
     except Exception as e:
-        st.error(f"❌ Error Supabase '{table_name}': {e}")
+        st.error(f"❌ Error guardando en '{table_name}': {e}")
+        # Restaurar backup para no perder datos
+        if _backup_records:
+            try:
+                for i in range(0, len(_backup_records), 200):
+                    sb.table(table_name).insert(_backup_records[i:i+200]).execute()
+                st.warning("⚠️ Guardado falló pero se restauraron los datos anteriores.")
+            except Exception:
+                st.error("❌ No se pudo restaurar el backup. Revisar Supabase manualmente.")
         return False
 
 def get_sheet(tab_name):
@@ -1439,7 +1462,6 @@ def crear_ot_desde_sol(sol, ots):
         "SLA":              sol.get("SLA", ""),
         "Zona":             sol.get("Zona", ""),
         "Ciudad":           sol.get("Ciudad", ""),
-        "Direccion_Sede":   sol.get("Direccion_Sede", ""),
         "Tecnico":          "",
         "Celular_Tecnico":  "",
         "Fecha_Ejecucion":  "",
