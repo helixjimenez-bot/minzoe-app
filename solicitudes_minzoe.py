@@ -4865,23 +4865,19 @@ elif pagina == "ots":
                                     # La firma se agrega en fase 2 (después del form)
                                     _firma_hvac_html = "<!--FIRMA_CLIENTE-->"
 
-                                    # ── Datos cliente (tabla ancho completo) ──
+                                    # ── Datos cliente (inline) y equipo (tabla) ──
+                                    _cli_parts = []
+                                    if fila_ot.get('Cliente',''): _cli_parts.append(f"<b>Cliente:</b> {fila_ot['Cliente']}")
+                                    if fila_ot.get('Sede',''): _cli_parts.append(f"<b>Sucursal:</b> {fila_ot.get('Sede','')}")
+                                    if fila_ot.get('Ciudad',''): _cli_parts.append(f"<b>Ciudad:</b> {fila_ot.get('Ciudad','')}")
                                     _contacto_str = fila_ot.get('Nombre_Contacto','')
                                     _celular_str  = fila_ot.get('Celular_Contacto','')
-                                    _contacto_full = f"{_contacto_str}{(' — ' + _celular_str) if _celular_str else ''}"
-                                    _td_c = 'style="padding:1px 6px 3px 0;vertical-align:top"'
+                                    if _contacto_str or _celular_str:
+                                        _cli_parts.append(f"<b>Contacto:</b> {_contacto_str}{(' — ' + _celular_str) if _celular_str else ''}")
                                     _datos_cliente_html = (
-                                        f'<table style="width:100%;font-size:9pt;border-collapse:collapse;margin:2px 0 5px">'
-                                        f'<tr>'
-                                        f'<td {_td_c}><b>Cliente:</b> {fila_ot.get("Cliente","")}</td>'
-                                        f'<td {_td_c}><b>Sucursal:</b> {fila_ot.get("Sede","")}</td>'
-                                        f'<td {_td_c}><b>Ciudad:</b> {fila_ot.get("Ciudad","")}</td>'
-                                        f'</tr>'
-                                        f'<tr>'
-                                        f'<td colspan="2" {_td_c}><b>Dirección:</b> {fila_ot.get("Direccion_Sede","")}</td>'
-                                        f'<td {_td_c}><b>Contacto:</b> {_contacto_full}</td>'
-                                        f'</tr>'
-                                        f'</table>'
+                                        '<div style="padding:2px 0 5px;font-size:9pt">'
+                                        + " &nbsp;|&nbsp; ".join(_cli_parts)
+                                        + "</div>"
                                     )
 
                                     _eq_rows = []
@@ -5484,18 +5480,9 @@ elif pagina == "ots":
 <div style="margin-bottom:6px"><b>Tipo:</b> {tipo_mto} &nbsp;&nbsp; <b>Sistema:</b> {sistemas}</div>
 
 <div class="section" style="margin-top:2px">DATOS DEL CLIENTE</div>
-<table style="width:100%;font-size:9pt;border-collapse:collapse;margin:2px 0 5px">
-<tr>
-  <td style="padding:1px 6px 3px 0;vertical-align:top"><b>Cliente:</b> {fila_ot.get('Cliente','')}</td>
-  <td style="padding:1px 6px 3px 0;vertical-align:top"><b>Sucursal:</b> {fila_ot.get('Sede','')}</td>
-  <td style="padding:1px 6px 3px 0;vertical-align:top"><b>Ciudad:</b> {fila_ot.get('Ciudad','')}</td>
-</tr>
-<tr>
-  <td colspan="2" style="padding:1px 6px 3px 0;vertical-align:top"><b>Dirección:</b> {fila_ot.get('Direccion_Sede','')}</td>
-  <td style="padding:1px 6px 3px 0;vertical-align:top"><b>Contacto:</b> {fila_ot.get('Nombre_Contacto','')}{" — " + fila_ot.get('Celular_Contacto','') if fila_ot.get('Celular_Contacto','') else ""}</td>
-</tr>
-{f'<tr><td colspan="3" style="padding:1px 6px 3px 0"><b>Área intervenida:</b> {l_area}</td></tr>' if l_area.strip() else ""}
-</table>
+<div style="padding:2px 0 5px;font-size:9pt">
+  <b>Cliente:</b> {fila_ot['Cliente']} &nbsp;|&nbsp; <b>Sucursal:</b> {fila_ot.get('Sede','')}{"&nbsp;|&nbsp; <b>Ciudad:</b> " + fila_ot.get('Ciudad','') if fila_ot.get('Ciudad','') else ""} &nbsp;|&nbsp; <b>Contacto:</b> {fila_ot.get('Nombre_Contacto','')}{"&nbsp;—&nbsp;" + fila_ot.get('Celular_Contacto','') if fila_ot.get('Celular_Contacto','') else ""}{"&nbsp;|&nbsp; <b>Área intervenida:</b> " + l_area if l_area.strip() else ""}
+</div>
 
 <div style="background:#f8f8f8;border:0.5pt solid #ccc;padding:4pt;margin:4pt 0;font-size:7pt">
 EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
