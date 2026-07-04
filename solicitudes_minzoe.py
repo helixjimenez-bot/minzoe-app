@@ -524,7 +524,8 @@ COLS_OT = [
     "Nombre_Contacto", "Celular_Contacto",
     "Servicio", "Descripcion", "SLA", "Zona", "Tecnico", "Celular_Tecnico",
     "Fecha_Ejecucion", "Hora_Inicio", "Hora_Final", "Horas_Laboradas",
-    "Materiales", "Valor_COP", "Estado", "Observaciones", "ID_Item", "Fecha_Modificacion",
+    "Materiales", "Valor_COP", "Estado", "Observaciones", "ID_Item",
+    "Fecha_Modificacion", "Fecha_Corregimiento",
 ]
 
 
@@ -4062,6 +4063,18 @@ elif pagina == "ots":
                             except Exception:
                                 fecha_default = datetime.today().date()
                             ee_fecha = st.date_input("Fecha de ejecución", value=fecha_default)
+                            # Fecha de corregimiento (período al que pertenece la OT)
+                            fc_actual = fila_ot.get("Fecha_Corregimiento", "")
+                            try:
+                                fc_default = datetime.strptime(fc_actual, "%Y-%m-%d").date() if fc_actual else None
+                            except Exception:
+                                fc_default = None
+                            ee_fecha_corr = st.date_input(
+                                "📅 Fecha de corregimiento",
+                                value=fc_default,
+                                help="Si esta OT pertenece a un período anterior (ej. se hizo en julio pero era de junio), indique aquí la fecha del período correcto.",
+                                key=f"ee_fc_{id_ot_sel}"
+                            )
                             # Hora inicio
                             ini_actual = fila_ot.get("Hora_Inicio", HORAS_12[16])
                             idx_ini = HORAS_12.index(ini_actual) if ini_actual in HORAS_12 else 16
@@ -4087,8 +4100,9 @@ elif pagina == "ots":
                             if estado_ot_ant != ee_estado:
                                 registrar_cambio("OT", id_ot_sel, "Estado", estado_ot_ant, ee_estado)
                             ots.loc[idx_ot, "Valor_COP"]      = ee_valor
-                            ots.loc[idx_ot, "Fecha_Ejecucion"]  = ee_fecha.strftime("%Y-%m-%d")
-                            ots.loc[idx_ot, "Hora_Inicio"]      = ee_hora_ini
+                            ots.loc[idx_ot, "Fecha_Ejecucion"]       = ee_fecha.strftime("%Y-%m-%d")
+                            ots.loc[idx_ot, "Fecha_Corregimiento"]   = ee_fecha_corr.strftime("%Y-%m-%d") if ee_fecha_corr else ""
+                            ots.loc[idx_ot, "Hora_Inicio"]           = ee_hora_ini
                             ots.loc[idx_ot, "Hora_Final"]       = ee_hora_fin
                             ots.loc[idx_ot, "Horas_Laboradas"]  = calcular_horas(ee_hora_ini, ee_hora_fin)
                             ots.loc[idx_ot, "Materiales"]     = ee_mat
