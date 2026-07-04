@@ -4323,7 +4323,6 @@ elif pagina == "ots":
                                     "Tomar foto",
                                     key=f"cam2_{id_ot_sel}_{_n_total2}",
                                     disabled=(_n_total2 >= 25),
-                                    camera_facing_mode="environment",
                                 )
                                 if _cam2 and _sel_key2:
                                     import base64 as _b64mod2
@@ -4390,7 +4389,6 @@ elif pagina == "ots":
                             _foto_firma_h = st.camera_input(
                                 "Tomar foto de la firma",
                                 key=f"firma_foto_h_{id_ot_sel}",
-                                camera_facing_mode="environment",
                             )
                             if not _foto_firma_h:
                                 st.warning("⚠️ Debes tomar la foto de la firma del cliente para continuar")
@@ -5201,7 +5199,6 @@ elif pagina == "ots":
                                 "Tomar foto",
                                 key=f"cam_loc_{id_ot_sel}_{len(_fotos_loc)}",
                                 disabled=len(_fotos_loc) >= 25,
-                                camera_facing_mode="environment",
                             )
                             if _cam_loc:
                                 import base64 as _b64fl
@@ -5258,7 +5255,6 @@ elif pagina == "ots":
                             _foto_firma_l = st.camera_input(
                                 "Tomar foto de la firma",
                                 key=f"firma_foto_l_{id_ot_sel}",
-                                camera_facing_mode="environment",
                             )
                             if not _foto_firma_l:
                                 st.warning("⚠️ Debes tomar la foto de la firma del cliente para continuar")
