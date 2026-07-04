@@ -4215,6 +4215,64 @@ elif pagina == "ots":
                         if _hvac_raw_key in st.session_state:
                             st.success("✅ Datos técnicos guardados.")
 
+                            # ── Fotos del trabajo (antes de finalizar) ──────────────────────
+                            _gps_key = f"gps_{id_ot_sel}"
+                            if _gps_key not in st.session_state:
+                                st.session_state[_gps_key] = (None, None)
+                            if st.session_state[_gps_key] == (None, None):
+                                try:
+                                    from streamlit_js_eval import get_geolocation as _get_geo
+                                    _loc_data = _get_geo(key=f"geo_{id_ot_sel}")
+                                    if _loc_data and _loc_data.get("coords"):
+                                        st.session_state[_gps_key] = (
+                                            _loc_data["coords"]["latitude"],
+                                            _loc_data["coords"]["longitude"])
+                                except Exception:
+                                    pass
+                            _gps_lat, _gps_lon = st.session_state[_gps_key]
+
+                            _fotos_hvac_key = f"fotos_{id_ot_sel}"
+                            if _fotos_hvac_key not in st.session_state:
+                                st.session_state[_fotos_hvac_key] = []
+                            _fotos_hvac = st.session_state[_fotos_hvac_key]
+
+                            st.markdown(
+                                f"**📷 Fotos del trabajo — {id_ot_sel}**  \n"
+                                f"<span style='font-size:0.85rem;color:#555'>"
+                                f"{fila_ot.get('Cliente','')} | {fila_ot.get('Sede','')}"
+                                f"</span>",
+                                unsafe_allow_html=True,
+                            )
+                            if _gps_lat:
+                                st.caption(f"📍 {_gps_lat:.5f}°, {_gps_lon:.5f}° — ubicación registrada")
+                            else:
+                                st.caption("📍 Permite el acceso a la ubicación cuando el celular lo solicite")
+
+                            _cam_hvac = st.camera_input(
+                                "Tomar foto",
+                                key=f"cam_hvac_{id_ot_sel}_{len(_fotos_hvac)}",
+                                disabled=len(_fotos_hvac) >= 25,
+                            )
+                            if _cam_hvac:
+                                import base64 as _b64fh
+                                _img_ph = _foto_con_marca_agua(_cam_hvac.getvalue(), _gps_lat, _gps_lon)
+                                st.session_state[_fotos_hvac_key].append(
+                                    _b64fh.b64encode(_img_ph).decode())
+                                st.rerun()
+
+                            st.caption(f"{len(_fotos_hvac)}/25 fotos tomadas")
+                            if _fotos_hvac:
+                                _fc = st.columns(4)
+                                for _fi, _fb in enumerate(_fotos_hvac):
+                                    with _fc[_fi % 4]:
+                                        st.image(f"data:image/jpeg;base64,{_fb}",
+                                                 use_container_width=True, caption=f"Foto {_fi+1}")
+                                        if st.button("🗑️", key=f"del_fh_{id_ot_sel}_{_fi}",
+                                                     use_container_width=True):
+                                            st.session_state[_fotos_hvac_key].pop(_fi)
+                                            st.rerun()
+                            st.divider()
+
                             # ── Encuesta de satisfacción (la llena el cliente — sin canvas) ──
                             st.markdown("""<div style='background:#dc2626;color:#fff;padding:10px 16px;
                                         border-radius:8px 8px 0 0;font-weight:700;font-size:0.95rem'>
@@ -4282,7 +4340,33 @@ elif pagina == "ots":
                                         _buf_s = _ios.BytesIO(); _img_s.save(_buf_s, format="PNG")
                                         _firma_b64f = f"data:image/png;base64,{_b64f.b64encode(_buf_s.getvalue()).decode()}"
                                         _firma_img_h = f'<img src="{_firma_b64f}" style="width:220px;height:100px;object-fit:contain;display:block;border-bottom:1px solid #333">'
-                                        _html_final = st.session_state[_hvac_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_img_h)
+                                        # Generar HTML de fotos
+                                        _fotos_fin = st.session_state.get(f"fotos_{id_ot_sel}", [])
+                                        if _fotos_fin:
+                                            _fp_list = [(f"Foto {_i+1}", _fb) for _i, _fb in enumerate(_fotos_fin)]
+                                            _fp_pages = []
+                                            for _p0 in range(0, len(_fp_list), 6):
+                                                _chunk = _fp_list[_p0:_p0+6]
+                                                _rh = ""
+                                                for _r in range(0, len(_chunk), 2):
+                                                    _two = _chunk[_r:_r+2]
+                                                    _tds = "".join(
+                                                        f'<td style="width:50%;padding:5px;text-align:center;vertical-align:top">'
+                                                        f'<img src="data:image/jpeg;base64,{_fb}" style="width:99%;height:250px;object-fit:cover;border:1px solid #ccc;border-radius:3px">'
+                                                        f'<div style="font-size:9px;margin-top:3px;font-weight:600;color:#444">{_fl}</div></td>'
+                                                        for _fl, _fb in _two)
+                                                    for _ in range(2-len(_two)): _tds += '<td></td>'
+                                                    _rh += f'<tr>{_tds}</tr>'
+                                                _fp_pages.append(
+                                                    f'<div style="page-break-before:always;padding:4px">'
+                                                    f'<div class="section">REGISTRO FOTOGRÁFICO — Página {_p0//6+1}</div>'
+                                                    f'<table style="width:100%;border-collapse:collapse">{_rh}</table></div>')
+                                            _fotos_html_fin = "".join(_fp_pages)
+                                        else:
+                                            _fotos_html_fin = ""
+                                        _html_final = (st.session_state[_hvac_raw_key]
+                                            .replace("<!--FOTOS-->", _fotos_html_fin)
+                                            .replace("<!--FIRMA_CLIENTE-->", _firma_img_h))
                                         guardar_reporte_sb(
                                             ot_id   = id_ot_sel,
                                             tipo    = "HVAC",
@@ -4690,42 +4774,8 @@ elif pagina == "ots":
                                     _logo_b64 = get_logo_base64()
                                     _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
 
-                                    # Fotos en páginas separadas: 6 por página, tabla 3×2
-                                    _fotos_oblig_rep = st.session_state.get(f"fotos_oblig_{id_ot_sel}", {})
-                                    _fotos_extra_rep  = st.session_state.get(f"fotos_extra_{id_ot_sel}", [])
-                                    _all_foto_pairs = (
-                                        [(_fl, _fotos_oblig_rep[_fk]) for _fk, _fl in _items_oblig if _fk in _fotos_oblig_rep]
-                                        + [("Adicional", _fb) for _fb in _fotos_extra_rep]
-                                    )
-                                    if _all_foto_pairs:
-                                        _foto_pages = []
-                                        for _p0 in range(0, len(_all_foto_pairs), 6):
-                                            _chunk = _all_foto_pairs[_p0:_p0 + 6]
-                                            _rows_html = ""
-                                            for _r in range(0, len(_chunk), 2):
-                                                _two = _chunk[_r:_r + 2]
-                                                _tds = "".join(
-                                                    f'<td style="width:50%;padding:5px;text-align:center;vertical-align:top">'
-                                                    f'<img src="data:image/jpeg;base64,{_fb}" '
-                                                    f'style="width:99%;height:250px;object-fit:cover;'
-                                                    f'border:1px solid #ccc;border-radius:3px">'
-                                                    f'<div style="font-size:9px;margin-top:3px;font-weight:600;color:#444">{_fl}</div>'
-                                                    f'</td>'
-                                                    for _fl, _fb in _two
-                                                )
-                                                for _ in range(2 - len(_two)):
-                                                    _tds += '<td></td>'
-                                                _rows_html += f'<tr>{_tds}</tr>'
-                                            _pnum = _p0 // 6 + 1
-                                            _foto_pages.append(
-                                                f'<div style="page-break-before:always;padding:4px">'
-                                                f'<div class="section">REGISTRO FOTOGRÁFICO — Página {_pnum}</div>'
-                                                f'<table style="width:100%;border-collapse:collapse">{_rows_html}</table>'
-                                                f'</div>'
-                                            )
-                                        _fotos_html = "".join(_foto_pages)
-                                    else:
-                                        _fotos_html = ""
+                                    # Las fotos se agregan en fase 2 (antes de finalizar)
+                                    _fotos_html = "<!--FOTOS-->"
 
                                     # La firma se agrega en fase 2 (después del form)
                                     _firma_hvac_html = "<!--FIRMA_CLIENTE-->"
@@ -4985,134 +5035,6 @@ elif pagina == "ots":
                                         st.session_state[f"hvac_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
                                         st.rerun()
 
-                        # ── Fotos del trabajo (después de Observaciones generales) ──
-                        _fotos_oblig_key = f"fotos_oblig_{id_ot_sel}"
-                        _fotos_extra_key = f"fotos_extra_{id_ot_sel}"
-                        if _fotos_oblig_key not in st.session_state:
-                            st.session_state[_fotos_oblig_key] = {}
-                        if _fotos_extra_key not in st.session_state:
-                            st.session_state[_fotos_extra_key] = []
-                        _fotos_oblig_d = st.session_state[_fotos_oblig_key]
-                        _fotos_extra_l = st.session_state[_fotos_extra_key]
-                        _n_total_fotos = len(_fotos_oblig_d) + len(_fotos_extra_l)
-
-                        # ── Ubicación GPS para marca de agua (automático) ──
-                        _gps_key = f"gps_{id_ot_sel}"
-                        if _gps_key not in st.session_state:
-                            st.session_state[_gps_key] = (None, None)
-                        if st.session_state[_gps_key] == (None, None):
-                            try:
-                                from streamlit_js_eval import get_geolocation as _get_geo
-                                _loc_data = _get_geo(key=f"geo_{id_ot_sel}")
-                                if _loc_data and _loc_data.get("coords"):
-                                    st.session_state[_gps_key] = (
-                                        _loc_data["coords"]["latitude"],
-                                        _loc_data["coords"]["longitude"])
-                            except Exception:
-                                pass
-                        _gps_lat, _gps_lon = st.session_state[_gps_key]
-                        if _gps_lat:
-                            st.caption(f"📍 {_gps_lat:.5f}°, {_gps_lon:.5f}° — ubicación registrada en las fotos")
-                        else:
-                            st.caption("📍 Permite el acceso a la ubicación cuando el celular lo solicite")
-
-                        st.divider()
-                        _n_oblig_ok = sum(1 for _k, _ in _items_oblig if _k in _fotos_oblig_d)
-                        if _items_oblig:
-                            st.markdown(
-                                f"**📷 Fotos del trabajo** — {_n_total_fotos}/25 "
-                                f"&nbsp;|&nbsp; Obligatorias: {_n_oblig_ok}/{len(_items_oblig)}"
-                            )
-                        else:
-                            st.markdown(
-                                f"**📷 Fotos del trabajo** — {_n_total_fotos}/25 "
-                                f"&nbsp;|&nbsp; _(correctivo/visita: fotos libres, no hay lista obligatoria)_"
-                            )
-
-                        # Grid de estado por ítem obligatorio
-                        _g_cols = st.columns(4)
-                        for _gi, (_gk, _gl) in enumerate(_items_oblig):
-                            with _g_cols[_gi % 4]:
-                                _gok = _gk in _fotos_oblig_d
-                                st.markdown(
-                                    f"<div style='font-size:11px;padding:3px 5px;border-radius:4px;"
-                                    f"background:{'#d1fae5' if _gok else '#fee2e2'};"
-                                    f"border:1px solid {'#6ee7b7' if _gok else '#fca5a5'};margin:2px'>"
-                                    f"{'✅' if _gok else '❌'} {_gl}</div>",
-                                    unsafe_allow_html=True,
-                                )
-
-                        # Selector del ítem + cámara
-                        _pending_items = [(_k, _l) for _k, _l in _items_oblig if _k not in _fotos_oblig_d]
-                        _hay_espacio   = _n_total_fotos < 25
-                        _opcs_foto = (
-                            [("-- Selecciona el ítem a fotografiar --", "")]
-                            + [(f"⚠️ {_l}", _k) for _k, _l in _pending_items]
-                            + ([("➕ Foto adicional", "__extra__")] if _hay_espacio else [])
-                        )
-                        if len(_opcs_foto) > 1:
-                            _lbl_opcs = [_o[0] for _o in _opcs_foto]
-                            _sel_idx = st.selectbox(
-                                "¿Qué ítem vas a fotografiar?",
-                                options=range(len(_lbl_opcs)),
-                                format_func=lambda _i: _lbl_opcs[_i],
-                                key=f"sel_item_foto_{id_ot_sel}",
-                            )
-                            _sel_item_key = _opcs_foto[_sel_idx][1]
-                            _cam_oblig = st.camera_input(
-                                "Tomar foto",
-                                key=f"cam_oblig_{id_ot_sel}_{_n_total_fotos}",
-                                disabled=(_sel_item_key == ""),
-                            )
-                            if _cam_oblig and _sel_item_key:
-                                import base64 as _b64mod
-                                _img_proc = _foto_con_marca_agua(
-                                    _cam_oblig.getvalue(), _gps_lat, _gps_lon)
-                                _b64 = _b64mod.b64encode(_img_proc).decode()
-                                if _sel_item_key == "__extra__":
-                                    st.session_state[_fotos_extra_key].append(_b64)
-                                else:
-                                    st.session_state[_fotos_oblig_key][_sel_item_key] = _b64
-                                st.rerun()
-                        else:
-                            st.success("✅ Todas las fotos obligatorias tomadas.")
-                            if _hay_espacio:
-                                _cam_extra = st.camera_input(
-                                    "Foto adicional (opcional)",
-                                    key=f"cam_extra_{id_ot_sel}_{_n_total_fotos}",
-                                )
-                                if _cam_extra:
-                                    import base64 as _b64mod
-                                    _img_proc = _foto_con_marca_agua(
-                                        _cam_extra.getvalue(), _gps_lat, _gps_lon)
-                                    _b64 = _b64mod.b64encode(_img_proc).decode()
-                                    st.session_state[_fotos_extra_key].append(_b64)
-                                    st.rerun()
-
-                        # Miniaturas con opción de borrar
-                        if _fotos_oblig_d or _fotos_extra_l:
-                            _n_oblig_disp = len(_fotos_oblig_d)
-                            _all_disp = (
-                                [(_k, _fotos_oblig_d[_k]) for _k, _ in _items_oblig if _k in _fotos_oblig_d]
-                                + [("__extra__", _fb) for _fb in _fotos_extra_l]
-                            )
-                            _td_cols = st.columns(4)
-                            for _ti, (_tk, _tfb) in enumerate(_all_disp):
-                                with _td_cols[_ti % 4]:
-                                    _cap = (next((_l for _k, _l in _items_oblig if _k == _tk), "Extra")
-                                            if _tk != "__extra__" else "Extra")
-                                    st.image(f"data:image/jpeg;base64,{_tfb}",
-                                             use_container_width=True, caption=_cap)
-                                    if st.button("🗑️", key=f"del_foto_{id_ot_sel}_{_ti}",
-                                                 use_container_width=True):
-                                        if _tk == "__extra__":
-                                            _idx_ex = _ti - _n_oblig_disp
-                                            if 0 <= _idx_ex < len(st.session_state[_fotos_extra_key]):
-                                                st.session_state[_fotos_extra_key].pop(_idx_ex)
-                                        else:
-                                            st.session_state[_fotos_oblig_key].pop(_tk, None)
-                                        st.rerun()
-
                         # ── FUERA del form: guardar ──────────────────────
                         _html_key = f"hvac_html_{id_ot_sel}"
                         if _html_key in st.session_state:
@@ -5132,7 +5054,7 @@ elif pagina == "ots":
                             msg_fin = _finalizar_ot_y_sol(id_ot_sel)
                             del st.session_state[_html_key]
                             for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect",
-                                       f"fotos_oblig_{id_ot_sel}", f"fotos_extra_{id_ot_sel}"]:
+                                       f"fotos_{id_ot_sel}", f"gps_{id_ot_sel}"]:
                                 st.session_state.pop(_k, None)
                             st.session_state["_msg_tec_ok"] = f"✅ {msg_fin}"
                             st.rerun()
@@ -5144,7 +5066,65 @@ elif pagina == "ots":
                         # ── Fase 2: canvas de firma (aparece después de guardar el form) ──
                         _loc_raw_key = f"loc_html_raw_{id_ot_sel}"
                         if _loc_raw_key in st.session_state:
-                            st.success("✅ Datos técnicos guardados. Ahora el cliente llena la encuesta y firma.")
+                            st.success("✅ Datos técnicos guardados.")
+
+                            # ── Fotos del trabajo (antes de finalizar) ──────────────────────
+                            _gps_key_l = f"gps_{id_ot_sel}"
+                            if _gps_key_l not in st.session_state:
+                                st.session_state[_gps_key_l] = (None, None)
+                            if st.session_state[_gps_key_l] == (None, None):
+                                try:
+                                    from streamlit_js_eval import get_geolocation as _get_geo_l
+                                    _loc_data_l = _get_geo_l(key=f"geo_l_{id_ot_sel}")
+                                    if _loc_data_l and _loc_data_l.get("coords"):
+                                        st.session_state[_gps_key_l] = (
+                                            _loc_data_l["coords"]["latitude"],
+                                            _loc_data_l["coords"]["longitude"])
+                                except Exception:
+                                    pass
+                            _gps_lat_l, _gps_lon_l = st.session_state[_gps_key_l]
+
+                            _fotos_loc_key = f"fotos_{id_ot_sel}"
+                            if _fotos_loc_key not in st.session_state:
+                                st.session_state[_fotos_loc_key] = []
+                            _fotos_loc = st.session_state[_fotos_loc_key]
+
+                            st.markdown(
+                                f"**📷 Fotos del trabajo — {id_ot_sel}**  \n"
+                                f"<span style='font-size:0.85rem;color:#555'>"
+                                f"{fila_ot.get('Cliente','')} | {fila_ot.get('Sede','')}"
+                                f"</span>",
+                                unsafe_allow_html=True,
+                            )
+                            if _gps_lat_l:
+                                st.caption(f"📍 {_gps_lat_l:.5f}°, {_gps_lon_l:.5f}° — ubicación registrada")
+                            else:
+                                st.caption("📍 Permite el acceso a la ubicación cuando el celular lo solicite")
+
+                            _cam_loc = st.camera_input(
+                                "Tomar foto",
+                                key=f"cam_loc_{id_ot_sel}_{len(_fotos_loc)}",
+                                disabled=len(_fotos_loc) >= 25,
+                            )
+                            if _cam_loc:
+                                import base64 as _b64fl
+                                _img_pl = _foto_con_marca_agua(_cam_loc.getvalue(), _gps_lat_l, _gps_lon_l)
+                                st.session_state[_fotos_loc_key].append(
+                                    _b64fl.b64encode(_img_pl).decode())
+                                st.rerun()
+
+                            st.caption(f"{len(_fotos_loc)}/25 fotos tomadas")
+                            if _fotos_loc:
+                                _flc = st.columns(4)
+                                for _fli, _flb in enumerate(_fotos_loc):
+                                    with _flc[_fli % 4]:
+                                        st.image(f"data:image/jpeg;base64,{_flb}",
+                                                 use_container_width=True, caption=f"Foto {_fli+1}")
+                                        if st.button("🗑️", key=f"del_fl_{id_ot_sel}_{_fli}",
+                                                     use_container_width=True):
+                                            st.session_state[_fotos_loc_key].pop(_fli)
+                                            st.rerun()
+                            st.divider()
 
                             # ── Encuesta satisfacción Locativos FASE 2 ────
                             st.markdown("""
@@ -5216,7 +5196,33 @@ elif pagina == "ots":
                                         _buf_sl = _iosl.BytesIO(); _img_sl.save(_buf_sl, format="PNG")
                                         _firma_b64fl = f"data:image/png;base64,{_b64fl.b64encode(_buf_sl.getvalue()).decode()}"
                                         _firma_img_l = f'<img src="{_firma_b64fl}" style="width:220px;height:100px;object-fit:contain;display:block;border-bottom:1px solid #333">'
-                                        _html_loc_final = st.session_state[_loc_raw_key].replace("<!--FIRMA_CLIENTE-->", _firma_img_l)
+                                        # Generar HTML de fotos Locativos
+                                        _fotos_loc_fin = st.session_state.get(f"fotos_{id_ot_sel}", [])
+                                        if _fotos_loc_fin:
+                                            _flp_pages = []
+                                            _flp_list = [(f"Foto {_i+1}", _fb) for _i, _fb in enumerate(_fotos_loc_fin)]
+                                            for _p0 in range(0, len(_flp_list), 6):
+                                                _chunk = _flp_list[_p0:_p0+6]
+                                                _rh = ""
+                                                for _r in range(0, len(_chunk), 2):
+                                                    _two = _chunk[_r:_r+2]
+                                                    _tds = "".join(
+                                                        f'<td style="width:50%;padding:5px;text-align:center;vertical-align:top">'
+                                                        f'<img src="data:image/jpeg;base64,{_fb}" style="width:99%;height:250px;object-fit:cover;border:1px solid #ccc;border-radius:3px">'
+                                                        f'<div style="font-size:9px;margin-top:3px;font-weight:600;color:#444">{_fl}</div></td>'
+                                                        for _fl, _fb in _two)
+                                                    for _ in range(2-len(_two)): _tds += '<td></td>'
+                                                    _rh += f'<tr>{_tds}</tr>'
+                                                _flp_pages.append(
+                                                    f'<div style="page-break-before:always;padding:4px">'
+                                                    f'<div class="section">REGISTRO FOTOGRÁFICO — Página {_p0//6+1}</div>'
+                                                    f'<table style="width:100%;border-collapse:collapse">{_rh}</table></div>')
+                                            _fotos_loc_html = "".join(_flp_pages)
+                                        else:
+                                            _fotos_loc_html = ""
+                                        _html_loc_final = (st.session_state[_loc_raw_key]
+                                            .replace("<!--FOTOS-->", _fotos_loc_html)
+                                            .replace("<!--FIRMA_CLIENTE-->", _firma_img_l))
                                         guardar_reporte_sb(
                                             ot_id   = id_ot_sel,
                                             tipo    = "Locativos",
@@ -5347,38 +5353,8 @@ elif pagina == "ots":
                                 _logo_b64 = get_logo_base64()
                                 _logo_tag = f'<img src="{_logo_b64}" style="height:60px;object-fit:contain">' if _logo_b64 else ""
 
-                                # Fotos Locativos: páginas de 6, tabla 3×2
-                                _fotos_list = st.session_state.get(f"fotos_rep_{id_ot_sel}", [])
-                                if _fotos_list:
-                                    _loc_foto_pages = []
-                                    for _p0 in range(0, len(_fotos_list), 6):
-                                        _chunk = _fotos_list[_p0:_p0 + 6]
-                                        _rows_html = ""
-                                        for _r in range(0, len(_chunk), 2):
-                                            _two = _chunk[_r:_r + 2]
-                                            _tds = "".join(
-                                                f'<td style="width:50%;padding:5px;text-align:center;vertical-align:top">'
-                                                f'<img src="data:image/jpeg;base64,{_fb}" '
-                                                f'style="width:99%;height:250px;object-fit:cover;'
-                                                f'border:1px solid #ccc;border-radius:3px">'
-                                                f'</td>'
-                                                for _fb in _two
-                                            )
-                                            for _ in range(2 - len(_two)):
-                                                _tds += '<td></td>'
-                                            _rows_html += f'<tr>{_tds}</tr>'
-                                        _pnum = _p0 // 6 + 1
-                                        _loc_foto_pages.append(
-                                            f'<div style="page-break-before:always;padding:4px">'
-                                            f'<div class="section">REGISTRO FOTOGRÁFICO — Página {_pnum}</div>'
-                                            f'<table style="width:100%;border-collapse:collapse">{_rows_html}</table>'
-                                            f'</div>'
-                                        )
-                                    _fotos_html = "".join(_loc_foto_pages)
-                                else:
-                                    _fotos_html = ""
-
-                                # La firma se agrega en fase 2 (después del form)
+                                # Fotos y firma se agregan en fase 2 (antes de finalizar)
+                                _fotos_html = "<!--FOTOS-->"
                                 _firma_loc_html = "<!--FIRMA_CLIENTE-->"
 
                                 html_loc = f"""<!DOCTYPE html>
@@ -5503,58 +5479,7 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                                 st.session_state[f"loc_fec_{id_ot_sel}"]  = fila_ot.get("Fecha_Ejecucion","")
                                 st.rerun()
 
-                        # ── Fotos del trabajo Locativos (después de Observaciones) ──
-                        _fotos_key = f"fotos_rep_{id_ot_sel}"
-                        if _fotos_key not in st.session_state:
-                            st.session_state[_fotos_key] = []
-                        _n_fotos = len(st.session_state[_fotos_key])
-
-                        # GPS para marca de agua automático (reutiliza clave del OT)
-                        _gps_key_l = f"gps_{id_ot_sel}"
-                        if _gps_key_l not in st.session_state:
-                            st.session_state[_gps_key_l] = (None, None)
-                        if st.session_state[_gps_key_l] == (None, None):
-                            try:
-                                from streamlit_js_eval import get_geolocation as _get_geo_l
-                                _loc_dl = _get_geo_l(key=f"geo_l_{id_ot_sel}")
-                                if _loc_dl and _loc_dl.get("coords"):
-                                    st.session_state[_gps_key_l] = (
-                                        _loc_dl["coords"]["latitude"],
-                                        _loc_dl["coords"]["longitude"])
-                            except Exception:
-                                pass
-                        _l_lat, _l_lon = st.session_state[_gps_key_l]
-                        if _l_lat:
-                            st.caption(f"📍 {_l_lat:.5f}°, {_l_lon:.5f}° — ubicación registrada en las fotos")
-                        else:
-                            st.caption("📍 Permite el acceso a la ubicación cuando el celular lo solicite")
-
-                        st.divider()
-                        st.markdown(f"**📷 Fotos del trabajo** — {_n_fotos}/25")
-                        _cam_foto = st.camera_input("Tomar foto", key=f"cam_rep_{id_ot_sel}_{_n_fotos}")
-                        if _cam_foto:
-                            _fc1, _fc2 = st.columns([1, 3])
-                            with _fc1:
-                                if st.button("📷 Agregar foto", key=f"add_foto_{id_ot_sel}",
-                                             disabled=_n_fotos >= 25, use_container_width=True):
-                                    import base64 as _b64mod
-                                    _img_proc_l = _foto_con_marca_agua(
-                                        _cam_foto.getvalue(), _l_lat, _l_lon)
-                                    _b64 = _b64mod.b64encode(_img_proc_l).decode()
-                                    st.session_state[_fotos_key].append(_b64)
-                                    st.rerun()
-                            with _fc2:
-                                if _n_fotos >= 25:
-                                    st.warning("Máximo 25 fotos alcanzado.")
-                        if st.session_state[_fotos_key]:
-                            _thumb_cols = st.columns(4)
-                            for _fi, _fb in enumerate(st.session_state[_fotos_key]):
-                                with _thumb_cols[_fi % 4]:
-                                    st.image(f"data:image/jpeg;base64,{_fb}", use_container_width=True)
-                                    if st.button("🗑️", key=f"del_foto_{id_ot_sel}_{_fi}",
-                                                 use_container_width=True):
-                                        st.session_state[_fotos_key].pop(_fi)
-                                        st.rerun()
+                        # (fotos se capturan en fase 2, antes de finalizar)
 
                         # ── FUERA del form: guardar locativos ─────────────
                         _loc_key = f"loc_html_{id_ot_sel}"
@@ -5570,7 +5495,7 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             save_ots(ots)
                             del st.session_state[_loc_key]
                             for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect",
-                                       f"fotos_rep_{id_ot_sel}"]:
+                                       f"fotos_{id_ot_sel}", f"gps_{id_ot_sel}"]:
                                 st.session_state.pop(_k, None)
                             st.session_state["_msg_tec_ok"] = f"✅ OT **{id_ot_sel}** enviada a revisión."
                             st.rerun()
