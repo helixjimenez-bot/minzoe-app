@@ -6096,7 +6096,13 @@ elif pagina == "contratos_mto":
     with tab_gen:
         hoy        = ahora_colombia()
         mes_actual = hoy.strftime("%Y-%m")
-        st.subheader(f"Generar OTs del mes — {hoy.strftime('%B %Y').capitalize()}")
+        col_tit_gen, col_ref_gen = st.columns([5, 1])
+        col_tit_gen.subheader(f"Generar OTs del mes — {hoy.strftime('%B %Y').capitalize()}")
+        if col_ref_gen.button("🔄 Actualizar", key="ref_gen", use_container_width=True):
+            _invalidar_cache("equipos")
+            _invalidar_cache("contratos")
+            _invalidar_cache("ordenes_trabajo")
+            st.rerun()
 
         def vence_este_mes(fecha_str):
             try:
