@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
+import calendar
 from functools import lru_cache
 import os
 import hashlib
@@ -569,11 +570,39 @@ def sb_load(table_name, cols, _v=0):
     except Exception:
         return pd.DataFrame(columns=list(cols))
 
+def _sb_columnas_tabla(table_name):
+    """Devuelve el set de columnas que realmente existen en la tabla de Supabase."""
+    try:
+        sb   = get_sb()
+        resp = sb.table(table_name).select("*").limit(1).execute()
+        if resp.data:
+            return set(resp.data[0].keys())
+        # Tabla vacía: hacer un insert vacío falso para obtener el schema no es posible;
+        # usar información del schema de información si está disponible.
+        return None
+    except Exception:
+        return None
+
 def sb_save(table_name, df):
     """Guarda dataframe en Supabase (truncate + insert por lotes de 200).
-    Si el insert falla, intenta restaurar los registros anteriores."""
+    Valida columnas ANTES de truncar para evitar pérdida de datos.
+    Si el insert falla de todas formas, restaura el backup automáticamente."""
     sb = get_sb()
-    # Leer backup antes de borrar nada
+
+    # ── Validación preventiva de columnas ────────────────────────────────────
+    if not df.empty:
+        cols_tabla = _sb_columnas_tabla(table_name)
+        if cols_tabla is not None:
+            cols_extra = [c for c in df.columns if c not in cols_tabla]
+            if cols_extra:
+                st.error(
+                    f"❌ GUARDADO CANCELADO — columna(s) no existen en Supabase tabla '{table_name}': "
+                    f"{', '.join(cols_extra)}. "
+                    f"Créalas primero con ALTER TABLE antes de guardar."
+                )
+                return False
+
+    # ── Backup antes de borrar nada ───────────────────────────────────────────
     try:
         _bk = sb.table(table_name).select("*").range(0, 9999).execute()
         _backup_records = _bk.data or []
@@ -3624,6 +3653,7 @@ elif pagina == "ots":
                         "Materiales":      ot_materiales.strip(),
                         "Valor_COP":       ot_valor.strip(),
                         "Estado":          ot_estado,
+                        "ID_Item":         ot_equipo_id,
                         "Observaciones":   (f"Equipo: {ot_equipo_id} — {ot_equipo_desc}\n" if ot_equipo_id else "") + ot_obs.strip(),
                     }
                     ots = pd.concat([ots, pd.DataFrame([nueva_ot])], ignore_index=True)
@@ -3930,9 +3960,11 @@ elif pagina == "ots":
                 fila_ot = ots[ots["ID"] == id_ot_sel].iloc[0]
                 # Si viene del dashboard abrir directamente en Editar
                 tab_ini = 1 if ot_pre else 0
-                _ot_finalizada = fila_ot.get("Estado","") == "Finalizada"
-                if st.session_state.get("_tec_en_reporte"):
-                    det, rep, ot_com, ot_hist = st.tabs(["🔍 Ver detalle", "📄 Reportar", "💬 Comentarios", "📜 Historial"])
+                _ot_finalizada   = fila_ot.get("Estado","") == "Finalizada"
+                _tec_rep_mode    = bool(st.session_state.get("_tec_en_reporte"))
+                if _tec_rep_mode:
+                    det = None; ot_com = None; ot_hist = None
+                    rep = st.container()
                     edi = None; eli = None
                 elif _ot_finalizada:
                     # OT cerrada — solo lectura, sin Editar ni Eliminar
@@ -3942,7 +3974,8 @@ elif pagina == "ots":
                 else:
                     det, edi, rep, ot_com, ot_hist, eli = st.tabs(["🔍 Ver detalle", "✏️ Editar", "📄 Reportar", "💬 Comentarios", "📜 Historial", "🗑️ Eliminar"])
 
-                with det:
+                if det is not None:
+                 with det:
                     c1, c2 = st.columns(2)
                     with c1:
                         st.markdown("**🏢 Empresa**")
@@ -4014,7 +4047,8 @@ elif pagina == "ots":
                         st.info(f"Enviar al técnico: **{celular_tec}**")
                     else:
                         st.caption("Agrega el celular del técnico en ✏️ Editar para tenerlo a la mano.")
-                    st.text_area("Copia este mensaje y pégalo en WhatsApp:", value=mensaje_wa, height=300, key="msg_wa")
+                    st.caption("Copia este mensaje y pégalo en WhatsApp (botón 📋 arriba a la derecha):")
+                    st.code(mensaje_wa, language=None)
 
                     # ── Descargar reporte si existe ───────────────────────
                     _rep_det_html, _rep_det_meta = cargar_reporte_sb(id_ot_sel)
@@ -4393,9 +4427,24 @@ elif pagina == "ots":
                                             _fotos_html_fin = "".join(_fp_pages)
                                          else:
                                             _fotos_html_fin = ""
+                                         _ev  = st.session_state.get(f"enc_exp_{id_ot_sel}", 0)
+                                         _cal = st.session_state.get(f"enc_cal_{id_ot_sel}", 0)
+                                         _cum = st.session_state.get(f"enc_cum_{id_ot_sel}", 0)
+                                         _pre = st.session_state.get(f"enc_pre_{id_ot_sel}", 0)
+                                         _com = st.session_state.get(f"enc_com_{id_ot_sel}", 0)
+                                         _tot = _ev + _cal + _cum + _pre + _com
+                                         _obs_e = st.session_state.get(f"enc_obs_{id_ot_sel}", "")
+                                         def _ev_str(v): return str(v) if v else ""
                                          _html_final = (st.session_state[_hvac_raw_key]
                                              .replace("<!--FOTOS-->", _fotos_html_fin)
-                                             .replace("<!--FIRMA_CLIENTE-->", _firma_img_h))
+                                             .replace("<!--FIRMA_CLIENTE-->", _firma_img_h)
+                                             .replace("<!--ENC_EXP-->", _ev_str(_ev))
+                                             .replace("<!--ENC_CAL-->", _ev_str(_cal))
+                                             .replace("<!--ENC_CUM-->", _ev_str(_cum))
+                                             .replace("<!--ENC_PRE-->", _ev_str(_pre))
+                                             .replace("<!--ENC_COM-->", _ev_str(_com))
+                                             .replace("<!--ENC_TOT-->", _ev_str(_tot))
+                                             .replace("<!--ENC_OBS-->", _obs_e))
                                          guardar_reporte_sb(
                                              ot_id   = id_ot_sel,
                                              tipo    = "HVAC",
@@ -5086,14 +5135,14 @@ elif pagina == "ots":
     </tr>
     <tr>
       <td rowspan="5" style="vertical-align:middle;text-align:center">{r_nom_tec}</td>
-      <td>Experiencia de los Técnicos</td><td style="text-align:center">20</td><td style="text-align:center">{enc_exp if enc_exp else ""}</td>
-      <td rowspan="5" style="vertical-align:top">{enc_obs_cli}</td>
+      <td>Experiencia de los Técnicos</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_EXP--></td>
+      <td rowspan="5" style="vertical-align:top"><!--ENC_OBS--></td>
     </tr>
-    <tr><td>Calidad de Servicio y Bienes</td><td style="text-align:center">20</td><td style="text-align:center">{enc_cal if enc_cal else ""}</td></tr>
-    <tr><td>Cumplimiento</td><td style="text-align:center">20</td><td style="text-align:center">{enc_cum if enc_cum else ""}</td></tr>
-    <tr><td>Presentación Personal</td><td style="text-align:center">20</td><td style="text-align:center">{enc_pre if enc_pre else ""}</td></tr>
-    <tr><td>Comunicación</td><td style="text-align:center">20</td><td style="text-align:center">{enc_com if enc_com else ""}</td></tr>
-    <tr><td></td><td><b>TOTAL</b></td><td style="text-align:center"><b>100</b></td><td style="text-align:center"><b>{enc_total if enc_total else ""}</b></td><td></td></tr>
+    <tr><td>Calidad de Servicio y Bienes</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_CAL--></td></tr>
+    <tr><td>Cumplimiento</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_CUM--></td></tr>
+    <tr><td>Presentación Personal</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_PRE--></td></tr>
+    <tr><td>Comunicación</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_COM--></td></tr>
+    <tr><td></td><td><b>TOTAL</b></td><td style="text-align:center"><b>100</b></td><td style="text-align:center"><b><!--ENC_TOT--></b></td><td></td></tr>
     </table>
     <p style="font-size:7.5px;margin:3px 0">*La suma de los conceptos determinará la continuidad del personal: 0-50 Puntos: Malo &nbsp;|&nbsp; 51-84 Puntos: Regular &nbsp;|&nbsp; 85-100 Puntos: Bueno</p>
 
@@ -5327,9 +5376,24 @@ elif pagina == "ots":
                                             _fotos_loc_html = "".join(_flp_pages)
                                         else:
                                             _fotos_loc_html = ""
+                                        _lev  = st.session_state.get(f"l_enc_exp_{id_ot_sel}", 0)
+                                        _lcal = st.session_state.get(f"l_enc_cal_{id_ot_sel}", 0)
+                                        _lcum = st.session_state.get(f"l_enc_cum_{id_ot_sel}", 0)
+                                        _lpre = st.session_state.get(f"l_enc_pre_{id_ot_sel}", 0)
+                                        _lcom = st.session_state.get(f"l_enc_com_{id_ot_sel}", 0)
+                                        _ltot = _lev + _lcal + _lcum + _lpre + _lcom
+                                        _lobs = st.session_state.get(f"l_enc_obs_{id_ot_sel}", "")
+                                        def _lv_str(v): return str(v) if v else ""
                                         _html_loc_final = (st.session_state[_loc_raw_key]
                                             .replace("<!--FOTOS-->", _fotos_loc_html)
-                                            .replace("<!--FIRMA_CLIENTE-->", _firma_img_l))
+                                            .replace("<!--FIRMA_CLIENTE-->", _firma_img_l)
+                                            .replace("<!--ENC_EXP-->", _lv_str(_lev))
+                                            .replace("<!--ENC_CAL-->", _lv_str(_lcal))
+                                            .replace("<!--ENC_CUM-->", _lv_str(_lcum))
+                                            .replace("<!--ENC_PRE-->", _lv_str(_lpre))
+                                            .replace("<!--ENC_COM-->", _lv_str(_lcom))
+                                            .replace("<!--ENC_TOT-->", _lv_str(_ltot))
+                                            .replace("<!--ENC_OBS-->", _lobs))
                                         guardar_reporte_sb(
                                             ot_id   = id_ot_sel,
                                             tipo    = "Locativos",
@@ -5535,14 +5599,14 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
 </tr>
 <tr>
   <td rowspan="5" style="vertical-align:middle;text-align:center">{l_nom_tec}</td>
-  <td>Experiencia de los Técnicos</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_exp if l_enc_exp else ""}</td>
-  <td rowspan="5" style="vertical-align:top">{l_enc_obs}</td>
+  <td>Experiencia de los Técnicos</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_EXP--></td>
+  <td rowspan="5" style="vertical-align:top"><!--ENC_OBS--></td>
 </tr>
-<tr><td>Calidad de Servicio y Bienes</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_cal if l_enc_cal else ""}</td></tr>
-<tr><td>Cumplimiento</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_cum if l_enc_cum else ""}</td></tr>
-<tr><td>Presentación Personal</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_pre if l_enc_pre else ""}</td></tr>
-<tr><td>Comunicación</td><td style="text-align:center">20</td><td style="text-align:center">{l_enc_com if l_enc_com else ""}</td></tr>
-<tr><td></td><td><b>TOTAL</b></td><td style="text-align:center"><b>100</b></td><td style="text-align:center"><b>{l_enc_total if l_enc_total else ""}</b></td><td></td></tr>
+<tr><td>Calidad de Servicio y Bienes</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_CAL--></td></tr>
+<tr><td>Cumplimiento</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_CUM--></td></tr>
+<tr><td>Presentación Personal</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_PRE--></td></tr>
+<tr><td>Comunicación</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_COM--></td></tr>
+<tr><td></td><td><b>TOTAL</b></td><td style="text-align:center"><b>100</b></td><td style="text-align:center"><b><!--ENC_TOT--></b></td><td></td></tr>
 </table>
 <p style="font-size:7.5px;margin:3px 0">*La suma de los conceptos determinará la continuidad del personal: 0-50 Puntos: Malo &nbsp;|&nbsp; 51-84 Puntos: Regular &nbsp;|&nbsp; 85-100 Puntos: Bueno</p>
 
@@ -5608,7 +5672,8 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             st.session_state["_msg_tec_ok"] = f"✅ OT **{id_ot_sel}** enviada a revisión."
                             st.rerun()
 
-                with ot_com:
+                if ot_com is not None:
+                 with ot_com:
                     st.markdown(f"**💬 Comentarios internos — {id_ot_sel}**")
                     if st.button("🔄 Cargar comentarios", key=f"load_com_ot_{id_ot_sel}"):
                         st.session_state[f"show_com_ot_{id_ot_sel}"] = True
@@ -5632,7 +5697,8 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                                 st.success("Comentario agregado.")
                                 st.rerun()
 
-                with ot_hist:
+                if ot_hist is not None:
+                 with ot_hist:
                     st.markdown(f"**📜 Historial de cambios — {id_ot_sel}**")
                     if st.button("🔄 Cargar historial", key=f"load_hist_ot_{id_ot_sel}"):
                         st.session_state[f"show_hist_ot_{id_ot_sel}"] = True
@@ -6169,13 +6235,15 @@ elif pagina == "contratos_mto":
                     creadas = []
 
                     # OTs por contrato de visita
+                    _ult_dia_mes = calendar.monthrange(hoy.year, hoy.month)[1]
+                    _fl_mes = hoy.replace(day=_ult_dia_mes).strftime("%Y-%m-%d") + " 18:00"
                     for _, con in pendientes_visita.iterrows():
                         nueva_ot = {
                             "ID":               generate_ot_id(ots),
                             "Origen":           "Contrato Mantenimiento",
                             "SOL_Ref":          con["ID_Contrato"],
                             "Fecha_Creacion":   hoy.strftime("%Y-%m-%d %H:%M"),
-                            "Fecha_Limite":     "",
+                            "Fecha_Limite":     _fl_mes,
                             "Cliente":          con["Cliente"],
                             "NIT":              con["NIT"],
                             "Sede":             con["Sede"],
@@ -6209,7 +6277,7 @@ elif pagina == "contratos_mto":
                             "Origen":           "Contrato Mantenimiento",
                             "SOL_Ref":          item["ID_Contrato"],
                             "Fecha_Creacion":   hoy.strftime("%Y-%m-%d %H:%M"),
-                            "Fecha_Limite":     "",
+                            "Fecha_Limite":     _fl_mes,
                             "Cliente":          item["Cliente"],
                             "NIT":              con_row.iloc[0]["NIT"] if not con_row.empty else "",
                             "Sede":             item["Sede"],
@@ -6232,6 +6300,7 @@ elif pagina == "contratos_mto":
                             "Materiales":       "",
                             "Valor_COP":        con_row.iloc[0].get("Valor_Contrato", "") if not con_row.empty else "",
                             "Estado":           "Programada",
+                            "ID_Item":          item["ID_Item"],
                             "Observaciones":    f"Ítem: {item['ID_Item']}",
                         }
                         ots = pd.concat([ots, pd.DataFrame([nueva_ot])], ignore_index=True)
