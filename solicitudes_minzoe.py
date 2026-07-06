@@ -3865,15 +3865,22 @@ elif pagina == "ots":
                 if buscar_ot:
                     vista_ot = vista_ot[vista_ot["Cliente"].str.contains(buscar_ot, case=False, na=False)]
 
-                # Ordenar por última modificación (más reciente arriba), Finalizadas/Canceladas al fondo
+                # Ordenar: abiertas primero, más recientes arriba; Finalizadas/Canceladas al fondo
                 _orden_est = {"Finalizada": 1, "Cancelada": 2}
                 vista_ot_ord = vista_ot.copy()
                 vista_ot_ord["_cerrada"] = vista_ot_ord["Estado"].map(_orden_est).fillna(0)
-                # Usar Fecha_Modificacion si existe, si no Fecha_Creacion
-                _col_orden = "Fecha_Modificacion" if "Fecha_Modificacion" in vista_ot_ord.columns else "Fecha_Creacion"
+                # Fecha_Modificacion como orden primario cuando está poblada, sino Fecha_Creacion
+                if "Fecha_Modificacion" in vista_ot_ord.columns:
+                    vista_ot_ord["_sort_f"] = (
+                        vista_ot_ord["Fecha_Modificacion"]
+                        .replace("", None)
+                        .fillna(vista_ot_ord["Fecha_Creacion"])
+                    )
+                else:
+                    vista_ot_ord["_sort_f"] = vista_ot_ord["Fecha_Creacion"]
                 vista_ot_ord = vista_ot_ord.sort_values(
-                    ["_cerrada", _col_orden], ascending=[True, False]
-                ).drop(columns=["_cerrada"])
+                    ["_cerrada", "_sort_f"], ascending=[True, False]
+                ).drop(columns=["_cerrada", "_sort_f"])
 
                 COLORES_OT = {
                     "Programada":   ("#e0e7ff", "#1e3a8a"),
