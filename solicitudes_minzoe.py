@@ -4181,6 +4181,68 @@ elif pagina == "ots":
                             key=f"dl_rep_sb_{id_ot_sel}",
                         )
                         st.divider()
+
+                        # ── Agregar fotos al reporte (solo admin) ─────────
+                        if st.session_state.get("user_rol") not in ("tecnico",):
+                            with st.expander("📷 Agregar fotos al reporte existente"):
+                                _adm_files = st.file_uploader(
+                                    "Sube las fotos que quieres agregar al reporte",
+                                    type=["jpg","jpeg","png"],
+                                    accept_multiple_files=True,
+                                    key=f"adm_fotos_{id_ot_sel}",
+                                )
+                                if _adm_files:
+                                    _cols_prev = st.columns(min(len(_adm_files), 4))
+                                    for _pi, _pf in enumerate(_adm_files):
+                                        _cols_prev[_pi % 4].image(_pf, use_container_width=True,
+                                                                   caption=_pf.name[:20])
+                                    if st.button("📎 Agregar fotos al reporte",
+                                                 type="primary", use_container_width=True,
+                                                 key=f"btn_adm_fotos_{id_ot_sel}"):
+                                        from PIL import Image as _PIL_Image
+                                        import io as _io, base64 as _b64
+                                        _fotos_adm = []
+                                        for _af in _adm_files:
+                                            try:
+                                                _img = _PIL_Image.open(_af).convert("RGB")
+                                                _buf = _io.BytesIO()
+                                                _img.save(_buf, format="JPEG", quality=70)
+                                                _fb64 = _b64.b64encode(_buf.getvalue()).decode()
+                                                _lbl = _af.name.rsplit(".",1)[0][:30]
+                                                _fotos_adm.append((_lbl, _fb64))
+                                            except Exception:
+                                                pass
+                                        if _fotos_adm:
+                                            _adm_pages = []
+                                            for _p0 in range(0, len(_fotos_adm), 6):
+                                                _chunk = _fotos_adm[_p0:_p0+6]
+                                                _rh = ""
+                                                for _r in range(0, len(_chunk), 2):
+                                                    _two = _chunk[_r:_r+2]
+                                                    _tds = "".join(
+                                                        f'<td style="width:50%;padding:5px;text-align:center;vertical-align:top">'
+                                                        f'<img src="data:image/jpeg;base64,{_fb}" style="width:99%;height:250px;object-fit:cover;border:1px solid #ccc;border-radius:3px">'
+                                                        f'<div style="font-size:9px;margin-top:3px;font-weight:600;color:#444">{_fl}</div></td>'
+                                                        for _fl, _fb in _two)
+                                                    for _ in range(2-len(_two)): _tds += "<td></td>"
+                                                    _rh += f"<tr>{_tds}</tr>"
+                                                _adm_pages.append(
+                                                    f'<div style="page-break-before:always;padding:4px">'
+                                                    f'<div class="section">FOTOS ADICIONALES — Página {_p0//6+1}</div>'
+                                                    f'<table style="width:100%;border-collapse:collapse">{_rh}</table></div>')
+                                            _fotos_adm_html = "".join(_adm_pages)
+                                            _html_con_fotos = _rep_sb_html.replace(
+                                                "</body>", f"{_fotos_adm_html}</body>")
+                                            guardar_reporte_sb(
+                                                ot_id   = id_ot_sel,
+                                                tipo    = _rep_sb_meta.get("tipo",""),
+                                                cliente = fila_ot.get("Cliente",""),
+                                                fecha   = fila_ot.get("Fecha_Ejecucion",""),
+                                                html    = _html_con_fotos,
+                                            )
+                                            st.success(f"✅ {len(_fotos_adm)} foto(s) agregada(s) al reporte.")
+                                            st.rerun()
+
                         if not st.checkbox("Generar nuevo reporte (sobreescribe el anterior)", key=f"nuevo_rep_{id_ot_sel}"):
                             st.stop()
 
