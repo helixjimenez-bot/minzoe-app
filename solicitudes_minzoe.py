@@ -4398,12 +4398,18 @@ elif pagina == "ots":
 
                             # ── Foto de firma del cliente (OBLIGATORIA) ───────
                             st.markdown("**📸 Firma del cliente** — El cliente firma en papel y el técnico toma la foto")
-                            _foto_firma_h = st.camera_input(
+                            _cam_firma_h = st.camera_input(
                                 "Tomar foto de la firma",
                                 key=f"firma_foto_h_{id_ot_sel}",
                             )
+                            _upl_firma_h = st.file_uploader(
+                                "📁 O sube desde galería",
+                                type=["jpg","jpeg","png"],
+                                key=f"upl_firma_h_{id_ot_sel}",
+                            )
+                            _foto_firma_h = _cam_firma_h or _upl_firma_h
                             if not _foto_firma_h:
-                                st.warning("⚠️ Debes tomar la foto de la firma del cliente para continuar")
+                                st.warning("⚠️ Debes tomar o subir la foto de la firma del cliente para continuar")
                             else:
                                 # Rotación de la imagen
                                 _rot_key_h = f"rot_h_{id_ot_sel}"
@@ -4875,9 +4881,14 @@ elif pagina == "ots":
                                     _skey_f = "__extra__"
                                 _cam_f = st.camera_input("Tomar foto", key=f"cam_f_{id_ot_sel}_{_n_tot_f}",
                                                          disabled=(_n_tot_f >= 25))
-                                if _cam_f and _skey_f:
+                                _upl_f = st.file_uploader("📁 O sube desde galería",
+                                                           type=["jpg","jpeg","png"],
+                                                           key=f"upl_f_{id_ot_sel}_{_n_tot_f}",
+                                                           disabled=(_n_tot_f >= 25))
+                                _src_f = _cam_f or _upl_f
+                                if _src_f and _skey_f:
                                     import base64 as _b64f2
-                                    _imgf = _foto_con_marca_agua(_cam_f.getvalue(), _gps_lat_f, _gps_lon_f)
+                                    _imgf = _foto_con_marca_agua(_src_f.getvalue(), _gps_lat_f, _gps_lon_f)
                                     _b64f2v = _b64f2.b64encode(_imgf).decode()
                                     if _skey_f == "__extra__":
                                         st.session_state[_fex_key_f].append(_b64f2v)
@@ -5331,9 +5342,16 @@ elif pagina == "ots":
                                 key=f"cam_loc_{id_ot_sel}_{len(_fotos_loc)}",
                                 disabled=len(_fotos_loc) >= 25,
                             )
-                            if _cam_loc:
+                            _upl_loc = st.file_uploader(
+                                "📁 O sube desde galería",
+                                type=["jpg","jpeg","png"],
+                                key=f"upl_loc_{id_ot_sel}_{len(_fotos_loc)}",
+                                disabled=len(_fotos_loc) >= 25,
+                            )
+                            _src_loc = _cam_loc or _upl_loc
+                            if _src_loc:
                                 import base64 as _b64fl
-                                _img_pl = _foto_con_marca_agua(_cam_loc.getvalue(), _gps_lat_l, _gps_lon_l)
+                                _img_pl = _foto_con_marca_agua(_src_loc.getvalue(), _gps_lat_l, _gps_lon_l)
                                 st.session_state[_fotos_loc_key].append(
                                     _b64fl.b64encode(_img_pl).decode())
                                 st.rerun()
@@ -5383,12 +5401,18 @@ elif pagina == "ots":
 
                             # ── Foto de firma del cliente (OBLIGATORIA) ───────
                             st.markdown("**📸 Firma del cliente** — El cliente firma en papel y el técnico toma la foto")
-                            _foto_firma_l = st.camera_input(
+                            _cam_firma_l = st.camera_input(
                                 "Tomar foto de la firma",
                                 key=f"firma_foto_l_{id_ot_sel}",
                             )
+                            _upl_firma_l = st.file_uploader(
+                                "📁 O sube desde galería",
+                                type=["jpg","jpeg","png"],
+                                key=f"upl_firma_l_{id_ot_sel}",
+                            )
+                            _foto_firma_l = _cam_firma_l or _upl_firma_l
                             if not _foto_firma_l:
-                                st.warning("⚠️ Debes tomar la foto de la firma del cliente para continuar")
+                                st.warning("⚠️ Debes tomar o subir la foto de la firma del cliente para continuar")
                             else:
                                 _rot_key_l = f"rot_l_{id_ot_sel}"
                                 if _rot_key_l not in st.session_state:
