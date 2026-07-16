@@ -2118,8 +2118,11 @@ with st.sidebar:
 
         if not _es_tecnico:
             st.markdown("<p style='color:#aaa;font-size:0.72rem;font-weight:700;letter-spacing:1px;margin:6px 0 2px 4px;'>FINANCIERO</p>", unsafe_allow_html=True)
-            if st.button("💰 Compras y Ventas", use_container_width=True):
-                st.session_state["pagina"] = "compras_ventas"
+            if st.button("📈 Ventas", use_container_width=True):
+                st.session_state["pagina"] = "ventas"
+                st.rerun()
+            if st.button("🛒 Compras", use_container_width=True):
+                st.session_state["pagina"] = "compras"
                 st.rerun()
 
         st.divider()
@@ -6425,21 +6428,18 @@ elif pagina == "contratos_mto":
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PÁGINA: COMPRAS Y VENTAS (NUEVA VERSIÓN)
+# PÁGINA: VENTAS / FACTURACIÓN
 # ══════════════════════════════════════════════════════════════════════════════
-elif pagina == "compras_ventas":
+elif pagina in ("ventas", "compras_ventas"):
     if st.session_state.get("user_rol") in ("tecnico", "cliente"):
         st.warning("⛔ No tienes permiso para acceder a esta sección.")
         st.stop()
     import io
     ots = get_ots(); ventas = get_ventas(); costos = get_costos(); cv = get_cv()
-    st.subheader("💰 Compras y Ventas")
+    st.subheader("📈 Ventas / Facturación")
 
-    tab_ven, tab_cos, tab_res = st.tabs(["📤 Ventas / Facturación", "📥 Costos / Compras", "📊 Rentabilidad"])
+    tab_ven, tab_his_v, tab_res = st.tabs(["📄 Registrar Factura", "📋 Historial", "📊 Rentabilidad"])
 
-    # ════════════════════════════════════════════════════════════════════════
-    # TAB 1: VENTAS / FACTURACIÓN
-    # ════════════════════════════════════════════════════════════════════════
     with tab_ven:
         st.subheader("Registrar Factura de Venta")
 
@@ -6531,8 +6531,14 @@ elif pagina == "compras_ventas":
                     save_ventas(ventas)
                     st.success(f"✅ Factura **{v_num_fac}** guardada — Total a pagar: **${total_n:,.0f}**")
 
-        st.divider()
+    with tab_his_v:
         st.subheader("Facturas registradas")
+        COLORES_PAGO = {
+            "Pendiente": ("#fff3cd", "#7d5a00"),
+            "Pagada":    ("#d1fae5", "#064e3b"),
+            "Vencida":   ("#fee2e2", "#7f1d1d"),
+            "Anulada":   ("#f3f4f6", "#374151"),
+        }
         if ventas.empty:
             st.info("Aún no hay facturas registradas.")
         else:
@@ -6540,17 +6546,10 @@ elif pagina == "compras_ventas":
             vista_v  = ventas if not buscar_v else ventas[
                 ventas["Cliente"].str.contains(buscar_v, case=False, na=False)
             ]
-            COLORES_PAGO = {
-                "Pendiente": ("#fff3cd", "#7d5a00"),
-                "Pagada":    ("#d1fae5", "#064e3b"),
-                "Vencida":   ("#fee2e2", "#7f1d1d"),
-                "Anulada":   ("#f3f4f6", "#374151"),
-            }
             tabla_html(vista_v.reset_index(drop=True),
                        color_col="Estado_Pago", colores_estado=COLORES_PAGO,
                        fmt_cols=["Valor_Antes_IVA","IVA","Retefuente","Retica","Total_A_Pagar"])
             st.caption(f"{len(ventas)} factura(s) registrada(s).")
-
             buf_v = io.BytesIO()
             with pd.ExcelWriter(buf_v, engine="openpyxl") as w:
                 vista_v.to_excel(w, index=False, sheet_name="Ventas")
@@ -6558,91 +6557,6 @@ elif pagina == "compras_ventas":
                                file_name=f"ventas_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-    # ════════════════════════════════════════════════════════════════════════
-    # TAB 2: COSTOS / COMPRAS
-    # ════════════════════════════════════════════════════════════════════════
-    with tab_cos:
-        st.subheader("Registrar Costo del Trabajo")
-
-        ots_fin_c = ots[ots["Estado"] == "Finalizada"] if not ots.empty else pd.DataFrame()
-        ops_ot_c  = ["— Sin vincular —"] + (
-            ots_fin_c.apply(lambda r: f"{r['ID']} | {r['Cliente']} | {r['Servicio']}", axis=1).tolist()
-            if not ots_fin_c.empty else []
-        )
-        ot_sel_c = st.selectbox("Vincular a OT finalizada (opcional)", ops_ot_c, key="ot_sel_c")
-
-        c_ot_ref = c_sol_ref = c_cliente = c_servicio = c_val_tec = ""
-        if ot_sel_c != "— Sin vincular —":
-            ot_id_c    = ot_sel_c.split(" | ")[0]
-            fila_ot_c  = ots[ots["ID"] == ot_id_c].iloc[0]
-            c_ot_ref   = ot_id_c
-            c_sol_ref  = fila_ot_c.get("SOL_Ref", "")
-            c_cliente  = fila_ot_c["Cliente"]
-            c_servicio = fila_ot_c["Servicio"]
-            c_val_tec  = fila_ot_c.get("Valor_COP", "")
-            st.info(f"📋 **{c_cliente}** | {c_servicio}")
-
-        with st.form("form_costo", clear_on_submit=True):
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                cc_tec = st.text_input("Valor asignado al técnico (COP)",
-                                       value=c_val_tec, placeholder="Ej: 150000")
-            with c2:
-                cc_mat = st.text_input("Valor de materiales (COP)", placeholder="Ej: 80000")
-            with c3:
-                cc_fac = st.text_input("N° Factura materiales", placeholder="Ej: FAC-001")
-
-            if not c_cliente:
-                c1, c2 = st.columns(2)
-                with c1:
-                    c_cliente  = st.text_input("Cliente", key="c_cli_man")
-                with c2:
-                    c_servicio = st.selectbox("Servicio", SERVICIOS, key="c_ser_man")
-
-            tec_n2  = to_num(cc_tec)
-            mat_n2  = to_num(cc_mat)
-            tot_cos = tec_n2 + mat_n2
-
-            if tot_cos > 0:
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Valor técnico",    f"${tec_n2:,.0f}")
-                c2.metric("Valor materiales", f"${mat_n2:,.0f}")
-                c3.metric("Total costo",      f"${tot_cos:,.0f}")
-
-            if st.form_submit_button("💾 Guardar costo", type="primary", use_container_width=True):
-                nuevo_cos = {
-                    "ID_Costo":          gen_costo_id(costos),
-                    "Fecha":             ahora_colombia().strftime("%Y-%m-%d %H:%M"),
-                    "OT_Ref":            c_ot_ref,
-                    "SOL_Ref":           c_sol_ref,
-                    "Cliente":           c_cliente,
-                    "Servicio":          c_servicio,
-                    "Valor_Tecnico":     f"{tec_n2:.0f}",
-                    "Valor_Materiales":  f"{mat_n2:.0f}",
-                    "Factura_Materiales": cc_fac.strip(),
-                    "Total_Costo":       f"{tot_cos:.0f}",
-                }
-                costos = pd.concat([costos, pd.DataFrame([nuevo_cos])], ignore_index=True)
-                save_costos(costos)
-                st.success(f"✅ Costo guardado — Total: **${tot_cos:,.0f}**")
-
-        st.divider()
-        st.subheader("Costos registrados")
-        if costos.empty:
-            st.info("Aún no hay costos registrados.")
-        else:
-            tabla_html(costos.reset_index(drop=True),
-                       fmt_cols=["Valor_Tecnico","Valor_Materiales","Total_Costo"])
-            buf_c = io.BytesIO()
-            with pd.ExcelWriter(buf_c, engine="openpyxl") as w:
-                costos.to_excel(w, index=False, sheet_name="Costos")
-            st.download_button("⬇️ Exportar Excel", data=buf_c.getvalue(),
-                               file_name=f"costos_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
-                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-    # ════════════════════════════════════════════════════════════════════════
-    # TAB 3: RENTABILIDAD
-    # ════════════════════════════════════════════════════════════════════════
     with tab_res:
         st.subheader("Resumen de Rentabilidad")
 
@@ -6679,6 +6593,110 @@ elif pagina == "compras_ventas":
                 st.write("**Estado de pagos**")
                 st.bar_chart(ventas["Estado_Pago"].value_counts())
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PÁGINA: COMPRAS / COSTOS
+# ══════════════════════════════════════════════════════════════════════════════
+elif pagina == "compras":
+    if st.session_state.get("user_rol") in ("tecnico", "cliente"):
+        st.warning("⛔ No tienes permiso para acceder a esta sección.")
+        st.stop()
+    import io
+    ots = get_ots(); costos = get_costos()
+    st.subheader("🛒 Compras / Costos")
+
+    tab_reg, tab_his = st.tabs(["📄 Registrar Costo", "📋 Historial"])
+
+    with tab_reg:
+        st.subheader("Registrar Costo del Trabajo")
+
+        ots_fin_c = ots[ots["Estado"] == "Finalizada"] if not ots.empty else pd.DataFrame()
+        ops_ot_c  = ["— Sin vincular —"] + (
+            ots_fin_c.apply(lambda r: f"{r['ID']} | {r['Cliente']} | {r['Servicio']}", axis=1).tolist()
+            if not ots_fin_c.empty else []
+        )
+        ot_sel_c = st.selectbox("Vincular a OT finalizada (opcional)", ops_ot_c, key="ot_sel_c")
+
+        c_ot_ref = c_sol_ref = c_cliente = c_servicio = c_val_tec = ""
+        if ot_sel_c != "— Sin vincular —":
+            ot_id_c    = ot_sel_c.split(" | ")[0]
+            fila_ot_c  = ots[ots["ID"] == ot_id_c].iloc[0]
+            c_ot_ref   = ot_id_c
+            c_sol_ref  = fila_ot_c.get("SOL_Ref", "")
+            c_cliente  = fila_ot_c["Cliente"]
+            c_servicio = fila_ot_c["Servicio"]
+            c_val_tec  = fila_ot_c.get("Valor_COP", "")
+            st.info(f"📋 **{c_cliente}** | {c_servicio}")
+
+        with st.form("form_costo", clear_on_submit=True):
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                cc_tec = st.text_input("Valor asignado al técnico (COP)",
+                                       value=c_val_tec, placeholder="Ej: 150000")
+            with c2:
+                cc_mat = st.text_input("Valor de materiales (COP)", placeholder="Ej: 80000")
+            with c3:
+                cc_fac = st.text_input("N° Factura materiales", placeholder="Ej: FAC-001")
+
+            if not c_cliente:
+                c1b, c2b = st.columns(2)
+                with c1b:
+                    c_cliente  = st.text_input("Cliente", key="c_cli_man")
+                with c2b:
+                    c_servicio = st.selectbox("Servicio", SERVICIOS, key="c_ser_man")
+
+            tec_n2  = to_num(cc_tec)
+            mat_n2  = to_num(cc_mat)
+            tot_cos = tec_n2 + mat_n2
+
+            if tot_cos > 0:
+                c1c, c2c, c3c = st.columns(3)
+                c1c.metric("Valor técnico",    f"${tec_n2:,.0f}")
+                c2c.metric("Valor materiales", f"${mat_n2:,.0f}")
+                c3c.metric("Total costo",      f"${tot_cos:,.0f}")
+
+            if st.form_submit_button("💾 Guardar costo", type="primary", use_container_width=True):
+                nuevo_cos = {
+                    "ID_Costo":           gen_costo_id(costos),
+                    "Fecha":              ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+                    "OT_Ref":             c_ot_ref,
+                    "SOL_Ref":            c_sol_ref,
+                    "Cliente":            c_cliente,
+                    "Servicio":           c_servicio,
+                    "Valor_Tecnico":      f"{tec_n2:.0f}",
+                    "Valor_Materiales":   f"{mat_n2:.0f}",
+                    "Factura_Materiales": cc_fac.strip(),
+                    "Total_Costo":        f"{tot_cos:.0f}",
+                }
+                costos = pd.concat([costos, pd.DataFrame([nuevo_cos])], ignore_index=True)
+                save_costos(costos)
+                st.success(f"✅ Costo guardado — Total: **${tot_cos:,.0f}**")
+
+    with tab_his:
+        st.subheader("Costos registrados")
+        if costos.empty:
+            st.info("Aún no hay costos registrados.")
+        else:
+            buscar_c = st.text_input("Buscar cliente", key="buscar_cos")
+            vista_c  = costos if not buscar_c else costos[
+                costos["Cliente"].str.contains(buscar_c, case=False, na=False)
+            ]
+            tabla_html(vista_c.reset_index(drop=True),
+                       fmt_cols=["Valor_Tecnico","Valor_Materiales","Total_Costo"])
+            st.caption(f"{len(costos)} registro(s).")
+            buf_c = io.BytesIO()
+            with pd.ExcelWriter(buf_c, engine="openpyxl") as w:
+                vista_c.to_excel(w, index=False, sheet_name="Costos")
+            st.download_button("⬇️ Exportar Excel", data=buf_c.getvalue(),
+                               file_name=f"costos_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+            # Totales rápidos
+            st.divider()
+            t1, t2, t3 = st.columns(3)
+            t1.metric("Total técnicos",   f"${costos['Valor_Tecnico'].apply(to_num).sum():,.0f}")
+            t2.metric("Total materiales", f"${costos['Valor_Materiales'].apply(to_num).sum():,.0f}")
+            t3.metric("Total costos",     f"${costos['Total_Costo'].apply(to_num).sum():,.0f}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
