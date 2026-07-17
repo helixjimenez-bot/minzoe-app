@@ -1871,6 +1871,13 @@ ul[data-baseweb="menu"] li:hover,
     color: #111111 !important;
     background: #ffffff !important;
 }
+/* Valor seleccionado visible en el selectbox */
+[data-baseweb="select"] [data-baseweb="single-value"],
+[data-baseweb="select"] [data-baseweb="value"],
+[data-baseweb="select"] span,
+[data-baseweb="select"] div {
+    color: #111111 !important;
+}
 
 /* ── Campos de fecha y hora ── */
 [data-testid="stDateInput"] input,
