@@ -6730,10 +6730,22 @@ elif pagina == "compras":
         neto_c = base_c + iva_c
 
         st.divider()
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Valor antes de IVA", f"${base_c:,.0f}")
-        m2.metric("IVA 19%",            f"${iva_c:,.0f}")
-        m3.metric("Total a pagar",       f"${neto_c:,.0f}")
+        st.markdown(f"""
+        <div style="display:flex;gap:16px;margin-bottom:8px;">
+            <div style="flex:1;background:#f0f4ff;border-radius:10px;padding:16px 20px;text-align:center;">
+                <div style="font-size:0.78rem;color:#444;font-weight:600;margin-bottom:4px;">Valor antes de IVA</div>
+                <div style="font-size:1.5rem;font-weight:700;color:#111;">${base_c:,.0f}</div>
+            </div>
+            <div style="flex:1;background:#f0f4ff;border-radius:10px;padding:16px 20px;text-align:center;">
+                <div style="font-size:0.78rem;color:#444;font-weight:600;margin-bottom:4px;">IVA 19%</div>
+                <div style="font-size:1.5rem;font-weight:700;color:#111;">${iva_c:,.0f}</div>
+            </div>
+            <div style="flex:1;background:#dc2626;border-radius:10px;padding:16px 20px;text-align:center;">
+                <div style="font-size:0.78rem;color:#ffe;font-weight:600;margin-bottom:4px;">Total a pagar</div>
+                <div style="font-size:1.5rem;font-weight:700;color:#fff;">${neto_c:,.0f}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # ── Fechas crédito ────────────────────────────────────────────────
         _fv_calc = _fpago_calc = None
