@@ -6670,14 +6670,20 @@ elif pagina == "compras":
     with tab_reg:
         st.subheader("Registrar Cuenta de Cobro / Factura")
 
+        # Limpiar campos tras guardar exitoso
+        if st.session_state.pop("_cos_guardado", False):
+            for _k in ["cos_consec","cos_base","cos_cli_man","cos_ot_sel"]:
+                st.session_state.pop(_k, None)
+            st.rerun()
+
         ots_fin_c = ots[ots["Estado"] == "Finalizada"] if not ots.empty else pd.DataFrame()
         ops_ot_c  = ["— Sin vincular —"] + (
             ots_fin_c.apply(lambda r: f"{r['ID']} | {r['Cliente']} | {r['Servicio']}", axis=1).tolist()
             if not ots_fin_c.empty else []
         )
-        ot_sel_c = st.selectbox("Vincular a OT finalizada (opcional)", ops_ot_c, key="ot_sel_c")
+        ot_sel_c = st.selectbox("Vincular a OT finalizada (opcional)", ops_ot_c, key="cos_ot_sel")
 
-        c_ot_ref = c_sol_ref = c_cliente = c_servicio = c_val_tec = ""
+        c_ot_ref = c_sol_ref = c_cliente = c_servicio = ""
         if ot_sel_c != "— Sin vincular —":
             ot_id_c    = ot_sel_c.split(" | ")[0]
             fila_ot_c  = ots[ots["ID"] == ot_id_c].iloc[0]
@@ -6685,104 +6691,92 @@ elif pagina == "compras":
             c_sol_ref  = fila_ot_c.get("SOL_Ref", "")
             c_cliente  = fila_ot_c["Cliente"]
             c_servicio = fila_ot_c["Servicio"]
-            c_val_tec  = fila_ot_c.get("Valor_COP", "")
             st.info(f"📋 **{c_cliente}** | {c_servicio}")
 
-        st.markdown("""
-        <style>
-        input[type="text"], input[type="number"] {
-            color: #111111 !important;
-            background-color: #ffffff !important;
-        }
-        [data-baseweb="input"] input {
-            color: #111111 !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+        # ── Encabezado del documento ──────────────────────────────────────
+        st.markdown("**📄 Datos del documento**")
+        r1c1, r1c2, r1c3 = st.columns(3)
+        with r1c1:
+            cc_consec = st.text_input("Consecutivo cuenta de cobro / factura *",
+                                      placeholder="Ej: CC-001 / FAC-2026-123",
+                                      key="cos_consec")
+        with r1c2:
+            cc_fec_rec = st.date_input("Fecha de recibimiento *",
+                                       value=ahora_colombia().date(), key="cos_fec_rec")
+        with r1c3:
+            cc_tipo_pago = st.radio("Tipo de pago", ["Contado", "Crédito"],
+                                    horizontal=True, key="cos_tipo_pago")
 
-        with st.form("form_costo", clear_on_submit=True):
-            # ── Encabezado del documento ──────────────────────────────────
-            st.markdown("**📄 Datos del documento**")
-            r1c1, r1c2, r1c3 = st.columns(3)
-            with r1c1:
-                cc_consec = st.text_input("Consecutivo cuenta de cobro / factura *",
-                                          placeholder="Ej: CC-001 / FAC-2026-123")
-            with r1c2:
-                cc_fec_rec = st.date_input("Fecha de recibimiento *",
-                                           value=ahora_colombia().date())
-            with r1c3:
-                cc_tipo_pago = st.radio("Tipo de pago", ["Contado", "Crédito"],
-                                        horizontal=True, key="cc_tipo_pago_r")
+        if not c_cliente:
+            r0c1, r0c2 = st.columns(2)
+            with r0c1:
+                c_cliente  = st.text_input("Proveedor / Cliente", key="cos_cli_man")
+            with r0c2:
+                c_servicio = st.selectbox("Servicio", SERVICIOS, key="cos_ser_man")
 
-            if not c_cliente:
-                r0c1, r0c2 = st.columns(2)
-                with r0c1:
-                    c_cliente  = st.text_input("Proveedor / Cliente", key="c_cli_man")
-                with r0c2:
-                    c_servicio = st.selectbox("Servicio", SERVICIOS, key="c_ser_man")
+        st.divider()
+        # ── Valores ──────────────────────────────────────────────────────
+        st.markdown("**💵 Valores**")
+        vc1, vc2 = st.columns([2, 1])
+        with vc1:
+            cc_base = st.text_input("Valor antes de IVA *", placeholder="Ej: 500000",
+                                    key="cos_base")
+        with vc2:
+            cc_aplica_iva = st.checkbox("Aplica IVA 19%", value=False, key="cos_iva_chk")
 
-            st.divider()
-            # ── Valores ───────────────────────────────────────────────────
-            st.markdown("**💵 Valores**")
-            vc1, vc2 = st.columns([2, 1])
-            with vc1:
-                cc_base = st.text_input("Valor antes de IVA *", placeholder="Ej: 500000")
-            with vc2:
-                cc_aplica_iva = st.checkbox("Aplica IVA 19%", value=False)
+        # ── Cálculos en tiempo real ───────────────────────────────────────
+        base_c = to_num(cc_base)
+        iva_c  = round(base_c * 0.19) if cc_aplica_iva else 0
+        neto_c = base_c + iva_c
 
-            # Cálculos
-            base_c = to_num(cc_base)
-            iva_c  = base_c * 0.19 if cc_aplica_iva else 0
-            neto_c = base_c + iva_c
+        st.divider()
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Valor antes de IVA", f"${base_c:,.0f}")
+        m2.metric("IVA 19%",            f"${iva_c:,.0f}")
+        m3.metric("Total a pagar",       f"${neto_c:,.0f}")
 
-            if base_c > 0:
-                st.divider()
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Valor antes de IVA", f"${base_c:,.0f}")
-                m2.metric("IVA 19%",            f"${iva_c:,.0f}")
-                m3.metric("Total a pagar",       f"${neto_c:,.0f}")
+        # ── Fechas crédito ────────────────────────────────────────────────
+        _fv_calc = _fpago_calc = None
+        if cc_tipo_pago == "Crédito":
+            _fv_calc    = cc_fec_rec + timedelta(days=30)
+            _fpago_calc = viernes_mas_cercano(_fv_calc)
+            cv1, cv2 = st.columns(2)
+            cv1.info(f"📅 Vencimiento (30 días): **{_fv_calc.strftime('%d/%m/%Y')}**")
+            cv2.info(f"💳 Fecha de pago (viernes más cercano): **{_fpago_calc.strftime('%d/%m/%Y')}**")
 
-            # ── Fecha vencimiento (solo Crédito) ──────────────────────────
-            _fv_calc = None
-            _fpago_calc = None
-            if cc_tipo_pago == "Crédito":
-                _fv_calc    = cc_fec_rec + timedelta(days=30)
-                _fpago_calc = viernes_mas_cercano(_fv_calc)
-                st.divider()
-                cv1, cv2 = st.columns(2)
-                cv1.info(f"📅 Vencimiento (30 días): **{_fv_calc.strftime('%d/%m/%Y')}**")
-                cv2.info(f"💳 Fecha de pago sugerida (viernes más cercano): **{_fpago_calc.strftime('%d/%m/%Y')}**")
-
-            if st.form_submit_button("💾 Guardar", type="primary", use_container_width=True):
-                if not cc_consec.strip():
-                    st.error("El consecutivo de la cuenta de cobro / factura es obligatorio.")
-                elif not cc_base.strip():
-                    st.error("El valor antes de IVA es obligatorio.")
-                else:
-                    nuevo_cos = {
-                        "ID_Costo":           gen_costo_id(costos),
-                        "Fecha":              ahora_colombia().strftime("%Y-%m-%d %H:%M"),
-                        "OT_Ref":             c_ot_ref,
-                        "SOL_Ref":            c_sol_ref,
-                        "Cliente":            c_cliente,
-                        "Servicio":           c_servicio,
-                        "Consecutivo":        cc_consec.strip(),
-                        "Fecha_Recibimiento": cc_fec_rec.strftime("%Y-%m-%d"),
-                        "Tipo_Pago":          cc_tipo_pago,
-                        "Valor_Antes_IVA":    f"{base_c:.0f}",
-                        "IVA":                f"{iva_c:.0f}",
-                        "Total_Neto":         f"{neto_c:.0f}",
-                        "Valor_Tecnico":      "",
-                        "Valor_Materiales":   "",
-                        "Factura_Materiales": "",
-                        "Total_Costo":        f"{neto_c:.0f}",
-                        "Fecha_Vencimiento":  _fv_calc.strftime("%Y-%m-%d") if _fv_calc else "",
-                        "Fecha_Pago":         _fpago_calc.strftime("%Y-%m-%d") if _fpago_calc else "",
-                        "Estado_Pago_C":      "Pendiente",
-                    }
-                    costos = pd.concat([costos, pd.DataFrame([nuevo_cos])], ignore_index=True)
-                    save_costos(costos)
-                    st.success(f"✅ Guardado — Consecutivo: **{cc_consec}** | Total neto: **${neto_c:,.0f}**")
+        st.divider()
+        if st.button("💾 Guardar", type="primary", use_container_width=True, key="cos_btn_guardar"):
+            if not cc_consec.strip():
+                st.error("El consecutivo de la cuenta de cobro / factura es obligatorio.")
+            elif base_c == 0:
+                st.error("El valor antes de IVA es obligatorio.")
+            else:
+                nuevo_cos = {
+                    "ID_Costo":           gen_costo_id(costos),
+                    "Fecha":              ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+                    "OT_Ref":             c_ot_ref,
+                    "SOL_Ref":            c_sol_ref,
+                    "Cliente":            c_cliente,
+                    "Servicio":           c_servicio,
+                    "Consecutivo":        cc_consec.strip(),
+                    "Fecha_Recibimiento": cc_fec_rec.strftime("%Y-%m-%d"),
+                    "Tipo_Pago":          cc_tipo_pago,
+                    "Valor_Antes_IVA":    f"{base_c:.0f}",
+                    "IVA":                f"{iva_c:.0f}",
+                    "Total_Neto":         f"{neto_c:.0f}",
+                    "Valor_Tecnico":      "",
+                    "Valor_Materiales":   "",
+                    "Factura_Materiales": "",
+                    "Total_Costo":        f"{neto_c:.0f}",
+                    "Fecha_Vencimiento":  _fv_calc.strftime("%Y-%m-%d") if _fv_calc else "",
+                    "Fecha_Pago":         _fpago_calc.strftime("%Y-%m-%d") if _fpago_calc else "",
+                    "Estado_Pago_C":      "Pendiente",
+                }
+                costos = pd.concat([costos, pd.DataFrame([nuevo_cos])], ignore_index=True)
+                save_costos(costos)
+                st.success(f"✅ Guardado — **{cc_consec}** | Total: **${neto_c:,.0f}**")
+                st.session_state["_cos_guardado"] = True
+                st.rerun()
 
     with tab_his:
         st.subheader("Cuentas de cobro / facturas registradas")
