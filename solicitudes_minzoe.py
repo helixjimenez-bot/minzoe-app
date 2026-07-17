@@ -6719,13 +6719,13 @@ elif pagina == "compras":
         st.markdown("**💵 Valores**")
         vc1, vc2 = st.columns([2, 1])
         with vc1:
-            cc_base = st.text_input("Valor antes de IVA *", placeholder="Ej: 500000",
-                                    key="cos_base")
+            cc_base = st.number_input("Valor antes de IVA ($ COP) *", min_value=0,
+                                      value=0, step=1000, format="%d", key="cos_base")
         with vc2:
             cc_aplica_iva = st.checkbox("Aplica IVA 19%", value=False, key="cos_iva_chk")
 
         # ── Cálculos en tiempo real ───────────────────────────────────────
-        base_c = to_num(cc_base)
+        base_c = int(cc_base)
         iva_c  = round(base_c * 0.19) if cc_aplica_iva else 0
         neto_c = base_c + iva_c
 
@@ -6761,7 +6761,7 @@ elif pagina == "compras":
             if not cc_consec.strip():
                 st.error("El consecutivo de la cuenta de cobro / factura es obligatorio.")
             elif base_c == 0:
-                st.error("El valor antes de IVA es obligatorio.")
+                st.error("Ingresa el valor antes de IVA.")
             else:
                 nuevo_cos = {
                     "ID_Costo":           gen_costo_id(costos),
