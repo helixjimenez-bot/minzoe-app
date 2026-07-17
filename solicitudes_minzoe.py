@@ -88,7 +88,10 @@ COLS_VENTA = [
 
 COLS_COSTO = [
     "ID_Costo", "Fecha", "OT_Ref", "SOL_Ref", "Cliente", "Servicio",
+    "Consecutivo", "Fecha_Recibimiento", "Tipo_Pago",
+    "Valor_Antes_IVA", "IVA", "Total_Neto",
     "Valor_Tecnico", "Valor_Materiales", "Factura_Materiales", "Total_Costo",
+    "Fecha_Vencimiento", "Fecha_Pago", "Estado_Pago_C",
 ]
 
 ESTADOS_PAGO = ["Pendiente", "Pagada", "Vencida", "Anulada"]
@@ -742,8 +745,28 @@ def gen_fac_id(df):
     ids = df[df["ID_Factura"].str.startswith(pre, na=False)]["ID_Factura"] if not df.empty else pd.Series(dtype=str)
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'FAC-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
+def viernes_mas_cercano(fecha):
+    """Devuelve el viernes calendario más cercano (antes o después) a la fecha dada."""
+    w = fecha.weekday()          # 0=Lun … 4=Vie … 6=Dom
+    if w == 4:
+        return fecha             # ya es viernes
+    dias_sig = (4 - w) % 7      # días hasta el próximo viernes
+    dias_ant = (w - 4) % 7      # días desde el viernes anterior
+    if dias_sig <= dias_ant:
+        return fecha + timedelta(days=dias_sig)
+    return fecha - timedelta(days=dias_ant)
+
 def load_costos():
-    return sb_load("costos", COLS_COSTO, _v=_ver_cache("costos"))
+    cols_sb = _sb_columnas_tabla("costos")
+    if cols_sb:
+        cols = [c for c in COLS_COSTO if c in cols_sb]
+    else:
+        cols = COLS_COSTO
+    df = sb_load("costos", cols, _v=_ver_cache("costos"))
+    for c in COLS_COSTO:
+        if c not in df.columns:
+            df[c] = ""
+    return df[COLS_COSTO]
 
 def save_costos(df):
     sb_save("costos", df)
@@ -6603,12 +6626,49 @@ elif pagina == "compras":
         st.stop()
     import io
     ots = get_ots(); costos = get_costos()
-    st.subheader("🛒 Compras / Costos")
+    hoy_c = ahora_colombia().date()
+    st.subheader("🛒 Compras / Cuentas de Cobro")
 
-    tab_reg, tab_his = st.tabs(["📄 Registrar Costo", "📋 Historial"])
+    # ── Alertas de vencimiento (banner siempre visible) ───────────────────
+    if not costos.empty and "Fecha_Vencimiento" in costos.columns:
+        _cos_cred = costos[
+            (costos["Tipo_Pago"] == "Crédito") &
+            (costos["Estado_Pago_C"] != "Pagada") &
+            (costos["Fecha_Vencimiento"].str.strip() != "")
+        ].copy()
+        if not _cos_cred.empty:
+            _venc_alerts = []
+            for _, _cr in _cos_cred.iterrows():
+                try:
+                    _fv = datetime.strptime(_cr["Fecha_Vencimiento"], "%Y-%m-%d").date()
+                    _diff = (_fv - hoy_c).days
+                    if _diff < 0:
+                        _venc_alerts.append(("vencida", _cr, _diff, _fv))
+                    elif _diff <= 7:
+                        _venc_alerts.append(("proxima", _cr, _diff, _fv))
+                except Exception:
+                    pass
+            for _tipo, _cr, _diff, _fv in sorted(_venc_alerts, key=lambda x: x[2]):
+                _cons = _cr.get("Consecutivo","") or _cr.get("ID_Costo","")
+                _cli  = _cr.get("Cliente","")
+                _tot  = _cr.get("Total_Neto","") or _cr.get("Total_Costo","")
+                if _tipo == "vencida":
+                    _vpago = viernes_mas_cercano(_fv)
+                    st.error(
+                        f"⛔ **VENCIDA** — {_cons} | {_cli} | ${to_num(_tot):,.0f} "
+                        f"| Venció: {_fv.strftime('%d/%m/%Y')} "
+                        f"| 📅 Fecha de pago: **{_vpago.strftime('%d/%m/%Y')}**"
+                    )
+                else:
+                    st.warning(
+                        f"⚠️ Vence en **{_diff} día(s)** — {_cons} | {_cli} | ${to_num(_tot):,.0f} "
+                        f"| Vencimiento: {_fv.strftime('%d/%m/%Y')}"
+                    )
+
+    tab_reg, tab_his = st.tabs(["📄 Registrar", "📋 Historial"])
 
     with tab_reg:
-        st.subheader("Registrar Costo del Trabajo")
+        st.subheader("Registrar Cuenta de Cobro / Factura")
 
         ots_fin_c = ots[ots["Estado"] == "Finalizada"] if not ots.empty else pd.DataFrame()
         ops_ot_c  = ["— Sin vincular —"] + (
@@ -6629,74 +6689,185 @@ elif pagina == "compras":
             st.info(f"📋 **{c_cliente}** | {c_servicio}")
 
         with st.form("form_costo", clear_on_submit=True):
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                cc_tec = st.text_input("Valor asignado al técnico (COP)",
-                                       value=c_val_tec, placeholder="Ej: 150000")
-            with c2:
-                cc_mat = st.text_input("Valor de materiales (COP)", placeholder="Ej: 80000")
-            with c3:
-                cc_fac = st.text_input("N° Factura materiales", placeholder="Ej: FAC-001")
+            # ── Encabezado del documento ──────────────────────────────────
+            st.markdown("**📄 Datos del documento**")
+            r1c1, r1c2, r1c3 = st.columns(3)
+            with r1c1:
+                cc_consec = st.text_input("Consecutivo cuenta de cobro / factura *",
+                                          placeholder="Ej: CC-001 / FAC-2026-123")
+            with r1c2:
+                cc_fec_rec = st.date_input("Fecha de recibimiento *",
+                                           value=ahora_colombia().date())
+            with r1c3:
+                cc_tipo_pago = st.radio("Tipo de pago", ["Contado", "Crédito"],
+                                        horizontal=True, key="cc_tipo_pago_r")
 
             if not c_cliente:
-                c1b, c2b = st.columns(2)
-                with c1b:
-                    c_cliente  = st.text_input("Cliente", key="c_cli_man")
-                with c2b:
+                r0c1, r0c2 = st.columns(2)
+                with r0c1:
+                    c_cliente  = st.text_input("Proveedor / Cliente", key="c_cli_man")
+                with r0c2:
                     c_servicio = st.selectbox("Servicio", SERVICIOS, key="c_ser_man")
 
-            tec_n2  = to_num(cc_tec)
-            mat_n2  = to_num(cc_mat)
-            tot_cos = tec_n2 + mat_n2
+            st.divider()
+            # ── Valores ───────────────────────────────────────────────────
+            st.markdown("**💵 Valores**")
+            r2c1, r2c2, r2c3 = st.columns(3)
+            with r2c1:
+                cc_base = st.text_input("Valor antes de IVA *", placeholder="Ej: 500000")
+            with r2c2:
+                cc_aplica_iva = st.checkbox("Aplica IVA 19%", value=False)
+            with r2c3:
+                cc_tec = st.text_input("Valor técnico (COP)",
+                                       value=c_val_tec, placeholder="Ej: 150000")
 
-            if tot_cos > 0:
-                c1c, c2c, c3c = st.columns(3)
-                c1c.metric("Valor técnico",    f"${tec_n2:,.0f}")
-                c2c.metric("Valor materiales", f"${mat_n2:,.0f}")
-                c3c.metric("Total costo",      f"${tot_cos:,.0f}")
+            cc_mat = st.text_input("Valor materiales (COP)", placeholder="Ej: 80000")
+            cc_fac = st.text_input("N° Factura materiales", placeholder="Ej: FAC-001")
 
-            if st.form_submit_button("💾 Guardar costo", type="primary", use_container_width=True):
-                nuevo_cos = {
-                    "ID_Costo":           gen_costo_id(costos),
-                    "Fecha":              ahora_colombia().strftime("%Y-%m-%d %H:%M"),
-                    "OT_Ref":             c_ot_ref,
-                    "SOL_Ref":            c_sol_ref,
-                    "Cliente":            c_cliente,
-                    "Servicio":           c_servicio,
-                    "Valor_Tecnico":      f"{tec_n2:.0f}",
-                    "Valor_Materiales":   f"{mat_n2:.0f}",
-                    "Factura_Materiales": cc_fac.strip(),
-                    "Total_Costo":        f"{tot_cos:.0f}",
-                }
-                costos = pd.concat([costos, pd.DataFrame([nuevo_cos])], ignore_index=True)
-                save_costos(costos)
-                st.success(f"✅ Costo guardado — Total: **${tot_cos:,.0f}**")
+            # Cálculos
+            base_c  = to_num(cc_base)
+            iva_c   = base_c * 0.19 if cc_aplica_iva else 0
+            neto_c  = base_c + iva_c
+            tec_c   = to_num(cc_tec)
+            mat_c   = to_num(cc_mat)
+            tot_cos = tec_c + mat_c
+
+            if base_c > 0:
+                st.divider()
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Valor antes IVA", f"${base_c:,.0f}")
+                m2.metric("IVA 19%",         f"${iva_c:,.0f}")
+                m3.metric("Total neto",       f"${neto_c:,.0f}")
+
+            # ── Fecha vencimiento (solo Crédito) ──────────────────────────
+            _fv_calc = None
+            _fpago_calc = None
+            if cc_tipo_pago == "Crédito":
+                _fv_calc    = cc_fec_rec + timedelta(days=30)
+                _fpago_calc = viernes_mas_cercano(_fv_calc)
+                st.divider()
+                cv1, cv2 = st.columns(2)
+                cv1.info(f"📅 Vencimiento (30 días): **{_fv_calc.strftime('%d/%m/%Y')}**")
+                cv2.info(f"💳 Fecha de pago sugerida (viernes más cercano): **{_fpago_calc.strftime('%d/%m/%Y')}**")
+
+            if st.form_submit_button("💾 Guardar", type="primary", use_container_width=True):
+                if not cc_consec.strip():
+                    st.error("El consecutivo de la cuenta de cobro / factura es obligatorio.")
+                elif not cc_base.strip():
+                    st.error("El valor antes de IVA es obligatorio.")
+                else:
+                    nuevo_cos = {
+                        "ID_Costo":           gen_costo_id(costos),
+                        "Fecha":              ahora_colombia().strftime("%Y-%m-%d %H:%M"),
+                        "OT_Ref":             c_ot_ref,
+                        "SOL_Ref":            c_sol_ref,
+                        "Cliente":            c_cliente,
+                        "Servicio":           c_servicio,
+                        "Consecutivo":        cc_consec.strip(),
+                        "Fecha_Recibimiento": cc_fec_rec.strftime("%Y-%m-%d"),
+                        "Tipo_Pago":          cc_tipo_pago,
+                        "Valor_Antes_IVA":    f"{base_c:.0f}",
+                        "IVA":                f"{iva_c:.0f}",
+                        "Total_Neto":         f"{neto_c:.0f}",
+                        "Valor_Tecnico":      f"{tec_c:.0f}",
+                        "Valor_Materiales":   f"{mat_c:.0f}",
+                        "Factura_Materiales": cc_fac.strip(),
+                        "Total_Costo":        f"{tot_cos:.0f}",
+                        "Fecha_Vencimiento":  _fv_calc.strftime("%Y-%m-%d") if _fv_calc else "",
+                        "Fecha_Pago":         _fpago_calc.strftime("%Y-%m-%d") if _fpago_calc else "",
+                        "Estado_Pago_C":      "Pendiente",
+                    }
+                    costos = pd.concat([costos, pd.DataFrame([nuevo_cos])], ignore_index=True)
+                    save_costos(costos)
+                    st.success(f"✅ Guardado — Consecutivo: **{cc_consec}** | Total neto: **${neto_c:,.0f}**")
 
     with tab_his:
-        st.subheader("Costos registrados")
+        st.subheader("Cuentas de cobro / facturas registradas")
         if costos.empty:
-            st.info("Aún no hay costos registrados.")
+            st.info("Aún no hay registros.")
         else:
-            buscar_c = st.text_input("Buscar cliente", key="buscar_cos")
-            vista_c  = costos if not buscar_c else costos[
-                costos["Cliente"].str.contains(buscar_c, case=False, na=False)
-            ]
-            tabla_html(vista_c.reset_index(drop=True),
-                       fmt_cols=["Valor_Tecnico","Valor_Materiales","Total_Costo"])
-            st.caption(f"{len(costos)} registro(s).")
+            # ── Filtros ───────────────────────────────────────────────────
+            hf1, hf2, hf3 = st.columns(3)
+            with hf1:
+                buscar_c = st.text_input("Buscar proveedor/cliente", key="buscar_cos")
+            with hf2:
+                _est_fil = st.multiselect("Estado pago", ["Pendiente","Pagada"],
+                                          default=["Pendiente","Pagada"], key="fil_est_cos")
+            with hf3:
+                _tipo_fil = st.multiselect("Tipo pago", ["Contado","Crédito"],
+                                           default=["Contado","Crédito"], key="fil_tipo_cos")
+
+            vista_c = costos.copy()
+            if buscar_c:
+                vista_c = vista_c[vista_c["Cliente"].str.contains(buscar_c, case=False, na=False)]
+            if _est_fil and "Estado_Pago_C" in vista_c.columns:
+                vista_c = vista_c[vista_c["Estado_Pago_C"].isin(_est_fil)]
+            if _tipo_fil and "Tipo_Pago" in vista_c.columns:
+                vista_c = vista_c[vista_c["Tipo_Pago"].isin(_tipo_fil)]
+
+            # ── Marcar como pagada ────────────────────────────────────────
+            _pend = vista_c[vista_c.get("Estado_Pago_C","") != "Pagada"] if "Estado_Pago_C" in vista_c.columns else pd.DataFrame()
+            if not _pend.empty:
+                _ids_cos = _pend["ID_Costo"].tolist()
+                _sel_pagar = st.selectbox("Marcar como PAGADA", ["— Selecciona —"] + _ids_cos,
+                                          key="sel_pagar_cos")
+                if _sel_pagar != "— Selecciona —":
+                    if st.button("✅ Confirmar pago", type="primary", key="btn_pagar_cos"):
+                        _idx_p = costos[costos["ID_Costo"] == _sel_pagar].index[0]
+                        costos.loc[_idx_p, "Estado_Pago_C"] = "Pagada"
+                        save_costos(costos)
+                        st.success(f"✅ {_sel_pagar} marcada como Pagada.")
+                        st.rerun()
+
+            st.divider()
+
+            # Calcular estado dinámico para mostrar
+            def _estado_disp(row):
+                if row.get("Estado_Pago_C","") == "Pagada":
+                    return "Pagada"
+                fv = row.get("Fecha_Vencimiento","")
+                if not fv or row.get("Tipo_Pago","") != "Crédito":
+                    return "Contado"
+                try:
+                    diff = (datetime.strptime(fv, "%Y-%m-%d").date() - hoy_c).days
+                    if diff < 0:
+                        return "Vencida"
+                    if diff <= 7:
+                        return "Por vencer"
+                    return "Pendiente"
+                except Exception:
+                    return "Pendiente"
+
+            vista_c["_Estado"] = vista_c.apply(_estado_disp, axis=1)
+
+            COLORES_COS = {
+                "Vencida":   ("#fee2e2", "#7f1d1d"),
+                "Por vencer":("#fff3cd", "#7d5a00"),
+                "Pendiente": ("#e0e7ff", "#1e3a8a"),
+                "Pagada":    ("#d1fae5", "#064e3b"),
+                "Contado":   ("#f3f4f6", "#374151"),
+            }
+            _cols_vis = [c for c in [
+                "ID_Costo","Consecutivo","Fecha_Recibimiento","Cliente","Tipo_Pago",
+                "Valor_Antes_IVA","IVA","Total_Neto","Fecha_Vencimiento","Fecha_Pago","_Estado"
+            ] if c in vista_c.columns]
+            tabla_html(vista_c[_cols_vis].reset_index(drop=True),
+                       color_col="_Estado", colores_estado=COLORES_COS,
+                       fmt_cols=["Valor_Antes_IVA","IVA","Total_Neto"])
+            st.caption(f"{len(vista_c)} registro(s).")
+
             buf_c = io.BytesIO()
             with pd.ExcelWriter(buf_c, engine="openpyxl") as w:
-                vista_c.to_excel(w, index=False, sheet_name="Costos")
+                vista_c.to_excel(w, index=False, sheet_name="Compras")
             st.download_button("⬇️ Exportar Excel", data=buf_c.getvalue(),
-                               file_name=f"costos_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
+                               file_name=f"compras_{ahora_colombia().strftime('%Y%m%d')}.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-            # Totales rápidos
             st.divider()
             t1, t2, t3 = st.columns(3)
-            t1.metric("Total técnicos",   f"${costos['Valor_Tecnico'].apply(to_num).sum():,.0f}")
-            t2.metric("Total materiales", f"${costos['Valor_Materiales'].apply(to_num).sum():,.0f}")
-            t3.metric("Total costos",     f"${costos['Total_Costo'].apply(to_num).sum():,.0f}")
+            t1.metric("Total antes IVA",  f"${costos['Valor_Antes_IVA'].apply(to_num).sum():,.0f}")
+            t2.metric("Total IVA",        f"${costos['IVA'].apply(to_num).sum():,.0f}")
+            t3.metric("Total neto",       f"${costos['Total_Neto'].apply(to_num).sum():,.0f}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
