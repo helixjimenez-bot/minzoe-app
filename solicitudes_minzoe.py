@@ -6688,6 +6688,18 @@ elif pagina == "compras":
             c_val_tec  = fila_ot_c.get("Valor_COP", "")
             st.info(f"📋 **{c_cliente}** | {c_servicio}")
 
+        st.markdown("""
+        <style>
+        input[type="text"], input[type="number"] {
+            color: #111111 !important;
+            background-color: #ffffff !important;
+        }
+        [data-baseweb="input"] input {
+            color: #111111 !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
         with st.form("form_costo", clear_on_submit=True):
             # ── Encabezado del documento ──────────────────────────────────
             st.markdown("**📄 Datos del documento**")
@@ -6712,32 +6724,23 @@ elif pagina == "compras":
             st.divider()
             # ── Valores ───────────────────────────────────────────────────
             st.markdown("**💵 Valores**")
-            r2c1, r2c2, r2c3 = st.columns(3)
-            with r2c1:
+            vc1, vc2 = st.columns([2, 1])
+            with vc1:
                 cc_base = st.text_input("Valor antes de IVA *", placeholder="Ej: 500000")
-            with r2c2:
+            with vc2:
                 cc_aplica_iva = st.checkbox("Aplica IVA 19%", value=False)
-            with r2c3:
-                cc_tec = st.text_input("Valor técnico (COP)",
-                                       value=c_val_tec, placeholder="Ej: 150000")
-
-            cc_mat = st.text_input("Valor materiales (COP)", placeholder="Ej: 80000")
-            cc_fac = st.text_input("N° Factura materiales", placeholder="Ej: FAC-001")
 
             # Cálculos
-            base_c  = to_num(cc_base)
-            iva_c   = base_c * 0.19 if cc_aplica_iva else 0
-            neto_c  = base_c + iva_c
-            tec_c   = to_num(cc_tec)
-            mat_c   = to_num(cc_mat)
-            tot_cos = tec_c + mat_c
+            base_c = to_num(cc_base)
+            iva_c  = base_c * 0.19 if cc_aplica_iva else 0
+            neto_c = base_c + iva_c
 
             if base_c > 0:
                 st.divider()
                 m1, m2, m3 = st.columns(3)
-                m1.metric("Valor antes IVA", f"${base_c:,.0f}")
-                m2.metric("IVA 19%",         f"${iva_c:,.0f}")
-                m3.metric("Total neto",       f"${neto_c:,.0f}")
+                m1.metric("Valor antes de IVA", f"${base_c:,.0f}")
+                m2.metric("IVA 19%",            f"${iva_c:,.0f}")
+                m3.metric("Total a pagar",       f"${neto_c:,.0f}")
 
             # ── Fecha vencimiento (solo Crédito) ──────────────────────────
             _fv_calc = None
@@ -6769,10 +6772,10 @@ elif pagina == "compras":
                         "Valor_Antes_IVA":    f"{base_c:.0f}",
                         "IVA":                f"{iva_c:.0f}",
                         "Total_Neto":         f"{neto_c:.0f}",
-                        "Valor_Tecnico":      f"{tec_c:.0f}",
-                        "Valor_Materiales":   f"{mat_c:.0f}",
-                        "Factura_Materiales": cc_fac.strip(),
-                        "Total_Costo":        f"{tot_cos:.0f}",
+                        "Valor_Tecnico":      "",
+                        "Valor_Materiales":   "",
+                        "Factura_Materiales": "",
+                        "Total_Costo":        f"{neto_c:.0f}",
                         "Fecha_Vencimiento":  _fv_calc.strftime("%Y-%m-%d") if _fv_calc else "",
                         "Fecha_Pago":         _fpago_calc.strftime("%Y-%m-%d") if _fpago_calc else "",
                         "Estado_Pago_C":      "Pendiente",
