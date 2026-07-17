@@ -3646,7 +3646,7 @@ elif pagina == "ots":
                 ot_hora_ini   = st.selectbox("Hora de inicio", HORAS_12, index=16)  # 08:00 AM
                 ot_hora_fin   = st.selectbox("Hora final",     HORAS_12, index=32)  # 04:00 PM
                 ot_estado     = st.selectbox("Estado", ESTADOS_OT)
-                ot_valor      = st.text_input("Valor del servicio (COP)", placeholder="Ej: 250000")
+                ot_valor      = st.number_input("Valor del servicio ($ COP)", min_value=0, value=0, step=1000, format="%d")
 
             ot_materiales  = st.text_area("Materiales / Repuestos utilizados")
             ot_obs         = st.text_area("Observaciones")
@@ -4122,7 +4122,7 @@ elif pagina == "ots":
                             ee_cel_tec = st.text_input("📱 Celular del técnico", value=fila_ot.get("Celular_Tecnico", ""), placeholder="Ej: 3001234567")
                         with c2:
                             ee_estado = st.selectbox("Estado", ESTADOS_OT, index=ESTADOS_OT.index(fila_ot["Estado"]) if fila_ot["Estado"] in ESTADOS_OT else 0)
-                            ee_valor  = st.text_input("Valor COP", value=fila_ot.get("Valor_COP", ""))
+                            ee_valor  = st.number_input("Valor ($ COP)", min_value=0, value=int(to_num(fila_ot.get("Valor_COP","0"))), step=1000, format="%d")
                             # Fecha de ejecución — maneja campo vacío
                             fecha_actual = fila_ot.get("Fecha_Ejecucion", "")
                             try:
@@ -5935,7 +5935,7 @@ elif pagina == "contratos_mto":
                             con_tecnico = st.text_input("Técnico responsable")
                             con_freq    = st.selectbox("Frecuencia", FRECUENCIAS)
                         with c2:
-                            con_valor   = st.text_input("Valor contrato (COP)", placeholder="Ej: 1200000")
+                            con_valor   = st.number_input("Valor contrato ($ COP)", min_value=0, value=0, step=1000, format="%d")
                             con_estado  = st.selectbox("Estado", ["Activo","Inactivo"])
                         with c3:
                             con_inicio  = st.date_input("Fecha inicio contrato", value=ahora_colombia().date())
@@ -6054,7 +6054,7 @@ elif pagina == "contratos_mto":
                         con_tecnico = st.text_input("Técnico responsable")
                         con_freq    = st.selectbox("Frecuencia", FRECUENCIAS)
                     with c2:
-                        con_valor   = st.text_input("Valor del contrato (COP)")
+                        con_valor   = st.number_input("Valor del contrato ($ COP)", min_value=0, value=0, step=1000, format="%d")
                         con_inicio  = st.date_input("Fecha inicio", value=ahora_colombia().date())
                         con_fin     = st.date_input("Fecha fin")
                         con_estado  = st.selectbox("Estado", ["Activo", "Inactivo"])
@@ -6155,7 +6155,7 @@ elif pagina == "contratos_mto":
                                         index=SERVICIOS.index(fc["Servicio"]) if fc["Servicio"] in SERVICIOS else 0)
                         ec_freq     = st.selectbox("Frecuencia", FRECUENCIAS,
                                         index=FRECUENCIAS.index(fc["Frecuencia"]) if fc["Frecuencia"] in FRECUENCIAS else 0)
-                        ec_valor    = st.text_input("Valor COP", value=fc.get("Valor_Contrato",""))
+                        ec_valor    = st.number_input("Valor ($ COP)", min_value=0, value=int(to_num(fc.get("Valor_Contrato","0"))), step=1000, format="%d")
                         try:
                             ec_inicio = st.date_input("Fecha inicio",
                                 value=datetime.strptime(fc["Fecha_Inicio"],"%Y-%m-%d").date() if fc.get("Fecha_Inicio") else ahora_colombia().date())
@@ -6503,7 +6503,7 @@ elif pagina in ("ventas", "compras_ventas"):
             st.markdown("**💵 Valores**")
             c1, c2, c3, c4 = st.columns(4)
             with c1:
-                v_base     = st.text_input("Valor Antes de IVA", placeholder="0")
+                v_base     = st.number_input("Valor Antes de IVA ($ COP)", min_value=0, value=0, step=1000, format="%d")
             with c2:
                 v_aplica_iva = st.checkbox("Aplica IVA 19%", value=True)
             with c3:
