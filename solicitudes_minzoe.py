@@ -1726,13 +1726,29 @@ button[data-testid="baseButton-primary"] {
 .stTextArea > div > div > textarea,
 .stSelectbox > div > div {
     background: #ffffff !important; color: #111111 !important;
+    -webkit-text-fill-color: #111111 !important;
     border: 1px solid #dc2626 !important; border-radius: 6px !important;
     caret-color: #111111 !important;
 }
 .stNumberInput > div > div > input {
     background: #ffffff !important; color: #111111 !important;
+    -webkit-text-fill-color: #111111 !important;
     border: 1px solid #dc2626 !important; border-radius: 6px !important;
     caret-color: #111111 !important;
+}
+/* Textarea fondo blanco explícito (perfil técnico modo oscuro) */
+.stTextArea > div,
+.stTextArea > div > div {
+    background: #ffffff !important;
+}
+textarea {
+    background: #ffffff !important; color: #111111 !important;
+    -webkit-text-fill-color: #111111 !important;
+}
+/* Inputs de hora y texto genéricos */
+input[type="text"], input[type="time"], input[type="number"] {
+    background: #ffffff !important; color: #111111 !important;
+    -webkit-text-fill-color: #111111 !important;
 }
 
 /* ── Campos deshabilitados (auto-relleno) ── */
