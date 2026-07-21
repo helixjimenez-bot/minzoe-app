@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Informe Mantenimiento Preventivo – Altipal S.A.S | CEDI Cali</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #222; background: #f5f5f5; }
+
+    .page { max-width: 900px; margin: 30px auto; background: #fff; padding: 40px 48px; box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
+
+    /* HEADER */
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #c0392b; padding-bottom: 18px; margin-bottom: 22px; }
+    .logo-area h1 { font-size: 28px; color: #c0392b; font-weight: 900; letter-spacing: 1px; }
+    .logo-area h2 { font-size: 13px; color: #555; font-weight: normal; margin-top: 2px; }
+    .logo-area p { font-size: 10px; color: #888; margin-top: 3px; }
+    .doc-info { text-align: right; }
+    .doc-info .label { font-size: 10px; color: #888; text-transform: uppercase; }
+    .doc-info .value { font-size: 13px; font-weight: bold; color: #c0392b; }
+    .badge { display: inline-block; background: #c0392b; color: #fff; font-size: 11px; font-weight: bold; padding: 4px 14px; border-radius: 4px; margin-top: 6px; }
+
+    /* DESTINATARIO */
+    .destinatario { border-left: 4px solid #c0392b; padding: 10px 16px; margin-bottom: 18px; background: #fdf2f2; border-radius: 0 4px 4px 0; }
+    .destinatario p { line-height: 1.7; font-size: 12px; }
+
+    /* SECCIÓN */
+    .section-title { background: #c0392b; color: #fff; font-size: 12px; font-weight: bold; padding: 6px 12px; margin: 20px 0 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .sub-title { background: #f5d5d2; color: #8b0000; font-size: 11px; font-weight: bold; padding: 5px 10px; margin: 10px 0 6px; border-left: 3px solid #c0392b; }
+
+    /* INFO GRID */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 20px; margin-bottom: 8px; }
+    .info-row { display: flex; gap: 6px; padding: 2px 0; }
+    .info-row .lbl { color: #555; min-width: 120px; font-weight: bold; font-size: 11px; }
+    .info-row .val { color: #222; font-size: 11px; }
+
+    /* ALCANCE */
+    .alcance-list { padding-left: 20px; margin: 6px 0 10px; }
+    .alcance-list li { margin-bottom: 4px; font-size: 11px; color: #333; line-height: 1.5; }
+
+    /* TABLA EQUIPOS */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px; }
+    th { background: #c0392b; color: #fff; padding: 6px 8px; text-align: center; }
+    td { padding: 5px 7px; border: 1px solid #ddd; text-align: center; vertical-align: middle; }
+    tr:nth-child(even) td { background: #fdf2f2; }
+    .eq-num { background: #c0392b; color: #fff; font-weight: bold; border-radius: 50%; width: 20px; height: 20px; display: inline-block; line-height: 20px; text-align: center; font-size: 10px; }
+
+    /* CARD DE EQUIPO */
+    .eq-card { border: 1px solid #ddd; border-radius: 6px; padding: 12px 16px; margin-bottom: 14px; }
+    .eq-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+    .eq-card-title { font-weight: bold; color: #c0392b; font-size: 12px; }
+    .eq-card-badge { background: #eee; color: #555; font-size: 10px; padding: 2px 8px; border-radius: 10px; }
+    .eq-data-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+    .eq-data-item { font-size: 10px; }
+    .eq-data-item .dk { color: #888; text-transform: uppercase; font-size: 9px; }
+    .eq-data-item .dv { font-weight: bold; color: #222; font-size: 11px; }
+
+    /* MEDICIONES */
+    .med-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 6px 0 8px; }
+    .med-card { border: 1px solid #ddd; border-radius: 4px; padding: 6px 8px; text-align: center; background: #fafafa; }
+    .med-card .mc-title { font-size: 9px; color: #888; text-transform: uppercase; margin-bottom: 2px; }
+    .med-card .mc-val { font-size: 13px; font-weight: bold; color: #c0392b; }
+    .med-card .mc-unit { font-size: 9px; color: #555; }
+
+    /* ESTADO */
+    .estado-op { color: #1a8a2e; font-weight: bold; }
+    .estado-gas { color: #d68910; font-weight: bold; }
+
+    /* OBS POR EQUIPO */
+    .obs-eq { background: #fffbea; border: 1px solid #f0c040; border-radius: 4px; padding: 6px 10px; font-size: 11px; color: #7d5a00; margin-top: 4px; }
+    .obs-eq.ok { background: #eafaf1; border-color: #82e0a9; color: #1a7a40; }
+
+    /* OBSERVACIONES GENERALES */
+    .obs-box { border: 1px solid #f0c040; background: #fffbea; border-radius: 4px; padding: 10px 14px; font-size: 12px; color: #7d5a00; margin-top: 4px; }
+    .obs-box ul { padding-left: 18px; margin-top: 4px; }
+    .obs-box li { margin-bottom: 4px; }
+
+    /* CONCLUSIONES */
+    .conc-box { border: 1px solid #a9cce3; background: #eaf2fb; border-radius: 4px; padding: 10px 14px; font-size: 12px; color: #1a5276; margin-top: 4px; }
+    .conc-box ul { padding-left: 18px; margin-top: 4px; }
+    .conc-box li { margin-bottom: 4px; }
+
+    /* NORMAS */
+    .normas { display: flex; gap: 10px; margin-top: 8px; }
+    .norma-badge { background: #c0392b; color: #fff; font-size: 10px; font-weight: bold; padding: 3px 10px; border-radius: 3px; }
+
+    /* FIRMAS */
+    .firma-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 35px; }
+    .firma-box { border-top: 1px solid #c0392b; padding-top: 8px; text-align: center; }
+    .firma-box .nombre { font-weight: bold; color: #c0392b; margin-top: 4px; font-size: 12px; }
+    .firma-box .cargo { font-size: 10px; color: #666; }
+
+    /* FOOTER */
+    .footer { margin-top: 28px; border-top: 1px solid #ddd; padding-top: 10px; text-align: center; font-size: 10px; color: #888; }
+
+    /* SEPARADOR */
+    .sep { border: none; border-top: 1px dashed #ddd; margin: 14px 0; }
+
+    @media print {
+      body { background: #fff; }
+      .page { box-shadow: none; margin: 0; padding: 20px 30px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ENCABEZADO -->
+  <div class="header">
+    <div class="logo-area">
+      <h1>CONSTRUCCIONES MINZOE</h1>
+      <h2>Soluciones integrales en construcción, mantenimiento y climatización</h2>
+      <p>Cra 5 # 8a-18 &nbsp;|&nbsp; 317 510 2668 – 317 374 8665</p>
+      <p>construminzoe@gmail.com &nbsp;|&nbsp; minzoerefrigeracion@gmail.com</p>
+    </div>
+    <div class="doc-info">
+      <div class="label">Fecha del informe</div>
+      <div class="value">2 de diciembre de 2025</div>
+      <div class="label" style="margin-top:8px;">Tipo de servicio</div>
+      <div class="badge">MANTENIMIENTO PREVENTIVO</div>
+    </div>
+  </div>
+
+  <!-- DESTINATARIO -->
+  <div class="destinatario">
+    <p><strong>Bogotá, 2 de diciembre de 2025</strong></p>
+    <p><strong>Señores:</strong> Altipal S.A.S &nbsp;|&nbsp; Sede: Altipal Cali — CEDI (Autopista Cali – Yumbo)</p>
+    <p><strong>Asunto:</strong> INFORME DE MANTENIMIENTO PREVENTIVO — AIRES ACONDICIONADOS CEDI CALI</p>
+  </div>
+
+  <!-- DATOS DEL SERVICIO -->
+  <div class="section-title">Datos del servicio</div>
+  <div class="info-grid">
+    <div class="info-row"><span class="lbl">Cliente:</span><span class="val">Altipal S.A.S</span></div>
+    <div class="info-row"><span class="lbl">Fecha de ejecución:</span><span class="val">27 – 29 de noviembre de 2025</span></div>
+    <div class="info-row"><span class="lbl">Sede:</span><span class="val">Altipal Cali – CEDI (Autopista Cali-Yumbo)</span></div>
+    <div class="info-row"><span class="lbl">Elaborado por:</span><span class="val">MINZOE Ingeniería y Mantenimiento</span></div>
+    <div class="info-row"><span class="lbl">Responsable técnico:</span><span class="val">Jeyson Jiménez / José Osorio</span></div>
+    <div class="info-row"><span class="lbl">Tipo de servicio:</span><span class="val">Mantenimiento preventivo de equipos de aire acondicionado</span></div>
+  </div>
+
+  <!-- OBJETIVO -->
+  <div class="section-title">1. Objetivo</div>
+  <p style="font-size:12px; line-height:1.7; color:#333;">
+    Realizar el mantenimiento preventivo de los equipos de aire acondicionado instalados en la sede Altipal Cali (CEDI), con el fin de garantizar su correcto funcionamiento, prolongar su vida útil y mantener las condiciones óptimas de confort térmico en las áreas operativas y administrativas.
+  </p>
+
+  <!-- ALCANCE -->
+  <div class="section-title">2. Alcance</div>
+  <p style="font-size:11px; color:#555; margin-bottom:4px;">El mantenimiento incluyó las siguientes actividades:</p>
+  <ul class="alcance-list">
+    <li>Limpieza general de unidades evaporadoras y condensadoras.</li>
+    <li>Lavado y desinfección de filtros de aire.</li>
+    <li>Limpieza de serpentines (evaporadora y condensadora).</li>
+    <li>Revisión y ajuste de conexiones eléctricas.</li>
+    <li>Verificación de presiones de trabajo del sistema (alta y baja).</li>
+    <li>Comprobación de parámetros eléctricos y térmicos.</li>
+    <li>Limpieza de bandejas y sistema de drenaje.</li>
+    <li>Verificación del estado de aislamiento en líneas de refrigerante.</li>
+    <li>Inspección visual de fugas y estado general de los equipos.</li>
+    <li>Ajuste de carga de gas refrigerante en equipos que lo requirieron.</li>
+    <li>Lubricación de rodamientos y revisión de ventiladores/extractores.</li>
+  </ul>
+
+  <!-- DESCRIPCIÓN -->
+  <div class="section-title">3. Descripción de los trabajos realizados</div>
+  <ul class="alcance-list">
+    <li>Se ejecutaron mantenimientos preventivos a los equipos de aire acondicionado tipo mini split (refrigerante R-410A y R-32).</li>
+    <li>Se verificaron las presiones de succión y descarga, encontrándose dentro de los parámetros normales de operación.</li>
+    <li>Se ajustaron conexiones eléctricas y terminales en todos los equipos.</li>
+    <li>Se revisó el sistema de drenaje, garantizando un flujo continuo de condensado.</li>
+    <li>Se inspeccionaron los aislamientos de las líneas de refrigerante, encontrándose en buen estado general.</li>
+    <li>Se realizó ajuste de carga de gas refrigerante en los equipos: Recepción Eq. #1, Recepción Eq. #2, Oficina Cartera y Sala de Reuniones.</li>
+  </ul>
+
+  <!-- RESUMEN EQUIPOS -->
+  <div class="section-title">4. Equipos atendidos — Resumen</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Marca</th>
+        <th>Modelo</th>
+        <th>Serial (Evap.)</th>
+        <th>BTU</th>
+        <th>Refrigerante</th>
+        <th>Ubicación</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="eq-num">1</span></td>
+        <td>MIRAGE</td>
+        <td>ELF181Q</td>
+        <td>A270170234</td>
+        <td>18.000</td>
+        <td>R-410</td>
+        <td>Recepción Eq. #2</td>
+        <td><span class="estado-gas">OPERATIVO*</span></td>
+      </tr>
+      <tr>
+        <td><span class="eq-num">2</span></td>
+        <td>LG</td>
+        <td>VO182111</td>
+        <td>RRN52542</td>
+        <td>18.000</td>
+        <td>R-32</td>
+        <td>Oficina Logística</td>
+        <td><span class="estado-op">OPERATIVO</span></td>
+      </tr>
+      <tr>
+        <td><span class="eq-num">3</span></td>
+        <td>MIRAGE</td>
+        <td>ELF121Q</td>
+        <td>B030130027</td>
+        <td>12.000</td>
+        <td>R-410</td>
+        <td>Oficina Cartera</td>
+        <td><span class="estado-gas">OPERATIVO*</span></td>
+      </tr>
+      <tr>
+        <td><span class="eq-num">4</span></td>
+        <td>BLUELINE</td>
+        <td>MS-1810F2</td>
+        <td>—</td>
+        <td>18.000</td>
+        <td>R-410</td>
+        <td>Cafetería</td>
+        <td><span class="estado-op">OPERATIVO</span></td>
+      </tr>
+      <tr>
+        <td><span class="eq-num">5</span></td>
+        <td>BLUELINE</td>
+        <td>MS-1810F2</td>
+        <td>—</td>
+        <td>18.000</td>
+        <td>R-410</td>
+        <td>Sala de Reuniones</td>
+        <td><span class="estado-gas">OPERATIVO*</span></td>
+      </tr>
+      <tr>
+        <td><span class="eq-num">6</span></td>
+        <td>MIRAGE</td>
+        <td>ELF126Q</td>
+        <td>13010170423</td>
+        <td>24.000</td>
+        <td>R-410</td>
+        <td>Sala Capacitaciones #2</td>
+        <td><span class="estado-op">OPERATIVO</span></td>
+      </tr>
+      <tr>
+        <td><span class="eq-num">7</span></td>
+        <td>MIRAGE</td>
+        <td>ELF126Q</td>
+        <td>13010170317</td>
+        <td>24.000</td>
+        <td>R-410</td>
+        <td>Sala Capacitaciones #1</td>
+        <td><span class="estado-op">OPERATIVO</span></td>
+      </tr>
+      <tr>
+        <td><span class="eq-num">8</span></td>
+        <td>BLUELINE</td>
+        <td>MS-1810F2</td>
+        <td>—</td>
+        <td>18.000</td>
+        <td>R-410</td>
+        <td>Recepción Eq. #1</td>
+        <td><span class="estado-gas">OPERATIVO*</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="font-size:10px; color:#888; margin-top:-8px; margin-bottom:10px;">* Equipo operativo con ajuste de carga de gas refrigerante realizado durante la visita.</p>
+
+  <!-- DETALLE POR EQUIPO -->
+  <div class="section-title">5. Detalle técnico por equipo</div>
+
+  <!-- EQ 1 -->
+  <div class="eq-card">
+    <div class="eq-card-header">
+      <div class="eq-card-title"><span class="eq-num">1</span> &nbsp; MIRAGE ELF181Q — Recepción Eq. #2</div>
+      <div class="eq-card-badge">R-410 | 18.000 BTU | Serial: A270170234</div>
+    </div>
+    <div class="med-grid">
+      <div class="med-card"><div class="mc-title">V. Condensadora</div><div class="mc-val">220</div><div class="mc-unit">V</div></div>
+      <div class="med-card"><div class="mc-title">A. Condensadora</div><div class="mc-val">7.0</div><div class="mc-unit">A</div></div>
+      <div class="med-card"><div class="mc-title">T° Suministro</div><div class="mc-val">7.1</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Retorno</div><div class="mc-val">14.2</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Ambiente</div><div class="mc-val">29.1</div><div class="mc-unit">°C</div></div>
+    </div>
+    <div class="obs-eq">Mantenimiento preventivo realizado. Se realizó ajuste de carga de gas refrigerante R-410A. Equipo operativo.</div>
+  </div>
+
+  <!-- EQ 2 -->
+  <div class="eq-card">
+    <div class="eq-card-header">
+      <div class="eq-card-title"><span class="eq-num">2</span> &nbsp; LG VO182111 — Oficina Logística</div>
+      <div class="eq-card-badge">R-32 | 18.000 BTU | Serial: RRN52542</div>
+    </div>
+    <div class="med-grid">
+      <div class="med-card"><div class="mc-title">V. Condensadora</div><div class="mc-val">211</div><div class="mc-unit">V</div></div>
+      <div class="med-card"><div class="mc-title">A. Condensadora</div><div class="mc-val">7.0</div><div class="mc-unit">A</div></div>
+      <div class="med-card"><div class="mc-title">T° Suministro</div><div class="mc-val">7.0</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Retorno</div><div class="mc-val">16.0</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Ambiente</div><div class="mc-val">20.0</div><div class="mc-unit">°C</div></div>
+    </div>
+    <div class="obs-eq ok">Mantenimiento preventivo realizado. Equipo operando correctamente sin novedades relevantes.</div>
+  </div>
+
+  <!-- EQ 3 -->
+  <div class="eq-card">
+    <div class="eq-card-header">
+      <div class="eq-card-title"><span class="eq-num">3</span> &nbsp; MIRAGE ELF121Q — Oficina Cartera</div>
+      <div class="eq-card-badge">R-410 | 12.000 BTU | Serial: B030130027</div>
+    </div>
+    <div class="med-grid">
+      <div class="med-card"><div class="mc-title">V. Condensadora</div><div class="mc-val">211</div><div class="mc-unit">V</div></div>
+      <div class="med-card"><div class="mc-title">A. Condensadora</div><div class="mc-val">7.27</div><div class="mc-unit">A</div></div>
+      <div class="med-card"><div class="mc-title">T° Suministro</div><div class="mc-val">2.2</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Retorno</div><div class="mc-val">14.2</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Ambiente</div><div class="mc-val">22.4</div><div class="mc-unit">°C</div></div>
+    </div>
+    <div class="obs-eq">Mantenimiento preventivo realizado. Se realizó ajuste de carga de gas refrigerante R-410A. Equipo operativo.</div>
+  </div>
+
+  <!-- EQ 4 -->
+  <div class="eq-card">
+    <div class="eq-card-header">
+      <div class="eq-card-title"><span class="eq-num">4</span> &nbsp; BLUELINE MS-1810F2 — Cafetería</div>
+      <div class="eq-card-badge">R-410 | 18.000 BTU</div>
+    </div>
+    <div class="med-grid">
+      <div class="med-card"><div class="mc-title">V. Condensadora</div><div class="mc-val">210</div><div class="mc-unit">V</div></div>
+      <div class="med-card"><div class="mc-title">A. Condensadora</div><div class="mc-val">7.0</div><div class="mc-unit">A</div></div>
+      <div class="med-card"><div class="mc-title">T° Suministro</div><div class="mc-val">7.1</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Retorno</div><div class="mc-val">11.4</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Ambiente</div><div class="mc-val">22.6</div><div class="mc-unit">°C</div></div>
+    </div>
+    <div class="obs-eq ok">Mantenimiento preventivo realizado. Equipo operando correctamente sin novedades relevantes.</div>
+  </div>
+
+  <!-- EQ 5 -->
+  <div class="eq-card">
+    <div class="eq-card-header">
+      <div class="eq-card-title"><span class="eq-num">5</span> &nbsp; BLUELINE MS-1810F2 — Sala de Reuniones</div>
+      <div class="eq-card-badge">R-410 | 18.000 BTU</div>
+    </div>
+    <div class="med-grid">
+      <div class="med-card"><div class="mc-title">V. Condensadora</div><div class="mc-val">211</div><div class="mc-unit">V</div></div>
+      <div class="med-card"><div class="mc-title">A. Condensadora</div><div class="mc-val">9.09</div><div class="mc-unit">A</div></div>
+      <div class="med-card"><div class="mc-title">T° Suministro</div><div class="mc-val">10.0</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Retorno</div><div class="mc-val">14.0</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Ambiente</div><div class="mc-val">20.0</div><div class="mc-unit">°C</div></div>
+    </div>
+    <div class="obs-eq">Mantenimiento preventivo realizado. Se realizó ajuste de carga de gas refrigerante R-410A. Equipo operativo.</div>
+  </div>
+
+  <!-- EQ 6 -->
+  <div class="eq-card">
+    <div class="eq-card-header">
+      <div class="eq-card-title"><span class="eq-num">6</span> &nbsp; MIRAGE ELF126Q — Sala Capacitaciones #2</div>
+      <div class="eq-card-badge">R-410 | 24.000 BTU | Serial: 13010170423</div>
+    </div>
+    <div class="med-grid">
+      <div class="med-card"><div class="mc-title">V. Condensadora</div><div class="mc-val">211</div><div class="mc-unit">V</div></div>
+      <div class="med-card"><div class="mc-title">A. Condensadora</div><div class="mc-val">9.0</div><div class="mc-unit">A</div></div>
+      <div class="med-card"><div class="mc-title">T° Suministro</div><div class="mc-val">2.0</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Retorno</div><div class="mc-val">14.0</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Ambiente</div><div class="mc-val">22.2</div><div class="mc-unit">°C</div></div>
+    </div>
+    <div class="obs-eq ok">Mantenimiento preventivo realizado. Equipo operando correctamente sin novedades relevantes.</div>
+  </div>
+
+  <!-- EQ 7 -->
+  <div class="eq-card">
+    <div class="eq-card-header">
+      <div class="eq-card-title"><span class="eq-num">7</span> &nbsp; MIRAGE ELF126Q — Sala Capacitaciones #1</div>
+      <div class="eq-card-badge">R-410 | 24.000 BTU | Serial: 13010170317</div>
+    </div>
+    <div class="med-grid">
+      <div class="med-card"><div class="mc-title">V. Condensadora</div><div class="mc-val">220</div><div class="mc-unit">V</div></div>
+      <div class="med-card"><div class="mc-title">A. Condensadora</div><div class="mc-val">9.27</div><div class="mc-unit">A</div></div>
+      <div class="med-card"><div class="mc-title">T° Suministro</div><div class="mc-val">2.0</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Retorno</div><div class="mc-val">14.2</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Ambiente</div><div class="mc-val">22.2</div><div class="mc-unit">°C</div></div>
+    </div>
+    <div class="obs-eq ok">Mantenimiento preventivo realizado. Equipo operando correctamente sin novedades relevantes.</div>
+  </div>
+
+  <!-- EQ 8 -->
+  <div class="eq-card">
+    <div class="eq-card-header">
+      <div class="eq-card-title"><span class="eq-num">8</span> &nbsp; BLUELINE MS-1810F2 — Recepción Eq. #1</div>
+      <div class="eq-card-badge">R-410 | 18.000 BTU</div>
+    </div>
+    <div class="med-grid">
+      <div class="med-card"><div class="mc-title">V. Condensadora</div><div class="mc-val">211</div><div class="mc-unit">V</div></div>
+      <div class="med-card"><div class="mc-title">A. Condensadora</div><div class="mc-val">7.4</div><div class="mc-unit">A</div></div>
+      <div class="med-card"><div class="mc-title">T° Suministro</div><div class="mc-val">7.0</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Retorno</div><div class="mc-val">14.2</div><div class="mc-unit">°C</div></div>
+      <div class="med-card"><div class="mc-title">T° Ambiente</div><div class="mc-val">20.4</div><div class="mc-unit">°C</div></div>
+    </div>
+    <div class="obs-eq">Mantenimiento preventivo realizado. Se realizó ajuste de carga de gas refrigerante R-410A. Equipo operativo.</div>
+  </div>
+
+  <!-- OBSERVACIONES GENERALES -->
+  <div class="section-title">6. Observaciones generales</div>
+  <div class="obs-box">
+    <ul>
+      <li>Todos los equipos se encuentran operando correctamente posterior al mantenimiento preventivo.</li>
+      <li>No se evidencian fugas de refrigerante ni fallas eléctricas en ninguno de los equipos intervenidos.</li>
+      <li><strong>4 equipos requirieron ajuste de carga de gas refrigerante</strong> (Recepción Eq. #1, Recepción Eq. #2, Oficina Cartera y Sala de Reuniones), los cuales quedan normalizados y operativos.</li>
+      <li>Se recomienda programar el próximo mantenimiento preventivo dentro de un periodo de <strong>tres (3) meses</strong>.</li>
+      <li>Se sugiere mantener una limpieza periódica de filtros por parte del personal de la sede para optimizar el rendimiento de los equipos.</li>
+    </ul>
+  </div>
+
+  <!-- CONCLUSIONES -->
+  <div class="section-title">7. Conclusiones</div>
+  <div class="conc-box">
+    <ul>
+      <li>El mantenimiento preventivo realizado en la sede Altipal Cali (CEDI) permitió restablecer las condiciones adecuadas de operación de los <strong>8 equipos de aire acondicionado</strong> intervenidos, reduciendo el riesgo de fallas futuras y garantizando la eficiencia energética del sistema.</li>
+      <li>Los equipos quedan funcionando sin novedad, dentro de los parámetros técnicos establecidos por el fabricante.</li>
+      <li>Los trabajos se ejecutaron de conformidad con las normas de mantenimiento:</li>
+    </ul>
+    <div class="normas">
+      <span class="norma-badge">NTC 5858</span>
+      <span class="norma-badge">ASHRAE 180</span>
+    </div>
+  </div>
+
+  <!-- FIRMAS -->
+  <div class="firma-grid">
+    <div class="firma-box">
+      <br><br>
+      <div class="nombre">Jeyson Jiménez</div>
+      <div class="cargo">Director Operativo<br>CONSTRUCCIONES MINZOE</div>
+    </div>
+    <div class="firma-box">
+      <br><br>
+      <div class="nombre">Representante Altipal S.A.S</div>
+      <div class="cargo">Sede Cali – CEDI (Autopista Cali-Yumbo)</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    CONSTRUCCIONES MINZOE &nbsp;·&nbsp; Cra 5 # 8a-18 &nbsp;·&nbsp; 317 510 2668 – 317 374 8665 &nbsp;·&nbsp; construminzoe@gmail.com | minzoerefrigeracion@gmail.com<br>
+    Informe elaborado el 2 de diciembre de 2025 &nbsp;·&nbsp; Ejecución: 27-29 de noviembre de 2025 &nbsp;·&nbsp; Sede: Altipal Cali – CEDI
+  </div>
+
+</div>
+</body>
+</html>

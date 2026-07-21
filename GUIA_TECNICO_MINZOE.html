@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Guía de Uso — App Técnicos Minzoe</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Arial, sans-serif;
+  background: #fff;
+  color: #1a1a1a;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* ════════════ MEMBRETE ════════════ */
+.membrete {
+  position: relative;
+  width: 100%;
+  padding: 18px 32px 14px;
+  overflow: hidden;
+  border-bottom: 3px solid #dc2626;
+}
+
+/* Curva roja arriba derecha */
+.membrete::before {
+  content: "";
+  position: absolute;
+  top: -30px; right: -40px;
+  width: 260px; height: 140px;
+  background: #dc2626;
+  border-radius: 0 0 0 80%;
+  z-index: 0;
+}
+/* Curva gris pequeña */
+.membrete::after {
+  content: "";
+  position: absolute;
+  top: -20px; right: 195px;
+  width: 60px; height: 90px;
+  background: #e5e7eb;
+  border-radius: 0 0 0 60%;
+  z-index: 0;
+}
+
+.membrete-contenido {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.logo-icono {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.logo-texto h1 {
+  font-size: 22px;
+  font-weight: 900;
+  color: #dc2626;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-decoration: underline;
+  text-decoration-color: #dc2626;
+}
+.logo-texto p {
+  font-size: 11px;
+  color: #444;
+  font-style: italic;
+}
+
+/* ════════════ PIE DE PÁGINA ════════════ */
+.pie-pagina {
+  position: relative;
+  background: #fff;
+  overflow: hidden;
+  padding: 0;
+  margin-top: 40px;
+}
+.pie-pagina::before {
+  content: "";
+  position: absolute;
+  bottom: -10px; left: -40px;
+  width: 280px; height: 70px;
+  background: #dc2626;
+  border-radius: 0 60% 0 0;
+}
+.pie-pagina::after {
+  content: "";
+  position: absolute;
+  bottom: 40px; left: 210px;
+  width: 80px; height: 40px;
+  background: #e5e7eb;
+  border-radius: 0 50% 0 0;
+}
+.pie-datos {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  padding: 12px 32px 18px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+}
+.pie-dato {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.pie-dato .ico { font-size: 16px; }
+
+/* ════════════ PORTADA ════════════ */
+.portada-inner {
+  text-align: center;
+  padding: 30px 40px 40px;
+  min-height: 600px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+/* marca de agua */
+.portada-inner::before {
+  content: "📏";
+  position: absolute;
+  font-size: 320px;
+  opacity: 0.05;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.portada-titulo {
+  font-size: 34px;
+  font-weight: 900;
+  color: #dc2626;
+  text-transform: uppercase;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+.portada-sub {
+  font-size: 15px;
+  color: #555;
+  margin-bottom: 30px;
+}
+.portada-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 36px;
+}
+.badge {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1.5px solid #fca5a5;
+  border-radius: 50px;
+  padding: 6px 18px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ════════════ FLUJO ════════════ */
+.flujo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 10px 0;
+}
+.flujo-paso {
+  background: #dc2626;
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-align: center;
+  min-width: 80px;
+}
+.flujo-flecha { color: #dc2626; font-size: 18px; padding: 0 5px; font-weight: 900; }
+
+/* ════════════ CONTENIDO ════════════ */
+.contenido { padding: 10px 32px 0; }
+
+/* ════════════ SECCIÓN ════════════ */
+.seccion {
+  margin-bottom: 22px;
+  page-break-inside: avoid;
+}
+.sec-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #dc2626;
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 8px 8px 0 0;
+}
+.sec-num {
+  width: 30px; height: 30px;
+  min-width: 30px;
+  background: #fff;
+  color: #dc2626;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+.sec-header h2 {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.sec-header .ico { font-size: 20px; }
+
+.sec-body {
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 16px 18px;
+  background: #fff;
+}
+
+/* ════════════ PASOS ════════════ */
+.pasos { list-style: none; }
+.pasos li {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 11px;
+  align-items: flex-start;
+}
+.paso-num {
+  min-width: 24px; height: 24px;
+  background: #fee2e2;
+  color: #dc2626;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.pasos li p { font-size: 13px; color: #374151; }
+.pasos li p strong { color: #111; }
+
+/* ════════════ CAJAS ════════════ */
+.caja-tip {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  padding: 10px 14px;
+  margin: 12px 0;
+  font-size: 12.5px;
+  color: #78350f;
+  border-radius: 0 6px 6px 0;
+}
+.caja-alerta {
+  background: #fef2f2;
+  border-left: 4px solid #dc2626;
+  padding: 10px 14px;
+  margin: 12px 0;
+  font-size: 12.5px;
+  color: #7f1d1d;
+  border-radius: 0 6px 6px 0;
+}
+.caja-ok {
+  background: #f0fdf4;
+  border-left: 4px solid #16a34a;
+  padding: 10px 14px;
+  margin: 12px 0;
+  font-size: 12.5px;
+  color: #14532d;
+  border-radius: 0 6px 6px 0;
+}
+.caja-azul {
+  background: #eff6ff;
+  border-left: 4px solid #2563eb;
+  padding: 10px 14px;
+  margin: 12px 0;
+  font-size: 12.5px;
+  color: #1e3a8a;
+  border-radius: 0 6px 6px 0;
+}
+
+/* ════════════ TABLA ════════════ */
+.tabla { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 12px; }
+.tabla th { background: #dc2626; color: #fff; padding: 9px 12px; text-align: left; font-weight: 700; }
+.tabla td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+.tabla tr:last-child td { border-bottom: none; }
+
+.badge-r { background:#fee2e2;color:#991b1b;padding:3px 9px;border-radius:20px;font-weight:700;font-size:11px;white-space:nowrap; }
+.badge-a { background:#fef3c7;color:#78350f;padding:3px 9px;border-radius:20px;font-weight:700;font-size:11px;white-space:nowrap; }
+.badge-g { background:#f3f4f6;color:#374151;padding:3px 9px;border-radius:20px;font-weight:700;font-size:11px;white-space:nowrap; }
+
+/* ════════════ FOTOS MOCK ════════════ */
+.mock-fotos { display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; margin-top: 12px; }
+.mf { border-radius: 7px; padding: 7px 5px; text-align: center; font-size: 11px; font-weight: 700; line-height: 1.3; }
+.mf-ok  { background:#d1fae5; color:#065f46; border:1.5px solid #6ee7b7; }
+.mf-no  { background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; }
+
+/* ════════════ TABLA ERRORES ════════════ */
+.t-err { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:12px; }
+.t-err td { padding:9px 12px; border-bottom:1px solid #f3f4f6; vertical-align:top; }
+.t-err tr:last-child td { border-bottom:none; }
+.t-err td:nth-child(1) { background:#fef2f2; color:#dc2626; font-weight:700; width:34%; }
+.t-err td:nth-child(2) { background:#f0fdf4; color:#166534; font-weight:700; width:66%; }
+
+/* ════════════ SIN INTERNET ════════════ */
+.pasos-sin-net li {
+  display: flex; gap: 12px; margin-bottom: 11px; align-items: flex-start;
+}
+.paso-letra {
+  min-width: 28px; height: 28px;
+  background: #1e3a8a;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 12px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+
+/* ════════════ PAGO ════════════ */
+.tabla-pago th { background: #1e3a8a; }
+.tabla-pago .si { color:#16a34a; font-weight:800; }
+.tabla-pago .no { color:#dc2626; font-weight:800; }
+
+/* ════════════ PRINT ════════════ */
+@media print {
+  body { font-size: 12px; }
+  .seccion { page-break-inside: avoid; }
+  .portada-page { page-break-after: always; }
+  .membrete::before, .membrete::after,
+  .pie-pagina::before, .pie-pagina::after { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .sec-header, .pie-datos, .portada-titulo { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .badge, .badge-r, .badge-a, .badge-g, .paso-num, .sec-num { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════ PÁGINA 1 — PORTADA ════════ -->
+<div class="portada-page">
+
+  <!-- MEMBRETE -->
+  <div class="membrete">
+    <div class="membrete-contenido">
+      <div class="logo-icono">📏</div>
+      <div class="logo-texto">
+        <h1>Construcciones Minzoe</h1>
+        <p>Soluciones integrales en construcción, mantenimiento y climatización.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTADA INTERIOR -->
+  <div class="portada-inner">
+    <div class="portada-titulo">Guía de Uso<br>App para Técnicos</div>
+    <div class="portada-sub">Manual paso a paso para registrar servicios de mantenimiento</div>
+
+    <div class="portada-badges">
+      <span class="badge">📱 Versión móvil</span>
+      <span class="badge">❄️ Aires Acondicionados</span>
+      <span class="badge">🏗️ Locativos</span>
+      <span class="badge">📷 Fotos + Firma</span>
+    </div>
+
+    <div style="font-size:12px;color:#777;margin-bottom:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px">Flujo completo del técnico</div>
+    <div class="flujo">
+      <div class="flujo-paso">1. Login</div>
+      <div class="flujo-flecha">→</div>
+      <div class="flujo-paso">2. Ver OT</div>
+      <div class="flujo-flecha">→</div>
+      <div class="flujo-paso">3. Reporte</div>
+      <div class="flujo-flecha">→</div>
+      <div class="flujo-paso">4. Fotos</div>
+      <div class="flujo-flecha">→</div>
+      <div class="flujo-paso">5. Firma</div>
+      <div class="flujo-flecha">→</div>
+      <div class="flujo-paso">6. Enviar</div>
+    </div>
+
+    <div style="margin-top:40px;font-size:11px;color:#aaa">Versión julio 2026</div>
+  </div>
+
+  <!-- PIE -->
+  <div class="pie-pagina">
+    <div class="pie-datos">
+      <div class="pie-dato"><span class="ico">📍</span> Cra 5 # 8a-18</div>
+      <div class="pie-dato"><span class="ico">📞</span> 3175102668 – 3173748665</div>
+      <div class="pie-dato"><span class="ico">✉️</span> construminzoe@gmail.com – minzoerefrigeracion@gmail.com</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CONTENIDO ════════ -->
+<div style="page-break-before:always"></div>
+
+<!-- MEMBRETE páginas internas -->
+<div class="membrete">
+  <div class="membrete-contenido">
+    <div class="logo-icono">📏</div>
+    <div class="logo-texto">
+      <h1>Construcciones Minzoe</h1>
+      <p>Guía de Uso — App Técnicos</p>
+    </div>
+  </div>
+</div>
+
+<div class="contenido">
+
+  <!-- ── 1. Login ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">1</div>
+      <span class="ico">🔑</span>
+      <h2>Cómo ingresar al sistema</h2>
+    </div>
+    <div class="sec-body">
+      <ul class="pasos">
+        <li><div class="paso-num">1</div><p>Abre el <strong>link de la app</strong> en tu celular — te lo comparte la oficina por WhatsApp. Guárdalo en favoritos del navegador.</p></li>
+        <li><div class="paso-num">2</div><p>Escribe tu <strong>correo electrónico</strong> y tu <strong>contraseña</strong>.</p></li>
+        <li><div class="paso-num">3</div><p>Toca <strong>"Iniciar sesión"</strong>. El sistema te lleva directamente a tu lista de OTs asignadas.</p></li>
+      </ul>
+      <div class="caja-tip"><strong>💡</strong> Si olvidaste tu contraseña, comunícate con la oficina — solo el administrador puede restablecerla.</div>
+    </div>
+  </div>
+
+  <!-- ── 2. Mis OTs ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">2</div>
+      <span class="ico">📋</span>
+      <h2>Ver mis Órdenes de Trabajo (OTs)</h2>
+    </div>
+    <div class="sec-body">
+      <p style="margin-bottom:10px">Al entrar ves todas tus OTs asignadas, ordenadas por urgencia:</p>
+      <table class="tabla">
+        <tr><th>Color</th><th>Significado</th><th>Qué hacer</th></tr>
+        <tr><td><span class="badge-r">🔴 Rojo</span></td><td>OT <strong>vencida</strong></td><td>Atender de inmediato y reportar a la oficina</td></tr>
+        <tr><td><span class="badge-a">🟡 Amarillo</span></td><td>Vence en menos de 24 horas</td><td>Priorizar ese servicio hoy</td></tr>
+        <tr><td><span class="badge-g">Sin color</span></td><td>Dentro del tiempo normal</td><td>Atender según programación</td></tr>
+      </table>
+      <ul class="pasos" style="margin-top:14px">
+        <li><div class="paso-num">1</div><p>Toca el botón <strong>→ Ver OT</strong> al lado de la OT que vas a atender.</p></li>
+        <li><div class="paso-num">2</div><p>Verás los datos: cliente, sede, tipo de servicio y fecha límite.</p></li>
+        <li><div class="paso-num">3</div><p>Toca <strong>"Abrir formulario de reporte"</strong> para comenzar.</p></li>
+      </ul>
+      <div class="caja-ok"><strong>✅ Historial:</strong> Las OTs ya entregadas aparecen más abajo en <em>"Historial — OTs entregadas"</em>. Puedes consultarlas en cualquier momento. Toca 🔄 <strong>Actualizar</strong> si no ves cambios recientes.</div>
+    </div>
+  </div>
+
+  <!-- ── 3. Reporte HVAC ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">3</div>
+      <span class="ico">❄️</span>
+      <h2>Llenar el reporte — Aires Acondicionados (HVAC)</h2>
+    </div>
+    <div class="sec-body">
+      <ul class="pasos">
+        <li><div class="paso-num">1</div><p><strong>Tipo de equipo:</strong> Selecciona en el desplegable (Minisplit, Portátil, Ventilador, etc.) y toca <strong>"Aplicar"</strong>.</p></li>
+        <li><div class="paso-num">2</div><p><strong>Tipo de mantenimiento:</strong> Marca la casilla — Preventivo, Correctivo, Visita Técnica, Emergencia o Instalación.</p></li>
+        <li><div class="paso-num">3</div><p><strong>Datos del equipo:</strong> Marca, modelo, serial, BTU, refrigerante. Si ya están guardados aparecen automáticamente — solo verifica.</p></li>
+        <li><div class="paso-num">4</div><p><strong>Lista de chequeo:</strong> Marca cada actividad realizada — lavado filtros, limpieza, lubricación, revisión eléctrica, etc.</p></li>
+        <li><div class="paso-num">5</div><p><strong>Datos de medición:</strong> Voltaje, amperaje y temperaturas (suministro, retorno, ambiente).</p></li>
+        <li><div class="paso-num">6</div><p><strong>Observaciones generales:</strong> Qué encontraste, qué hiciste, qué recomiendas. Sé específico — queda en el reporte del cliente.</p></li>
+        <li><div class="paso-num">7</div><p>Toca <strong>"Guardar reporte"</strong> al final del formulario.</p></li>
+      </ul>
+      <div class="caja-alerta"><strong>⚠️ OT incompleta = no se puede cerrar.</strong> Si el formulario no tiene todos los campos obligatorios diligenciados, el sistema no permite enviar el reporte. Ver sección 8.</div>
+    </div>
+  </div>
+
+  <!-- ── 4. Reporte Locativos ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">4</div>
+      <span class="ico">🏗️</span>
+      <h2>Llenar el reporte — Locativos</h2>
+    </div>
+    <div class="sec-body">
+      <ul class="pasos">
+        <li><div class="paso-num">1</div><p><strong>Tipo de mantenimiento:</strong> Preventivo, Correctivo, Visita Técnica o Emergencia.</p></li>
+        <li><div class="paso-num">2</div><p><strong>Sistema intervenido:</strong> Eléctrico, pintura, pisos, plomería, carpintería, etc.</p></li>
+        <li><div class="paso-num">3</div><p><strong>Lista de chequeo:</strong> Para cada ítem marca:<br>
+          &nbsp;&nbsp;• <strong>Buen Estado</strong> &nbsp;• <strong>Mal Estado</strong> &nbsp;• <strong>Req. Reparación</strong> &nbsp;• <strong>Inst. Repuestos</strong></p></li>
+        <li><div class="paso-num">4</div><p><strong>Materiales utilizados:</strong> Lista los materiales e insumos usados.</p></li>
+        <li><div class="paso-num">5</div><p><strong>Observaciones generales:</strong> Trabajo realizado y recomendaciones para el cliente.</p></li>
+        <li><div class="paso-num">6</div><p>Toca <strong>"Guardar reporte"</strong> para ir a la fase de fotos y firma.</p></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── 5. Fotos ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">5</div>
+      <span class="ico">📷</span>
+      <h2>Tomar las fotos obligatorias</h2>
+    </div>
+    <div class="sec-body">
+      <p style="margin-bottom:10px">Tras guardar el formulario aparece la sección de fotos. La grilla muestra el estado de cada ítem:</p>
+
+      <div class="mock-fotos">
+        <div class="mf mf-ok">✅<br>Placa<br>manejadora</div>
+        <div class="mf mf-ok">✅<br>Voltaje<br>manejadora</div>
+        <div class="mf mf-no">❌<br>Temp.<br>suministro</div>
+        <div class="mf mf-no">❌<br>Lavado<br>filtros</div>
+      </div>
+      <p style="font-size:11px;color:#6b7280;margin-top:6px">Verde ✅ = foto tomada &nbsp;|&nbsp; Rojo ❌ = falta foto</p>
+
+      <ul class="pasos" style="margin-top:14px">
+        <li><div class="paso-num">1</div><p>En el desplegable <strong>"Seleccionar ítem"</strong>, elige el ítem al que le vas a tomar la foto.</p></li>
+        <li><div class="paso-num">2</div><p>Toca el botón de cámara y <strong>toma la foto en el momento</strong>. El cuadrito pasa de ❌ a ✅ automáticamente.</p></li>
+        <li><div class="paso-num">3</div><p>Repite para cada ítem en rojo hasta que todos estén en verde.</p></li>
+        <li><div class="paso-num">4</div><p>Si la foto quedó mal, toca el ícono 🗑️ bajo la miniatura para borrarla y tomarla de nuevo.</p></li>
+      </ul>
+
+      <div class="caja-alerta">
+        <strong>⚠️ Las fotos SOLO se toman en el momento del servicio.</strong><br>
+        La app <strong>no permite cargar fotos de la galería</strong> del celular — únicamente captura directa con la cámara. Esto garantiza que las fotos son del trabajo que se está realizando y no de servicios anteriores o de otros equipos.
+      </div>
+
+      <div class="caja-tip"><strong>💡 Fotos de calidad:</strong> Buena iluminación, enfoque fijo. Para instrumentos (voltímetro, amperímetro) acércate para que el valor sea legible. No aceptes fotos borrosas — bórralas y vuelve a tomarlas.</div>
+    </div>
+  </div>
+
+  <!-- ── 6. Firma ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">6</div>
+      <span class="ico">✍️</span>
+      <h2>Encuesta de satisfacción y firma del cliente</h2>
+    </div>
+    <div class="sec-body">
+      <ul class="pasos">
+        <li><div class="paso-num">1</div><p><strong>Entrega el celular al cliente</strong> para que califique el servicio (0–20 puntos por categoría):<br>
+          Experiencia con técnicos · Calidad del servicio · Cumplimiento · Presentación · Comunicación</p></li>
+        <li><div class="paso-num">2</div><p>El cliente escribe sus observaciones y su nombre.</p></li>
+        <li><div class="paso-num">3</div><p>Pídele que <strong>firme en papel</strong> (hoja en blanco o formato físico).</p></li>
+        <li><div class="paso-num">4</div><p>Toma la <strong>foto de la firma</strong> con la cámara de la app. Si quedó torcida usa los botones de rotación.</p></li>
+      </ul>
+      <div class="caja-ok"><strong>✅ La firma es obligatoria.</strong> Sin foto de firma no se puede enviar el reporte.</div>
+    </div>
+  </div>
+
+  <!-- ── 7. Enviar ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">7</div>
+      <span class="ico">🚀</span>
+      <h2>Enviar el reporte a revisión</h2>
+    </div>
+    <div class="sec-body">
+      <ul class="pasos">
+        <li><div class="paso-num">1</div><p>Con la firma tomada aparece el botón verde <strong>"✅ Enviar a revisión"</strong>. Tócalo.</p></li>
+        <li><div class="paso-num">2</div><p>El sistema guarda el reporte completo (datos, fotos y firma). La OT cambia a estado <strong>"En revisión"</strong>.</p></li>
+        <li><div class="paso-num">3</div><p>Verás un mensaje de confirmación. La OT pasa a tu historial de OTs entregadas.</p></li>
+        <li><div class="paso-num">4</div><p>El administrador revisa, cierra la OT como <strong>"Finalizada"</strong> y el cliente puede ver el reporte en su portal.</p></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── 8. OTs Incompletas / Pago ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">8</div>
+      <span class="ico">💰</span>
+      <h2>OTs incompletas y liquidación de pago</h2>
+    </div>
+    <div class="sec-body">
+      <div class="caja-alerta">
+        <strong>⚠️ Una OT sin reporte completo NO se puede cerrar.</strong><br>
+        El sistema bloquea el envío si faltan campos obligatorios, fotos o la firma del cliente. Solo las OTs correctamente cerradas entran en la liquidación.
+      </div>
+
+      <p style="margin:12px 0 8px;font-weight:700">El pago se liquida según lo efectivamente registrado en el sistema:</p>
+
+      <table class="tabla tabla-pago">
+        <tr><th>Situación</th><th>¿Entra en liquidación?</th></tr>
+        <tr>
+          <td>OT con reporte completo, fotos y firma ✅</td>
+          <td class="si">✅ SÍ — pago completo</td>
+        </tr>
+        <tr>
+          <td>OT entregada pero sin fotos obligatorias</td>
+          <td class="no">❌ NO — bloqueada por el sistema</td>
+        </tr>
+        <tr>
+          <td>OT entregada pero sin firma del cliente</td>
+          <td class="no">❌ NO — bloqueada por el sistema</td>
+        </tr>
+        <tr>
+          <td>OT con formulario incompleto (campos vacíos)</td>
+          <td class="no">❌ NO — bloqueada por el sistema</td>
+        </tr>
+        <tr>
+          <td>OT sin registrar en el sistema (solo papel)</td>
+          <td class="no">❌ NO — debe digitalizarse</td>
+        </tr>
+      </table>
+
+      <div class="caja-tip"><strong>💡 Regla clara:</strong> Si el servicio se realizó, el reporte se hace. Un mantenimiento sin registro en el sistema es un mantenimiento que no ocurrió para efectos de pago.</div>
+    </div>
+  </div>
+
+  <!-- ── 9. Sin Internet ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">9</div>
+      <span class="ico">📵</span>
+      <h2>¿Qué hacer si no hay internet en el momento del servicio?</h2>
+    </div>
+    <div class="sec-body">
+      <div class="caja-azul">
+        <strong>La app requiere conexión a internet.</strong> Si en la sede del cliente no hay señal o el celular no tiene datos, sigue este procedimiento:
+      </div>
+
+      <ul class="pasos pasos-sin-net" style="margin-top:14px;list-style:none">
+        <li>
+          <div class="paso-letra">A</div>
+          <p><strong>Realiza el servicio normalmente</strong> y llena el <strong>formato físico en papel</strong> (el mismo que se venía usando). Pide la firma del cliente en ese papel.</p>
+        </li>
+        <li>
+          <div class="paso-letra">B</div>
+          <p><strong>Toma las fotos con la cámara nativa del celular</strong> (no desde la app) para que queden guardadas en la galería. Estas serán tu referencia cuando vayas a digitalizar.</p>
+        </li>
+        <li>
+          <div class="paso-letra">C</div>
+          <p><strong>En cuanto tengas internet</strong> — ya sea en otro lugar, al llegar a la oficina o desde otro dispositivo — abre la app y llena la OT con los datos del papel.</p>
+        </li>
+        <li>
+          <div class="paso-letra">D</div>
+          <p><strong>Para las fotos:</strong> como la app solo permite captura directa (no carga desde galería), tienes dos opciones:<br>
+            &nbsp;&nbsp;• Muestra la foto guardada en la galería en la pantalla y tómale foto con la app.<br>
+            &nbsp;&nbsp;• Si puedes volver a la sede, toma las fotos directamente en el equipo.
+          </p>
+        </li>
+        <li>
+          <div class="paso-letra">E</div>
+          <p><strong>Para la firma:</strong> Toma una foto del formato físico firmado por el cliente y úsala como foto de firma en la app.</p>
+        </li>
+      </ul>
+
+      <div class="caja-alerta">
+        <strong>⚠️ Importante:</strong> El reporte digital siempre debe quedar registrado, incluso si el servicio fue en papel. No dejes OTs sin digitalizar — recuerda que <strong>lo que no está en el sistema no entra en liquidación</strong>.
+      </div>
+      <div class="caja-tip"><strong>💡 Consejo:</strong> Activa los datos móviles del celular antes de salir a visitas. La app consume muy poco internet — solo necesitas señal mínima para funcionar.</div>
+    </div>
+  </div>
+
+  <!-- ── 10. Errores frecuentes ── -->
+  <div class="seccion">
+    <div class="sec-header">
+      <div class="sec-num">10</div>
+      <span class="ico">🔧</span>
+      <h2>Errores frecuentes y soluciones</h2>
+    </div>
+    <div class="sec-body">
+      <table class="t-err">
+        <tr>
+          <td>❌ El botón "Enviar" está bloqueado</td>
+          <td>✅ Revisa la grilla de fotos — hay ítems en rojo sin foto. Completa todas las fotos obligatorias.</td>
+        </tr>
+        <tr>
+          <td>❌ La app se cierra o queda cargando</td>
+          <td>✅ Cierra y vuelve a abrir el link. Guarda el reporte antes de cambiar de pantalla para no perder datos.</td>
+        </tr>
+        <tr>
+          <td>❌ La foto de firma quedó borrosa o torcida</td>
+          <td>✅ Toca 🗑️ para borrarla, tómala de nuevo con buena luz. Usa los botones de rotación si quedó inclinada.</td>
+        </tr>
+        <tr>
+          <td>❌ No encuentro mi OT en la lista</td>
+          <td>✅ Toca el botón 🔄 Actualizar. Si sigue sin aparecer, llama a la oficina — puede que no esté asignada a tu usuario.</td>
+        </tr>
+        <tr>
+          <td>❌ No puedo iniciar sesión</td>
+          <td>✅ Verifica el correo y contraseña. Si el problema persiste, contacta al administrador para restablecer la contraseña.</td>
+        </tr>
+        <tr>
+          <td>❌ No hay internet en la sede del cliente</td>
+          <td>✅ Llena el formato físico en papel y digitaliza la OT en cuanto tengas conexión. Ver sección 9.</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+</div><!-- fin contenido -->
+
+<!-- PIE -->
+<div class="pie-pagina">
+  <div class="pie-datos">
+    <div class="pie-dato"><span class="ico">📍</span> Cra 5 # 8a-18</div>
+    <div class="pie-dato"><span class="ico">📞</span> 3175102668 – 3173748665</div>
+    <div class="pie-dato"><span class="ico">✉️</span> construminzoe@gmail.com – minzoerefrigeracion@gmail.com</div>
+  </div>
+</div>
+
+</body>
+</html>
