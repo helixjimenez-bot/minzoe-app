@@ -10,5 +10,6 @@ plotly
 supabase
 streamlit-drawable-canvas
 xhtml2pdf
+weasyprint
 Pillow
 streamlit-js-eval

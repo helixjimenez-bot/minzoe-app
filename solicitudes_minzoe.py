@@ -1213,7 +1213,19 @@ def css_formato_carta():
 
 
 def html_to_pdf(html: str) -> bytes | None:
-    """Convierte HTML a PDF usando xhtml2pdf. Retorna bytes del PDF o None si falla."""
+    """Convierte HTML a PDF. Intenta WeasyPrint primero (mejor CSS), luego xhtml2pdf."""
+    # Intento 1: WeasyPrint — renderiza igual que el navegador
+    try:
+        from weasyprint import HTML as WP_HTML
+        import io
+        buf = io.BytesIO()
+        WP_HTML(string=html).write_pdf(buf)
+        data = buf.getvalue()
+        if data:
+            return data
+    except Exception:
+        pass
+    # Intento 2: xhtml2pdf como respaldo
     try:
         from xhtml2pdf import pisa
         import io
@@ -1221,9 +1233,9 @@ def html_to_pdf(html: str) -> bytes | None:
         status = pisa.pisaDocument(io.StringIO(html), buf, encoding="utf-8")
         if not status.err:
             return buf.getvalue()
-        return None
     except Exception:
-        return None
+        pass
+    return None
 
 
 def ocr_documento(file_bytes, mime_type):
