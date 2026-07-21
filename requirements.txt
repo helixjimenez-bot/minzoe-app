@@ -9,6 +9,6 @@ PyMuPDF
 plotly
 supabase
 streamlit-drawable-canvas
-pdfkit
+xhtml2pdf
 Pillow
 streamlit-js-eval

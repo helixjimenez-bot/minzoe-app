@@ -1213,26 +1213,7 @@ def css_formato_carta():
 
 
 def html_to_pdf(html: str) -> bytes | None:
-    """Convierte HTML a PDF. Intenta pdfkit/wkhtmltopdf primero, luego xhtml2pdf."""
-    # Intento 1: pdfkit + wkhtmltopdf (WebKit — mismo motor que el navegador)
-    try:
-        import pdfkit
-        opciones = {
-            "page-size":    "Letter",
-            "margin-top":   "10mm",
-            "margin-right": "8mm",
-            "margin-bottom":"10mm",
-            "margin-left":  "8mm",
-            "encoding":     "UTF-8",
-            "quiet":        "",
-            "enable-local-file-access": "",
-        }
-        data = pdfkit.from_string(html, False, options=opciones)
-        if data:
-            return data
-    except Exception:
-        pass
-    # Intento 2: xhtml2pdf como respaldo
+    """Convierte HTML a PDF usando xhtml2pdf."""
     try:
         from xhtml2pdf import pisa
         import io
