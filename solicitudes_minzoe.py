@@ -3771,9 +3771,9 @@ elif pagina == "ots":
                 else:
                     dot, bg, brd = "#9ca3af", "#ffffff", "#e5e7eb"
 
-                cli_txt  = str(row.get("Cliente", ""))[:20]
-                sede_txt = str(row.get("Sede", ""))[:20]
-                srv_txt  = str(row.get("Servicio", ""))[:16]
+                cli_txt  = str(row.get("Cliente", ""))
+                sede_txt = str(row.get("Sede", ""))
+                srv_txt  = str(row.get("Servicio", ""))
                 fl_txt   = str(row.get("Fecha_Limite", ""))
 
                 c_row, c_btn = st.columns([6, 1])
