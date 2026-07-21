@@ -3508,7 +3508,7 @@ elif pagina == "ots":
     # _tec_en_reporte: técnico abrió el formulario de reporte → mostrar vista completa
     _es_tec_ots  = _rol_ots == "tecnico" and not st.session_state.get("_tec_en_reporte")
 
-    c_tit_ot, c_ref_ot = st.columns([5,1])
+    c_tit_ot, c_ref_ot, c_cierre_ot = st.columns([4,1,1])
     c_tit_ot.subheader("🛠️ Mis OTs" if _es_tec_ots else "🛠️ Órdenes de Trabajo")
     if c_ref_ot.button("🔄 Actualizar", use_container_width=True, key="ref_ots", type="primary"):
         _invalidar_cache("ordenes_trabajo")
@@ -3522,6 +3522,20 @@ elif pagina == "ots":
                 f"🔔 **{len(_ots_revision)} OT(s) en revisión** esperando tu cierre. "
                 f"Si no las ves actualiza con el botón 🔄"
             )
+
+        # Botón cierre masivo — visible solo cuando hay OTs en revisión
+        if not _ots_revision.empty:
+            if c_cierre_ot.button("✅ Cierre masivo", use_container_width=True, key="cierre_masivo_ots"):
+                ots_fresh = load_ots()
+                ids_revision = ots_fresh[ots_fresh["Estado"] == "En revisión"]["ID"].tolist()
+                ahora_str = ahora_colombia().strftime("%Y-%m-%d %H:%M:%S")
+                for ot_id in ids_revision:
+                    ots_fresh.loc[ots_fresh["ID"] == ot_id, "Estado"] = "Finalizada"
+                    if "Fecha_Modificacion" in ots_fresh.columns:
+                        ots_fresh.loc[ots_fresh["ID"] == ot_id, "Fecha_Modificacion"] = ahora_str
+                save_ots(ots_fresh)
+                st.success(f"✅ {len(ids_revision)} OT(s) cerradas correctamente.")
+                st.rerun()
 
     # Mantener selección después de guardar reporte
     if st.session_state.get("_ot_volver_ver"):
