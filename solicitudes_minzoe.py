@@ -3526,16 +3526,19 @@ elif pagina == "ots":
         # Botón cierre masivo — visible solo cuando hay OTs en revisión
         if not _ots_revision.empty:
             if c_cierre_ot.button("✅ Cierre masivo", use_container_width=True, key="cierre_masivo_ots"):
-                ots_fresh = load_ots()
-                ids_revision = ots_fresh[ots_fresh["Estado"] == "En revisión"]["ID"].tolist()
                 ahora_str = ahora_colombia().strftime("%Y-%m-%d %H:%M:%S")
-                for ot_id in ids_revision:
-                    ots_fresh.loc[ots_fresh["ID"] == ot_id, "Estado"] = "Finalizada"
-                    if "Fecha_Modificacion" in ots_fresh.columns:
-                        ots_fresh.loc[ots_fresh["ID"] == ot_id, "Fecha_Modificacion"] = ahora_str
-                save_ots(ots_fresh)
-                st.success(f"✅ {len(ids_revision)} OT(s) cerradas correctamente.")
-                st.rerun()
+                n_rev = len(_ots_revision)
+                try:
+                    # UPDATE directo en Supabase: solo toca las filas en revisión
+                    get_sb().table("ordenes_trabajo").update({
+                        "Estado": "Finalizada",
+                        "Fecha_Modificacion": ahora_str,
+                    }).eq("Estado", "En revisión").execute()
+                    _invalidar_cache("ordenes_trabajo")
+                    st.success(f"✅ {n_rev} OT(s) cerradas correctamente.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al cerrar OTs: {e}")
 
     # Mantener selección después de guardar reporte
     if st.session_state.get("_ot_volver_ver"):
