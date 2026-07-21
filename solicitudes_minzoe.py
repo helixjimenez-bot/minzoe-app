@@ -1213,14 +1213,21 @@ def css_formato_carta():
 
 
 def html_to_pdf(html: str) -> bytes | None:
-    """Convierte HTML a PDF. Intenta WeasyPrint primero (mejor CSS), luego xhtml2pdf."""
-    # Intento 1: WeasyPrint — renderiza igual que el navegador
+    """Convierte HTML a PDF. Intenta pdfkit/wkhtmltopdf primero, luego xhtml2pdf."""
+    # Intento 1: pdfkit + wkhtmltopdf (WebKit — mismo motor que el navegador)
     try:
-        from weasyprint import HTML as WP_HTML
-        import io
-        buf = io.BytesIO()
-        WP_HTML(string=html).write_pdf(buf)
-        data = buf.getvalue()
+        import pdfkit
+        opciones = {
+            "page-size":    "Letter",
+            "margin-top":   "10mm",
+            "margin-right": "8mm",
+            "margin-bottom":"10mm",
+            "margin-left":  "8mm",
+            "encoding":     "UTF-8",
+            "quiet":        "",
+            "enable-local-file-access": "",
+        }
+        data = pdfkit.from_string(html, False, options=opciones)
         if data:
             return data
     except Exception:
