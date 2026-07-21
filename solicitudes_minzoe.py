@@ -4930,19 +4930,28 @@ elif pagina == "ots":
                                     _skey_f = "__extra__"
                                 _cam_f = st.camera_input("Tomar foto", key=f"cam_f_{id_ot_sel}_{_n_tot_f}",
                                                          disabled=(_n_tot_f >= 25))
-                                _upl_f = st.file_uploader("📁 O sube desde galería",
+                                _upl_f = st.file_uploader("📁 O sube desde galería (una o varias)",
                                                            type=["jpg","jpeg","png"],
+                                                           accept_multiple_files=True,
                                                            key=f"upl_f_{id_ot_sel}_{_n_tot_f}",
                                                            disabled=(_n_tot_f >= 25))
-                                _src_f = _cam_f or _upl_f
-                                if _src_f and _skey_f:
-                                    import base64 as _b64f2
-                                    _imgf = _foto_con_marca_agua(_src_f.getvalue(), _gps_lat_f, _gps_lon_f)
+                                import base64 as _b64f2
+                                if _cam_f and _skey_f:
+                                    _imgf = _foto_con_marca_agua(_cam_f.getvalue(), _gps_lat_f, _gps_lon_f)
                                     _b64f2v = _b64f2.b64encode(_imgf).decode()
                                     if _skey_f == "__extra__":
                                         st.session_state[_fex_key_f].append(_b64f2v)
                                     else:
                                         st.session_state[_fob_key_f][_skey_f] = _b64f2v
+                                    st.rerun()
+                                elif _upl_f:
+                                    for _uf in _upl_f:
+                                        _imgf = _foto_con_marca_agua(_uf.getvalue(), _gps_lat_f, _gps_lon_f)
+                                        _b64f2v = _b64f2.b64encode(_imgf).decode()
+                                        if len(_upl_f) == 1 and _skey_f and _skey_f != "__extra__":
+                                            st.session_state[_fob_key_f][_skey_f] = _b64f2v
+                                        else:
+                                            st.session_state[_fex_key_f].append(_b64f2v)
                                     st.rerun()
 
                             _all_f = (
@@ -5392,17 +5401,23 @@ elif pagina == "ots":
                                 disabled=len(_fotos_loc) >= 25,
                             )
                             _upl_loc = st.file_uploader(
-                                "📁 O sube desde galería",
+                                "📁 O sube desde galería (una o varias)",
                                 type=["jpg","jpeg","png"],
+                                accept_multiple_files=True,
                                 key=f"upl_loc_{id_ot_sel}_{len(_fotos_loc)}",
                                 disabled=len(_fotos_loc) >= 25,
                             )
-                            _src_loc = _cam_loc or _upl_loc
-                            if _src_loc:
-                                import base64 as _b64fl
-                                _img_pl = _foto_con_marca_agua(_src_loc.getvalue(), _gps_lat_l, _gps_lon_l)
+                            import base64 as _b64fl
+                            if _cam_loc:
+                                _img_pl = _foto_con_marca_agua(_cam_loc.getvalue(), _gps_lat_l, _gps_lon_l)
                                 st.session_state[_fotos_loc_key].append(
                                     _b64fl.b64encode(_img_pl).decode())
+                                st.rerun()
+                            elif _upl_loc:
+                                for _uf_loc in _upl_loc:
+                                    _img_pl = _foto_con_marca_agua(_uf_loc.getvalue(), _gps_lat_l, _gps_lon_l)
+                                    st.session_state[_fotos_loc_key].append(
+                                        _b64fl.b64encode(_img_pl).decode())
                                 st.rerun()
 
                             st.caption(f"{len(_fotos_loc)}/25 fotos tomadas")
