@@ -5112,12 +5112,14 @@ elif pagina == "ots":
                                         if any(v.strip() for v in _med_vals):
                                             _seccion_medicion = (
                                                 '<div class="section">DATOS DE MEDICIÓN</div>'
-                                                '<table style="margin-bottom:2pt"><tr>'
-                                                '<th colspan="2" style="width:50%">Unidad Condensadora</th>'
-                                                '<th colspan="2" style="width:50%">Unidad Manejadora</th>'
+                                                '<table style="margin-bottom:2pt">'
+                                                '<colgroup><col style="width:44mm"><col style="width:56mm"><col style="width:44mm"><col style="width:56mm"></colgroup>'
+                                                '<tr>'
+                                                '<th colspan="2">Unidad Condensadora</th>'
+                                                '<th colspan="2">Unidad Manejadora</th>'
                                                 f'</tr><tr>'
-                                                f'<td style="width:22%">Voltaje</td><td style="width:28%">{m_cond_v}</td>'
-                                                f'<td style="width:22%">Voltaje</td><td style="width:28%">{m_evap_v}</td>'
+                                                f'<td>Voltaje</td><td>{m_cond_v}</td>'
+                                                f'<td>Voltaje</td><td>{m_evap_v}</td>'
                                                 f'</tr><tr>'
                                                 f'<td>Amperaje</td><td>{m_cond_a}</td>'
                                                 f'<td>Amperaje</td><td>{m_evap_a}</td>'
@@ -5137,12 +5139,14 @@ elif pagina == "ots":
                                                 f'<td>RPM</td><td>{m_vcond_r}</td>'
                                                 f'<td>RPM</td><td>{m_vevap_r}</td>'
                                                 '</tr></table>'
-                                                '<table><tr>'
-                                                '<th colspan="2" style="width:50%">Presiones Refrig.</th>'
-                                                '<th colspan="2" style="width:50%">Temperatura</th>'
+                                                '<table>'
+                                                '<colgroup><col style="width:44mm"><col style="width:56mm"><col style="width:44mm"><col style="width:56mm"></colgroup>'
+                                                '<tr>'
+                                                '<th colspan="2">Presiones Refrig.</th>'
+                                                '<th colspan="2">Temperatura</th>'
                                                 f'</tr><tr>'
-                                                f'<td style="width:22%">PSI Alta</td><td style="width:28%">{m_psi_a}</td>'
-                                                f'<td style="width:22%">Suministro</td><td style="width:28%">{m_t_sum}</td>'
+                                                f'<td>PSI Alta</td><td>{m_psi_a}</td>'
+                                                f'<td>Suministro</td><td>{m_t_sum}</td>'
                                                 f'</tr><tr>'
                                                 f'<td>PSI Baja</td><td>{m_psi_b}</td>'
                                                 f'<td>Retorno</td><td>{m_t_ret}</td>'
@@ -5240,23 +5244,27 @@ elif pagina == "ots":
     {_seccion_medicion}
 
     <div class="section">LISTA DE CHEQUEO</div>
-    <table style="table-layout:fixed"><tr>
-      <th class="ck" style="width:12pt"></th><th style="width:33%">UNIDAD MANEJADORA</th>
-      <th class="ck" style="width:12pt"></th><th style="width:33%">UNIDAD CONDENSADORA</th>
-      <th class="ck" style="width:12pt"></th><th>MOTORES Y VENTILADORES</th>
+    <table>
+    <colgroup><col style="width:8mm"><col style="width:58mm"><col style="width:8mm"><col style="width:58mm"><col style="width:8mm"><col style="width:60mm"></colgroup>
+    <tr>
+      <th class="ck"></th><th>UNIDAD MANEJADORA</th>
+      <th class="ck"></th><th>UNIDAD CONDENSADORA</th>
+      <th class="ck"></th><th>MOTORES Y VENTILADORES</th>
     </tr>
-    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td style='border-right:2pt solid #dc2626;overflow:hidden'>{k}</td>" +
-             (f"<td class='ck'>{ck(list(ck_co.values())[i])}</td><td style='border-right:2pt solid #dc2626;overflow:hidden'>{list(ck_co.keys())[i]}</td>" if i < len(ck_co) else "<td></td><td style='border-right:2pt solid #dc2626'></td>") +
-             (f"<td class='ck'>{ck(list(ck_vent.values())[i])}</td><td style='overflow:hidden'>{list(ck_vent.keys())[i]}</td></tr>" if i < len(ck_vent) else "<td></td><td></td></tr>")
+    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td style='border-right:2pt solid #dc2626'>{k}</td>" +
+             (f"<td class='ck'>{ck(list(ck_co.values())[i])}</td><td style='border-right:2pt solid #dc2626'>{list(ck_co.keys())[i]}</td>" if i < len(ck_co) else "<td></td><td style='border-right:2pt solid #dc2626'></td>") +
+             (f"<td class='ck'>{ck(list(ck_vent.values())[i])}</td><td>{list(ck_vent.keys())[i]}</td></tr>" if i < len(ck_vent) else "<td></td><td></td></tr>")
              for i,(k,v) in enumerate(ck_ev.items()))}
     </table>
 
-    <table style="table-layout:fixed"><tr>
-      <th class="ck" style="width:12pt"></th><th style="width:58%">TUBERÍA REFRIGERACIÓN Y DESAGÜE</th>
-      <th class="ck" style="width:12pt"></th><th>DUCTOS Y REJILLAS</th>
+    <table>
+    <colgroup><col style="width:8mm"><col style="width:110mm"><col style="width:8mm"><col style="width:74mm"></colgroup>
+    <tr>
+      <th class="ck"></th><th>TUBERÍA REFRIGERACIÓN Y DESAGÜE</th>
+      <th class="ck"></th><th>DUCTOS Y REJILLAS</th>
     </tr>
-    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td style='border-right:2pt solid #dc2626;overflow:hidden'>{k}</td>" +
-             (f"<td class='ck'>{ck(list(ck_duc.values())[i])}</td><td style='overflow:hidden'>{list(ck_duc.keys())[i]}</td></tr>" if i < len(ck_duc) else "<td></td><td></td></tr>")
+    {''.join(f"<tr><td class='ck'>{ck(v)}</td><td style='border-right:2pt solid #dc2626'>{k}</td>" +
+             (f"<td class='ck'>{ck(list(ck_duc.values())[i])}</td><td>{list(ck_duc.keys())[i]}</td></tr>" if i < len(ck_duc) else "<td></td><td></td></tr>")
              for i,(k,v) in enumerate(ck_tub.items()))}
     </table>
 
@@ -5264,18 +5272,19 @@ elif pagina == "ots":
     <table><tr><td style="height:50px">{r_obs}</td></tr></table>
 
     <div class="section">ENCUESTA DE SATISFACCIÓN DEL SERVICIO</div>
-    <table style="table-layout:fixed">
+    <table>
+    <colgroup><col style="width:42mm"><col style="width:88mm"><col style="width:18mm"><col style="width:22mm"><col style="width:30mm"></colgroup>
     <tr>
-      <th style="width:24%">TÉCNICOS</th>
+      <th>TÉCNICOS</th>
       <th>CONCEPTO</th>
-      <th style="width:9%;text-align:center">PESO</th>
-      <th style="width:11%;text-align:center">PUNTAJE</th>
-      <th style="width:30%">OBSERVACIONES DEL SERVICIO</th>
+      <th style="text-align:center">PESO</th>
+      <th style="text-align:center">PUNTAJE</th>
+      <th>OBSERVACIONES DEL SERVICIO</th>
     </tr>
     <tr>
-      <td rowspan="5" style="vertical-align:middle;text-align:center;word-break:break-word">{r_nom_tec}</td>
+      <td rowspan="5" style="vertical-align:middle;text-align:center">{r_nom_tec}</td>
       <td>Experiencia de los Técnicos</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_EXP--></td>
-      <td rowspan="5" style="vertical-align:top;word-break:break-word"><!--ENC_OBS--></td>
+      <td rowspan="5" style="vertical-align:top"><!--ENC_OBS--></td>
     </tr>
     <tr><td>Calidad de Servicio y Bienes</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_CAL--></td></tr>
     <tr><td>Cumplimiento</td><td style="text-align:center">20</td><td style="text-align:center"><!--ENC_CUM--></td></tr>
