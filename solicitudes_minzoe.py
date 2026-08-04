@@ -594,6 +594,14 @@ def sb_save(table_name, df):
     Si el insert falla de todas formas, restaura el backup automáticamente."""
     sb = get_sb()
 
+    # ── Protección anti-borrado accidental ───────────────────────────────────
+    if df is None or (hasattr(df, "empty") and df.empty):
+        st.error(
+            f"❌ GUARDADO CANCELADO — se intentó guardar '{table_name}' vacía. "
+            f"Operación bloqueada para proteger los datos existentes."
+        )
+        return False
+
     # ── Validación preventiva de columnas ────────────────────────────────────
     if not df.empty:
         cols_tabla = _sb_columnas_tabla(table_name)
