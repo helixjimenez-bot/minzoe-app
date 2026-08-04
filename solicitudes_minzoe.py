@@ -4275,7 +4275,7 @@ elif pagina == "ots":
 
                     # ── Resumen IA ───────────────────────────────────────
                     st.divider()
-                    if st.button("🤖 Generar resumen IA", key=f"ia_res_{id_ot_sel}", use_container_width=True):
+                    if st.button("🤖 Generar resumen IA", key=f"btn_ia_{id_ot_sel}", use_container_width=True):
                         with st.spinner("Generando resumen..."):
                             st.session_state[f"ia_res_{id_ot_sel}"] = llamar_claude(
                                 f"Eres asistente de Construcciones Minzoe SAS (empresa de multiservicios en Colombia).\n"
