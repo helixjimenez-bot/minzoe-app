@@ -1226,6 +1226,21 @@ def html_to_pdf(html: str) -> bytes | None:
     return None
 
 
+def llamar_claude(prompt: str, max_tokens: int = 600) -> str:
+    """Llama a Claude API y retorna el texto generado."""
+    try:
+        import anthropic as _ant
+        _c = _ant.Anthropic(api_key=st.secrets.get("anthropic_api_key", ""))
+        msg = _c.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return msg.content[0].text.strip()
+    except Exception as e:
+        return f"[Error IA: {e}]"
+
+
 def ocr_documento(file_bytes, mime_type):
     """Extrae texto de imagen o PDF usando Google Cloud Vision. Retorna (texto, confianza, error)."""
     try:
@@ -4095,6 +4110,29 @@ elif pagina == "ots":
                     st.markdown("**📝 Observaciones**")
                     st.write(fila_ot["Observaciones"] or "—")
 
+                    # ── Resumen IA ───────────────────────────────────────
+                    st.divider()
+                    if st.button("🤖 Generar resumen IA", key=f"ia_res_{id_ot_sel}", use_container_width=True):
+                        with st.spinner("Generando resumen..."):
+                            st.session_state[f"ia_res_{id_ot_sel}"] = llamar_claude(
+                                f"Eres asistente de Construcciones Minzoe SAS (empresa de multiservicios en Colombia).\n"
+                                f"Genera un resumen ejecutivo de 4-6 oraciones en español de esta Orden de Trabajo:\n\n"
+                                f"OT: {fila_ot['ID']} | Estado: {fila_ot['Estado']}\n"
+                                f"Cliente: {fila_ot['Cliente']} — Sede: {fila_ot.get('Sede','')}\n"
+                                f"Servicio: {fila_ot['Servicio']} | Técnico: {fila_ot['Tecnico']}\n"
+                                f"Fecha ejecución: {fila_ot.get('Fecha_Ejecucion','')} | "
+                                f"Horas laboradas: {fila_ot.get('Horas_Laboradas','')}\n"
+                                f"Materiales: {fila_ot.get('Materiales') or 'No registrados'}\n"
+                                f"Valor: ${fila_ot.get('Valor_COP','')} COP\n"
+                                f"Observaciones: {fila_ot.get('Observaciones') or 'Sin observaciones'}\n\n"
+                                f"Escribe el resumen en tono profesional."
+                            )
+                    if f"ia_res_{id_ot_sel}" in st.session_state:
+                        st.markdown("**🤖 Resumen generado:**")
+                        st.info(st.session_state[f"ia_res_{id_ot_sel}"])
+                        if st.button("🗑️ Limpiar resumen", key=f"ia_res_x_{id_ot_sel}"):
+                            del st.session_state[f"ia_res_{id_ot_sel}"]
+                            st.rerun()
 
                     # ── MENSAJE WHATSAPP ──────────────────────────────────
                     st.divider()
@@ -4875,8 +4913,23 @@ elif pagina == "ots":
                             st.divider()
                             # ── Observaciones generales del técnico ────────
                             st.markdown("**📝 Observaciones generales del técnico**")
+                            _ia_hvac_key = f"ia_obs_hvac_{id_ot_sel}"
+                            _default_r_obs = st.session_state.pop(_ia_hvac_key, None)
                             r_obs = st.text_area("Describe lo que evidenciaste durante el mantenimiento",
-                                                  value=fila_ot.get("Observaciones",""), height=100)
+                                                  value=_default_r_obs if _default_r_obs else fila_ot.get("Observaciones",""),
+                                                  height=100, key=f"r_obs_{id_ot_sel}")
+                            if st.button("✨ Redactar con IA", key=f"btn_ia_hvac_{id_ot_sel}"):
+                                with st.spinner("Generando observaciones..."):
+                                    st.session_state[_ia_hvac_key] = llamar_claude(
+                                        f"Eres técnico de mantenimiento HVAC de Construcciones Minzoe SAS en Colombia.\n"
+                                        f"Redacta observaciones técnicas en español (máximo 100 palabras) para incluir "
+                                        f"en un informe de mantenimiento preventivo/correctivo de aires acondicionados:\n"
+                                        f"Cliente: {fila_ot.get('Cliente','')} - Sede: {fila_ot.get('Sede','')}\n"
+                                        f"Trabajo realizado: {fila_ot.get('Descripcion','')}\n"
+                                        f"Describe el estado del equipo y los trabajos efectuados de forma técnica y profesional.",
+                                        max_tokens=200
+                                    )
+                                st.rerun()
 
                             st.divider()
                             # ── Tiempo de servicio ──────────────────────────
@@ -5587,6 +5640,26 @@ elif pagina == "ots":
                                     del st.session_state[_loc_raw_key]
                                     st.rerun()
                             st.stop()
+
+                        # ── Sugerencia IA para observaciones ─────────────
+                        _ia_loc_key = f"ia_obs_loc_{id_ot_sel}"
+                        if st.button("✨ Sugerir observaciones con IA", key=f"btn_ia_loc_{id_ot_sel}"):
+                            with st.spinner("Generando observaciones..."):
+                                st.session_state[_ia_loc_key] = llamar_claude(
+                                    f"Eres técnico de arreglos locativos de Construcciones Minzoe SAS en Colombia.\n"
+                                    f"Redacta observaciones técnicas en español (máximo 100 palabras) para incluir "
+                                    f"en un informe de mantenimiento locativo:\n"
+                                    f"Cliente: {fila_ot.get('Cliente','')} - Sede: {fila_ot.get('Sede','')}\n"
+                                    f"Trabajo realizado: {fila_ot.get('Descripcion','')}\n"
+                                    f"Describe el estado del área intervenida y los trabajos realizados de forma técnica.",
+                                    max_tokens=200
+                                )
+                        if _ia_loc_key in st.session_state:
+                            st.caption("✨ Sugerencia IA — cópiala en el campo Observaciones del formulario:")
+                            st.info(st.session_state[_ia_loc_key])
+                            if st.button("🗑️ Limpiar sugerencia", key=f"ia_loc_x_{id_ot_sel}"):
+                                del st.session_state[_ia_loc_key]
+                                st.rerun()
 
                         with st.form(f"form_reporte_loc_{id_ot_sel}", clear_on_submit=False):
 

@@ -12,3 +12,4 @@ streamlit-drawable-canvas
 xhtml2pdf
 Pillow
 streamlit-js-eval
+anthropic
