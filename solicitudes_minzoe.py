@@ -2493,122 +2493,128 @@ elif pagina == "ver":
     if df.empty:
         st.info("Aún no hay solicitudes registradas.")
     else:
-        # ── FILTROS ───────────────────────────────────────────────────────────
-        c1, c2, c3, c4, c5 = st.columns(5)
-        with c1:
-            f_estado   = st.multiselect("Estado", ESTADOS, default=ESTADOS)
-        with c2:
-            f_servicio = st.multiselect("Servicio", SERVICIOS, default=SERVICIOS)
-        with c3:
-            buscar = st.text_input("Buscar empresa")
-        with c4:
-            f_fecha_ini = st.date_input("Desde", value=None, key="sol_fecha_ini")
-        with c5:
-            f_fecha_fin = st.date_input("Hasta", value=None, key="sol_fecha_fin")
+        _ver_sol_directo = st.session_state.get("_ver_sol_id")
+        id_sel = None
 
-        vista = df.copy()
-        if f_estado:
-            vista = vista[vista["Estado"].isin(f_estado)]
-        if f_servicio:
-            vista = vista[vista["Servicio"].isin(f_servicio)]
-        if buscar:
-            vista = vista[vista["Cliente"].str.contains(buscar, case=False, na=False)]
-        # Filtro por rango de fechas
-        if f_fecha_ini:
-            vista = vista[vista["Fecha"].str[:10] >= f_fecha_ini.strftime("%Y-%m-%d")]
-        if f_fecha_fin:
-            vista = vista[vista["Fecha"].str[:10] <= f_fecha_fin.strftime("%Y-%m-%d")]
+        if _ver_sol_directo and _ver_sol_directo in df["ID"].values:
+            # ── VISTA DIRECTA: solo detalle, sin tabla ────────────────────────
+            if st.button("← Volver a solicitudes", key="volver_sol"):
+                st.session_state.pop("_ver_sol_id", None)
+                st.rerun()
+            st.divider()
+            id_sel = _ver_sol_directo
+        else:
+            # ── FILTROS ───────────────────────────────────────────────────────
+            c1, c2, c3, c4, c5 = st.columns(5)
+            with c1:
+                f_estado   = st.multiselect("Estado", ESTADOS, default=ESTADOS)
+            with c2:
+                f_servicio = st.multiselect("Servicio", SERVICIOS, default=SERVICIOS)
+            with c3:
+                buscar = st.text_input("Buscar empresa")
+            with c4:
+                f_fecha_ini = st.date_input("Desde", value=None, key="sol_fecha_ini")
+            with c5:
+                f_fecha_fin = st.date_input("Hasta", value=None, key="sol_fecha_fin")
 
-        vista_ord = vista.sort_values("ID", ascending=False, key=lambda x: x.str.replace("SOL-", ""))
+            vista = df.copy()
+            if f_estado:
+                vista = vista[vista["Estado"].isin(f_estado)]
+            if f_servicio:
+                vista = vista[vista["Servicio"].isin(f_servicio)]
+            if buscar:
+                vista = vista[vista["Cliente"].str.contains(buscar, case=False, na=False)]
+            if f_fecha_ini:
+                vista = vista[vista["Fecha"].str[:10] >= f_fecha_ini.strftime("%Y-%m-%d")]
+            if f_fecha_fin:
+                vista = vista[vista["Fecha"].str[:10] <= f_fecha_fin.strftime("%Y-%m-%d")]
 
-        COLS_TABLA = ["ID", "Fecha", "Creado_Por", "Cliente", "Sede", "Nombre_Contacto",
-                      "Celular_Contacto", "Servicio", "Descripcion", "SLA", "Canal", "Estado"]
-        cols_visibles = [c for c in COLS_TABLA if c in vista_ord.columns]
+            vista_ord = vista.sort_values("ID", ascending=False, key=lambda x: x.str.replace("SOL-", ""))
 
-        COLORES_SOL = {
-            "Pendiente":  ("#fff3cd", "#7d5a00"),
-            "Aprobado":   ("#d1e7dd", "#0a5c36"),
-            "Completado": ("#cfe2ff", "#0a3678"),
-            "Cancelado":  ("#f8d7da", "#7f1d1d"),
-        }
-        # ── Tabla interactiva con botón Ver solicitud ─────────────────────
-        _POR_PAG_SOL    = 50
-        _total_sol      = len(vista_ord)
-        _total_pags_sol = max(1, -(-_total_sol // _POR_PAG_SOL))
-        _pag_sol = st.session_state.get("pag_sol", 1)
-        _ini_sol = (_pag_sol - 1) * _POR_PAG_SOL
-        _pagina_sol = vista_ord.iloc[_ini_sol:_ini_sol + _POR_PAG_SOL]
+            COLORES_SOL = {
+                "Pendiente":  ("#fff3cd", "#7d5a00"),
+                "Aprobado":   ("#d1e7dd", "#0a5c36"),
+                "Completado": ("#cfe2ff", "#0a3678"),
+                "Cancelado":  ("#f8d7da", "#7f1d1d"),
+            }
+            # ── Tabla interactiva ─────────────────────────────────────────────
+            _POR_PAG_SOL    = 50
+            _total_sol      = len(vista_ord)
+            _total_pags_sol = max(1, -(-_total_sol // _POR_PAG_SOL))
+            _pag_sol = st.session_state.get("pag_sol", 1)
+            _ini_sol = (_pag_sol - 1) * _POR_PAG_SOL
+            _pagina_sol = vista_ord.iloc[_ini_sol:_ini_sol + _POR_PAG_SOL]
 
-        st.markdown("""
-        <div style='display:flex;background:#dc2626;color:#fff;
-                    padding:6px 10px;border-radius:6px 6px 0 0;
-                    font-size:0.73rem;font-weight:700;gap:0;align-items:center'>
-          <span style='flex:0 0 72px;text-align:center'>Ver</span>
-          <span style='flex:1 1 115px'>ID</span>
-          <span style='flex:1 1 105px'>Fecha</span>
-          <span style='flex:1 1 150px'>Cliente</span>
-          <span style='flex:1 1 120px'>Sede</span>
-          <span style='flex:1 1 115px'>Servicio</span>
-          <span style='flex:1 1 180px'>Descripción</span>
-          <span style='flex:1 1 75px'>Estado</span>
-        </div>""", unsafe_allow_html=True)
+            st.markdown("""
+            <div style='display:flex;background:#dc2626;color:#fff;
+                        padding:6px 10px;border-radius:6px 6px 0 0;
+                        font-size:0.73rem;font-weight:700;gap:0;align-items:center'>
+              <span style='flex:0 0 72px;text-align:center'>Ver</span>
+              <span style='flex:1 1 115px'>ID</span>
+              <span style='flex:1 1 105px'>Fecha</span>
+              <span style='flex:1 1 150px'>Cliente</span>
+              <span style='flex:1 1 120px'>Sede</span>
+              <span style='flex:1 1 115px'>Servicio</span>
+              <span style='flex:1 1 180px'>Descripción</span>
+              <span style='flex:1 1 75px'>Estado</span>
+            </div>""", unsafe_allow_html=True)
 
-        for _, _sr in _pagina_sol.iterrows():
-            _sest = _sr.get("Estado", "")
-            _sbg, _sfg = COLORES_SOL.get(_sest, ("#ffffff", "#111111"))
-            _c_btn_s, _c_row_s = st.columns([1, 9])
-            with _c_btn_s:
-                if st.button("→ Ver", key=f"ver_sol_{_sr['ID']}", use_container_width=True):
-                    st.session_state["id_accion"] = _sr["ID"]
+            for _, _sr in _pagina_sol.iterrows():
+                _sest = _sr.get("Estado", "")
+                _sbg, _sfg = COLORES_SOL.get(_sest, ("#ffffff", "#111111"))
+                _c_btn_s, _c_row_s = st.columns([1, 9])
+                with _c_btn_s:
+                    if st.button("→ Ver", key=f"ver_sol_{_sr['ID']}", use_container_width=True):
+                        st.session_state["_ver_sol_id"] = _sr["ID"]
+                        st.rerun()
+                with _c_row_s:
+                    st.markdown(f"""
+                    <div style='background:{_sbg};border:1px solid #e5e7eb;
+                                border-left:4px solid {_sfg};padding:7px 10px;
+                                display:flex;align-items:center;gap:0;
+                                margin:1px 0;font-size:0.76rem'>
+                      <span style='flex:1 1 115px;font-weight:700;color:#111'>{_sr.get('ID','')}</span>
+                      <span style='flex:1 1 105px;color:#555'>{str(_sr.get('Fecha',''))[:16]}</span>
+                      <span style='flex:1 1 150px;color:#333'>{str(_sr.get('Cliente',''))[:20]}</span>
+                      <span style='flex:1 1 120px;color:#333'>{str(_sr.get('Sede',''))[:16]}</span>
+                      <span style='flex:1 1 115px;color:#333'>{str(_sr.get('Servicio',''))[:15]}</span>
+                      <span style='flex:1 1 180px;color:#555'>{str(_sr.get('Descripcion',''))[:25]}</span>
+                      <span style='flex:1 1 75px;font-weight:600;color:{_sfg}'>{_sest}</span>
+                    </div>""", unsafe_allow_html=True)
+
+            # Paginación
+            _pc1, _pc2, _pc3 = st.columns([1, 4, 1])
+            with _pc1:
+                if st.button("◀ Anterior", key="sol_prev", disabled=_pag_sol <= 1):
+                    st.session_state["pag_sol"] = _pag_sol - 1
                     st.rerun()
-            with _c_row_s:
-                st.markdown(f"""
-                <div style='background:{_sbg};border:1px solid #e5e7eb;
-                            border-left:4px solid {_sfg};padding:7px 10px;
-                            display:flex;align-items:center;gap:0;
-                            margin:1px 0;font-size:0.76rem'>
-                  <span style='flex:1 1 115px;font-weight:700;color:#111'>{_sr.get('ID','')}</span>
-                  <span style='flex:1 1 105px;color:#555'>{str(_sr.get('Fecha',''))[:16]}</span>
-                  <span style='flex:1 1 150px;color:#333'>{str(_sr.get('Cliente',''))[:20]}</span>
-                  <span style='flex:1 1 120px;color:#333'>{str(_sr.get('Sede',''))[:16]}</span>
-                  <span style='flex:1 1 115px;color:#333'>{str(_sr.get('Servicio',''))[:15]}</span>
-                  <span style='flex:1 1 180px;color:#555'>{str(_sr.get('Descripcion',''))[:25]}</span>
-                  <span style='flex:1 1 75px;font-weight:600;color:{_sfg}'>{_sest}</span>
-                </div>""", unsafe_allow_html=True)
+            with _pc2:
+                st.caption(f"Página {_pag_sol}/{_total_pags_sol} — {_total_sol} solicitudes")
+            with _pc3:
+                if st.button("Siguiente ▶", key="sol_next", disabled=_pag_sol >= _total_pags_sol):
+                    st.session_state["pag_sol"] = _pag_sol + 1
+                    st.rerun()
 
-        # Paginación
-        _pc1, _pc2, _pc3 = st.columns([1, 4, 1])
-        with _pc1:
-            if st.button("◀ Anterior", key="sol_prev", disabled=_pag_sol <= 1):
-                st.session_state["pag_sol"] = _pag_sol - 1
-                st.rerun()
-        with _pc2:
-            st.caption(f"Página {_pag_sol}/{_total_pags_sol} — {_total_sol} solicitudes")
-        with _pc3:
-            if st.button("Siguiente ▶", key="sol_next", disabled=_pag_sol >= _total_pags_sol):
-                st.session_state["pag_sol"] = _pag_sol + 1
-                st.rerun()
+            c1, c2 = st.columns([3, 1])
+            with c1:
+                st.caption(f"Mostrando {len(vista_ord)} de {len(df)} solicitudes.")
+            with c2:
+                buf = io.BytesIO()
+                with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+                    vista_ord.to_excel(writer, index=False, sheet_name="Solicitudes")
+                st.download_button(
+                    label="⬇️ Exportar a Excel",
+                    data=buf.getvalue(),
+                    file_name=f"solicitudes_minzoe_{ahora_colombia().strftime('%Y%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                )
 
-        c1, c2 = st.columns([3, 1])
-        with c1:
-            st.caption(f"Mostrando {len(vista_ord)} de {len(df)} solicitudes.")
-        with c2:
-            buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-                vista_ord.to_excel(writer, index=False, sheet_name="Solicitudes")
-            st.download_button(
-                label="⬇️ Exportar a Excel",
-                data=buf.getvalue(),
-                file_name=f"solicitudes_minzoe_{ahora_colombia().strftime('%Y%m%d_%H%M')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-            )
+            st.divider()
 
-        st.divider()
-
-        # ── ACCIONES POR SOLICITUD ────────────────────────────────────────────
-        ids_lista = df.sort_values("ID", ascending=False, key=lambda x: x.str.replace("SOL-", ""))["ID"].tolist()
-        id_sel    = st.selectbox("Selecciona una solicitud", ids_lista, key="id_accion")
+            # ── SELECCIÓN POR SOLICITUD ───────────────────────────────────────
+            ids_lista = df.sort_values("ID", ascending=False, key=lambda x: x.str.replace("SOL-", ""))["ID"].tolist()
+            id_sel    = st.selectbox("Selecciona una solicitud", ids_lista, key="id_accion")
 
         if id_sel:
             fila = df[df["ID"] == id_sel].iloc[0]
