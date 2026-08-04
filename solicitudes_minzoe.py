@@ -545,7 +545,7 @@ def get_sb():
     from supabase import create_client
     return create_client(st.secrets["supabase_url"], st.secrets["supabase_key"])
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=600)
 def sb_load(table_name, cols, _v=0):
     """Carga datos desde Supabase paginando de 1000 en 1000 (sin límite).
     _v se usa solo como clave de invalidación — cambia con _invalidar_cache()."""
@@ -605,13 +605,6 @@ def sb_save(table_name, df):
                 )
                 return False
 
-    # ── Backup antes de borrar nada ───────────────────────────────────────────
-    try:
-        _bk = sb.table(table_name).select("*").range(0, 9999).execute()
-        _backup_records = _bk.data or []
-    except Exception:
-        _backup_records = []
-
     try:
         sb.rpc("truncate_table", {"table_name": table_name}).execute()
     except Exception as e:
@@ -619,23 +612,17 @@ def sb_save(table_name, df):
         return False
 
     if df.empty:
+        _invalidar_cache(table_name)
         return True
 
     records = df.fillna("").astype(str).to_dict("records")
     try:
         for i in range(0, len(records), 200):
             sb.table(table_name).insert(records[i:i+200]).execute()
+        _invalidar_cache(table_name)
         return True
     except Exception as e:
         st.error(f"❌ Error guardando en '{table_name}': {e}")
-        # Restaurar backup para no perder datos
-        if _backup_records:
-            try:
-                for i in range(0, len(_backup_records), 200):
-                    sb.table(table_name).insert(_backup_records[i:i+200]).execute()
-                st.warning("⚠️ Guardado falló pero se restauraron los datos anteriores.")
-            except Exception:
-                st.error("❌ No se pudo restaurar el backup. Revisar Supabase manualmente.")
         return False
 
 def get_sheet(tab_name):
