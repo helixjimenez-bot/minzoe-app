@@ -6115,22 +6115,6 @@ elif pagina == "ots":
                                     st.rerun()
                             st.stop()
 
-                        # ── IA para observaciones (pre-llena el campo al rerun) ──
-                        _ia_loc_key = f"ia_obs_loc_{id_ot_sel}"
-                        if st.button("✨ Redactar observaciones con IA", key=f"btn_ia_loc_{id_ot_sel}",
-                                     use_container_width=True):
-                            with st.spinner("Generando observaciones con IA..."):
-                                st.session_state[_ia_loc_key] = llamar_claude(
-                                    f"Eres técnico de arreglos locativos de Construcciones Minzoe SAS en Colombia.\n"
-                                    f"Redacta observaciones técnicas en español (máximo 100 palabras) para incluir "
-                                    f"en un informe de mantenimiento locativo:\n"
-                                    f"Cliente: {fila_ot.get('Cliente','')} - Sede: {fila_ot.get('Sede','')}\n"
-                                    f"Trabajo realizado: {fila_ot.get('Descripcion','')}\n"
-                                    f"Describe el estado del área intervenida y los trabajos realizados de forma técnica.",
-                                    max_tokens=200
-                                )
-                            st.rerun()
-
                         with st.form(f"form_reporte_loc_{id_ot_sel}", clear_on_submit=False):
 
                             # Tipo de mantenimiento
@@ -6184,11 +6168,15 @@ elif pagina == "ots":
 
                             st.divider()
                             # ── Observaciones generales del técnico ────────
-                            st.markdown("**📝 Observaciones generales del técnico**")
+                            _obs_c1, _obs_c2 = st.columns([4, 1])
+                            _obs_c1.markdown("**📝 Observaciones generales del técnico**")
                             _ia_loc_key = f"ia_obs_loc_{id_ot_sel}"
-                            _default_l_obs = st.session_state.pop(_ia_loc_key, None)
+                            gen_loc_ia = _obs_c2.form_submit_button("✨ IA", use_container_width=True)
+                            _ia_loc_res = st.session_state.pop(_ia_loc_key, None)
+                            if _ia_loc_res is not None:
+                                st.session_state["l_obs"] = _ia_loc_res
                             l_obs = st.text_area("Describe lo que evidenciaste durante el trabajo",
-                                                  value=_default_l_obs if _default_l_obs else fila_ot.get("Observaciones",""),
+                                                  value=fila_ot.get("Observaciones",""),
                                                   height=100, key="l_obs")
 
                             st.divider()
@@ -6211,6 +6199,19 @@ elif pagina == "ots":
                             l_fec_fir  = sc2.text_input("Fecha firma",      value=fila_ot.get("Fecha_Ejecucion",""), key="l_ffir")
 
                             gen_loc = st.form_submit_button("✅ Finalizar y Guardar", type="primary", use_container_width=True)
+
+                            if gen_loc_ia:
+                                with st.spinner("Generando observaciones con IA..."):
+                                    st.session_state[_ia_loc_key] = llamar_claude(
+                                        f"Eres técnico de arreglos locativos de Construcciones Minzoe SAS en Colombia.\n"
+                                        f"Redacta observaciones técnicas en español (máximo 100 palabras) para incluir "
+                                        f"en un informe de mantenimiento locativo:\n"
+                                        f"Cliente: {fila_ot.get('Cliente','')} - Sede: {fila_ot.get('Sede','')}\n"
+                                        f"Trabajo realizado: {fila_ot.get('Descripcion','')}\n"
+                                        f"Describe el estado del área intervenida y los trabajos realizados de forma técnica.",
+                                        max_tokens=200
+                                    )
+                                st.rerun()
 
                             if gen_loc:
                                 def ck(v): return "✔" if v else ""
