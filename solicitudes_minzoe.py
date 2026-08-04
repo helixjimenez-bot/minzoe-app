@@ -3793,7 +3793,7 @@ elif pagina == "ots":
                         "Hora_Final":      ot_hora_fin,
                         "Horas_Laboradas": calcular_horas(ot_hora_ini, ot_hora_fin),
                         "Materiales":      ot_materiales.strip(),
-                        "Valor_COP":       ot_valor.strip(),
+                        "Valor_COP":       str(ot_valor),
                         "Estado":          ot_estado,
                         "ID_Item":         ot_equipo_id,
                         "Observaciones":   (f"Equipo: {ot_equipo_id} — {ot_equipo_desc}\n" if ot_equipo_id else "") + ot_obs.strip(),
@@ -4305,7 +4305,7 @@ elif pagina == "ots":
                             ots.loc[idx_ot, "Estado"]         = ee_estado
                             if estado_ot_ant != ee_estado:
                                 registrar_cambio("OT", id_ot_sel, "Estado", estado_ot_ant, ee_estado)
-                            ots.loc[idx_ot, "Valor_COP"]      = ee_valor
+                            ots.loc[idx_ot, "Valor_COP"]      = str(ee_valor)
                             ots.loc[idx_ot, "Fecha_Ejecucion"]       = ee_fecha.strftime("%Y-%m-%d")
                             ots.loc[idx_ot, "Fecha_Corregimiento"]   = ee_fecha_corr.strftime("%Y-%m-%d") if ee_fecha_corr else ""
                             ots.loc[idx_ot, "Hora_Inicio"]           = ee_hora_ini
