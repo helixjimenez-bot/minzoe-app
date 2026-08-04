@@ -929,7 +929,7 @@ def _guardar_en_enviados(imap, msg_bytes):
             pass
 
 
-def enviar_confirmacion_sol(sol_id, cliente, sede, servicio, tipo_servicio, sla, contacto_nombre, correo_destino, fecha, dominio="construminzoe.com"):
+def enviar_confirmacion_sol(sol_id, cliente, sede, servicio, tipo_servicio, sla, contacto_nombre, correo_destino, fecha, dominio="construminzoe.com", extra_cc_list=None):
     """Envía correo de confirmación al cliente con el código de la solicitud."""
     import smtplib, ssl
     from email.mime.multipart import MIMEMultipart
@@ -1023,9 +1023,12 @@ def enviar_confirmacion_sol(sol_id, cliente, sede, servicio, tipo_servicio, sla,
         # ID fijo basado en la SOL — no necesita guardarse en base de datos
         message_id = f"<{sol_id}@{dominio}>"
 
-        # CC: correos configurados en secrets.toml (cc_correos, separados por coma)
-        _cc_raw  = st.secrets.get("cc_correos", "")
-        _cc_list = [c.strip() for c in _cc_raw.split(",") if c.strip()] if _cc_raw else []
+        # CC: usa extra_cc_list si se pasa explícitamente; si no, usa secrets.toml
+        if extra_cc_list is not None:
+            _cc_list = extra_cc_list
+        else:
+            _cc_raw  = st.secrets.get("cc_correos", "")
+            _cc_list = [c.strip() for c in _cc_raw.split(",") if c.strip()] if _cc_raw else []
 
         msg = MIMEMultipart("alternative")
         msg["Subject"]    = asunto
@@ -2455,31 +2458,114 @@ if pagina == "nueva":
                 }
                 df = pd.concat([df, pd.DataFrame([nueva])], ignore_index=True)
                 save_sol(df)
-                msg_sol = f"✅ Solicitud **{nueva['ID']}** guardada para {empresa_final}."
-                # Enviar confirmación por correo al contacto
                 correo_cli = cor_c_v.strip() if cor_c_v.strip() else ""
-                if correo_cli:
-                    resultado_mail = enviar_confirmacion_sol(
-                        sol_id          = nueva["ID"],
-                        cliente         = empresa_final,
-                        sede            = sede_v or "",
-                        servicio        = servicio,
-                        tipo_servicio   = tipo_servicio,
-                        sla             = sla,
-                        contacto_nombre = nom_c_v or empresa_final,
-                        correo_destino  = correo_cli,
-                        fecha           = nueva["Fecha"],
-                    )
-                    ok_mail  = resultado_mail[0]
-                    res_mail = resultado_mail[1]
-                    msg_id   = resultado_mail[2] if len(resultado_mail) > 2 else ""
-                    # Guardar Message-ID en la SOL para encadenar el correo de OT
-                    if ok_mail and msg_id:
-                        df.loc[df["ID"] == nueva["ID"], "Email_Message_ID"] = msg_id
-                        save_sol(df)
-                    msg_sol += f" 📧 {res_mail}" if ok_mail else f" ⚠️ Correo no enviado: {res_mail}"
-                st.success(msg_sol)
+                st.session_state["_cc_dialog_sol"] = {
+                    "sol_id":          nueva["ID"],
+                    "cliente":         empresa_final,
+                    "sede":            sede_v or "",
+                    "servicio":        servicio,
+                    "tipo_servicio":   tipo_servicio,
+                    "sla":             sla,
+                    "contacto_nombre": nom_c_v or empresa_final,
+                    "correo_cli":      correo_cli,
+                    "fecha":           nueva["Fecha"],
+                }
+                st.session_state.pop("_cc_dialog_elegir", None)
 
+
+    # ── Diálogo de copia de correo (aparece tras guardar solicitud) ───────────
+    _cc_pend = st.session_state.get("_cc_dialog_sol")
+    if _cc_pend:
+        _cc_sol_id   = _cc_pend["sol_id"]
+        _cc_cliente  = _cc_pend["cliente"]
+        _cc_sede     = _cc_pend["sede"]
+        _cc_servicio = _cc_pend["servicio"]
+        _cc_tipo     = _cc_pend["tipo_servicio"]
+        _cc_sla      = _cc_pend["sla"]
+        _cc_contacto = _cc_pend["contacto_nombre"]
+        _cc_cli      = _cc_pend["correo_cli"]
+        _cc_fecha    = _cc_pend["fecha"]
+
+        st.success(f"✅ Solicitud **{_cc_sol_id}** guardada para {_cc_cliente}.")
+
+        if _cc_cli:
+            if st.session_state.get("_cc_dialog_elegir") == "si":
+                _cc_default = st.secrets.get("cc_correos", "")
+                _cc_edit = st.text_input(
+                    "Correos adicionales (separados por coma):",
+                    value=_cc_default,
+                    key="_cc_edit_input",
+                )
+                _c_env, _c_can = st.columns(2)
+                if _c_env.button("📤 Enviar correo con copia", key="_cc_enviar_btn", type="primary", use_container_width=True):
+                    _extra = [c.strip() for c in _cc_edit.split(",") if c.strip()]
+                    _res = enviar_confirmacion_sol(
+                        sol_id          = _cc_sol_id,
+                        cliente         = _cc_cliente,
+                        sede            = _cc_sede,
+                        servicio        = _cc_servicio,
+                        tipo_servicio   = _cc_tipo,
+                        sla             = _cc_sla,
+                        contacto_nombre = _cc_contacto,
+                        correo_destino  = _cc_cli,
+                        fecha           = _cc_fecha,
+                        extra_cc_list   = _extra,
+                    )
+                    _ok, _rmsg = _res[0], _res[1]
+                    _mid = _res[2] if len(_res) > 2 else ""
+                    if _ok and _mid:
+                        _df2 = get_df()
+                        _df2.loc[_df2["ID"] == _cc_sol_id, "Email_Message_ID"] = _mid
+                        save_sol(_df2)
+                    if _ok:
+                        st.success(f"📧 {_rmsg}")
+                    else:
+                        st.error(f"⚠️ Correo no enviado: {_rmsg}")
+                    st.session_state.pop("_cc_dialog_sol", None)
+                    st.session_state.pop("_cc_dialog_elegir", None)
+                    st.rerun()
+                if _c_can.button("✖ Cancelar envío", key="_cc_cancelar_btn", use_container_width=True):
+                    st.session_state.pop("_cc_dialog_sol", None)
+                    st.session_state.pop("_cc_dialog_elegir", None)
+                    st.rerun()
+            else:
+                st.info(f"📧 Se enviará confirmación a: **{_cc_cli}**")
+                st.write("¿Desea enviar copia a destinatarios adicionales?")
+                _c_si, _c_no = st.columns(2)
+                if _c_si.button("✅ Sí, agregar copias", key="_cc_si_btn", use_container_width=True):
+                    st.session_state["_cc_dialog_elegir"] = "si"
+                    st.rerun()
+                if _c_no.button("📧 No, solo al contacto", key="_cc_no_btn", use_container_width=True):
+                    _res = enviar_confirmacion_sol(
+                        sol_id          = _cc_sol_id,
+                        cliente         = _cc_cliente,
+                        sede            = _cc_sede,
+                        servicio        = _cc_servicio,
+                        tipo_servicio   = _cc_tipo,
+                        sla             = _cc_sla,
+                        contacto_nombre = _cc_contacto,
+                        correo_destino  = _cc_cli,
+                        fecha           = _cc_fecha,
+                        extra_cc_list   = [],
+                    )
+                    _ok, _rmsg = _res[0], _res[1]
+                    _mid = _res[2] if len(_res) > 2 else ""
+                    if _ok and _mid:
+                        _df2 = get_df()
+                        _df2.loc[_df2["ID"] == _cc_sol_id, "Email_Message_ID"] = _mid
+                        save_sol(_df2)
+                    if _ok:
+                        st.success(f"📧 {_rmsg}")
+                    else:
+                        st.warning(f"⚠️ Correo no enviado: {_rmsg}")
+                    st.session_state.pop("_cc_dialog_sol", None)
+                    st.session_state.pop("_cc_dialog_elegir", None)
+                    st.rerun()
+        else:
+            st.info("ℹ️ No hay correo de contacto registrado — solicitud guardada sin envío.")
+            if st.button("OK", key="_cc_ok_sin_correo"):
+                st.session_state.pop("_cc_dialog_sol", None)
+                st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PÁGINA: VER SOLICITUDES
