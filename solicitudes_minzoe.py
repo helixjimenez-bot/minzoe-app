@@ -2531,8 +2531,63 @@ elif pagina == "ver":
             "Completado": ("#cfe2ff", "#0a3678"),
             "Cancelado":  ("#f8d7da", "#7f1d1d"),
         }
-        tabla_html(vista_ord[cols_visibles].reset_index(drop=True),
-                   color_col="Estado", colores_estado=COLORES_SOL)
+        # ── Tabla interactiva con botón Ver solicitud ─────────────────────
+        _POR_PAG_SOL    = 50
+        _total_sol      = len(vista_ord)
+        _total_pags_sol = max(1, -(-_total_sol // _POR_PAG_SOL))
+        _pag_sol = st.session_state.get("pag_sol", 1)
+        _ini_sol = (_pag_sol - 1) * _POR_PAG_SOL
+        _pagina_sol = vista_ord.iloc[_ini_sol:_ini_sol + _POR_PAG_SOL]
+
+        st.markdown("""
+        <div style='display:flex;background:#dc2626;color:#fff;
+                    padding:6px 10px;border-radius:6px 6px 0 0;
+                    font-size:0.73rem;font-weight:700;gap:0;align-items:center'>
+          <span style='flex:0 0 72px;text-align:center'>Ver</span>
+          <span style='flex:1 1 115px'>ID</span>
+          <span style='flex:1 1 105px'>Fecha</span>
+          <span style='flex:1 1 150px'>Cliente</span>
+          <span style='flex:1 1 120px'>Sede</span>
+          <span style='flex:1 1 115px'>Servicio</span>
+          <span style='flex:1 1 180px'>Descripción</span>
+          <span style='flex:1 1 75px'>Estado</span>
+        </div>""", unsafe_allow_html=True)
+
+        for _, _sr in _pagina_sol.iterrows():
+            _sest = _sr.get("Estado", "")
+            _sbg, _sfg = COLORES_SOL.get(_sest, ("#ffffff", "#111111"))
+            _c_btn_s, _c_row_s = st.columns([1, 9])
+            with _c_btn_s:
+                if st.button("→ Ver", key=f"ver_sol_{_sr['ID']}", use_container_width=True):
+                    st.session_state["id_accion"] = _sr["ID"]
+                    st.rerun()
+            with _c_row_s:
+                st.markdown(f"""
+                <div style='background:{_sbg};border:1px solid #e5e7eb;
+                            border-left:4px solid {_sfg};padding:7px 10px;
+                            display:flex;align-items:center;gap:0;
+                            margin:1px 0;font-size:0.76rem'>
+                  <span style='flex:1 1 115px;font-weight:700;color:#111'>{_sr.get('ID','')}</span>
+                  <span style='flex:1 1 105px;color:#555'>{str(_sr.get('Fecha',''))[:16]}</span>
+                  <span style='flex:1 1 150px;color:#333'>{str(_sr.get('Cliente',''))[:20]}</span>
+                  <span style='flex:1 1 120px;color:#333'>{str(_sr.get('Sede',''))[:16]}</span>
+                  <span style='flex:1 1 115px;color:#333'>{str(_sr.get('Servicio',''))[:15]}</span>
+                  <span style='flex:1 1 180px;color:#555'>{str(_sr.get('Descripcion',''))[:25]}</span>
+                  <span style='flex:1 1 75px;font-weight:600;color:{_sfg}'>{_sest}</span>
+                </div>""", unsafe_allow_html=True)
+
+        # Paginación
+        _pc1, _pc2, _pc3 = st.columns([1, 4, 1])
+        with _pc1:
+            if st.button("◀ Anterior", key="sol_prev", disabled=_pag_sol <= 1):
+                st.session_state["pag_sol"] = _pag_sol - 1
+                st.rerun()
+        with _pc2:
+            st.caption(f"Página {_pag_sol}/{_total_pags_sol} — {_total_sol} solicitudes")
+        with _pc3:
+            if st.button("Siguiente ▶", key="sol_next", disabled=_pag_sol >= _total_pags_sol):
+                st.session_state["pag_sol"] = _pag_sol + 1
+                st.rerun()
 
         c1, c2 = st.columns([3, 1])
         with c1:
