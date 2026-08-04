@@ -6115,10 +6115,11 @@ elif pagina == "ots":
                                     st.rerun()
                             st.stop()
 
-                        # ── Sugerencia IA para observaciones ─────────────
+                        # ── IA para observaciones (pre-llena el campo al rerun) ──
                         _ia_loc_key = f"ia_obs_loc_{id_ot_sel}"
-                        if st.button("✨ Sugerir observaciones con IA", key=f"btn_ia_loc_{id_ot_sel}"):
-                            with st.spinner("Generando observaciones..."):
+                        if st.button("✨ Redactar observaciones con IA", key=f"btn_ia_loc_{id_ot_sel}",
+                                     use_container_width=True):
+                            with st.spinner("Generando observaciones con IA..."):
                                 st.session_state[_ia_loc_key] = llamar_claude(
                                     f"Eres técnico de arreglos locativos de Construcciones Minzoe SAS en Colombia.\n"
                                     f"Redacta observaciones técnicas en español (máximo 100 palabras) para incluir "
@@ -6128,12 +6129,7 @@ elif pagina == "ots":
                                     f"Describe el estado del área intervenida y los trabajos realizados de forma técnica.",
                                     max_tokens=200
                                 )
-                        if _ia_loc_key in st.session_state:
-                            st.caption("✨ Sugerencia IA — cópiala en el campo Observaciones del formulario:")
-                            st.info(st.session_state[_ia_loc_key])
-                            if st.button("🗑️ Limpiar sugerencia", key=f"ia_loc_x_{id_ot_sel}"):
-                                del st.session_state[_ia_loc_key]
-                                st.rerun()
+                            st.rerun()
 
                         with st.form(f"form_reporte_loc_{id_ot_sel}", clear_on_submit=False):
 
@@ -6189,8 +6185,11 @@ elif pagina == "ots":
                             st.divider()
                             # ── Observaciones generales del técnico ────────
                             st.markdown("**📝 Observaciones generales del técnico**")
+                            _ia_loc_key = f"ia_obs_loc_{id_ot_sel}"
+                            _default_l_obs = st.session_state.pop(_ia_loc_key, None)
                             l_obs = st.text_area("Describe lo que evidenciaste durante el trabajo",
-                                                  value=fila_ot.get("Observaciones",""), height=100, key="l_obs")
+                                                  value=_default_l_obs if _default_l_obs else fila_ot.get("Observaciones",""),
+                                                  height=100, key="l_obs")
 
                             st.divider()
                             st.markdown("**⏱️ Tiempo de servicio**")
