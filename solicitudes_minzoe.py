@@ -1460,6 +1460,42 @@ def generar_informe_ia(fila_ot: dict) -> str:
 </div></body></html>"""
 
 
+def combinar_documentos_ot(informe_html: str, reporte_html: str) -> str:
+    """Une informe IA + reporte OT (con fotos) en un solo HTML con saltos de página."""
+    import re as _re
+
+    def _get_style(h):
+        m = _re.search(r'<style[^>]*>(.*?)</style>', h, _re.DOTALL | _re.IGNORECASE)
+        return m.group(1) if m else ""
+
+    def _get_body(h):
+        m = _re.search(r'<body[^>]*>(.*?)</body>', h, _re.DOTALL | _re.IGNORECASE)
+        return m.group(1).strip() if m else h.strip()
+
+    st1 = _get_style(informe_html)
+    b1  = _get_body(informe_html)
+    st2 = _get_style(reporte_html)
+    b2  = _get_body(reporte_html)
+
+    pgbreak = '<div style="page-break-before:always;height:0;margin:0;padding:0"></div>'
+
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+{st1}
+{st2}
+</style>
+</head>
+<body>
+{b1}
+{pgbreak}
+{b2}
+</body>
+</html>"""
+
+
 def ocr_documento(file_bytes, mime_type):
     """Extrae texto de imagen o PDF usando Google Cloud Vision. Retorna (texto, confianza, error)."""
     try:
@@ -4499,50 +4535,77 @@ elif pagina == "ots":
                             del st.session_state[f"ia_res_{id_ot_sel}"]
                             st.rerun()
 
-                    # ── Informe técnico IA ────────────────────────────────
+                    # ── Informe IA / Documento completo ──────────────────
                     st.divider()
-                    _btn_inf, _btn_inf2 = st.columns(2)
-                    if _btn_inf.button("📄 Crear informe", key=f"btn_inf_{id_ot_sel}",
-                                       use_container_width=True, type="primary"):
-                        with st.spinner("Generando informe técnico con IA... (puede tardar ~20 s)"):
-                            _inf_html = generar_informe_ia(fila_ot.to_dict())
-                            st.session_state[f"inf_html_{id_ot_sel}"] = _inf_html
+                    _rep_inf_sb, _rep_inf_meta = cargar_reporte_sb(id_ot_sel)
+                    _tiene_rep = bool(_rep_inf_sb)
+                    if _tiene_rep:
+                        st.caption(
+                            f"📋 Reporte guardado: **{_rep_inf_meta.get('tipo','')}** "
+                            f"— {_rep_inf_meta.get('fecha','')}  |  "
+                            "El documento completo incluirá: Informe IA → Reporte OT → Fotos"
+                        )
+                        _lbl_inf = "📋 Generar documento completo"
+                    else:
+                        _lbl_inf = "📄 Crear informe"
+
+                    if st.button(_lbl_inf, key=f"btn_inf_{id_ot_sel}",
+                                 use_container_width=True, type="primary"):
+                        with st.spinner("Generando informe con IA… (~20 s)"):
+                            _inf_solo = generar_informe_ia(fila_ot.to_dict())
+                        if _tiene_rep:
+                            with st.spinner("Combinando: Informe → Reporte OT → Fotos…"):
+                                _doc_final = combinar_documentos_ot(_inf_solo, _rep_inf_sb)
+                            st.session_state[f"inf_html_{id_ot_sel}"] = _doc_final
+                            st.session_state[f"inf_tipo_{id_ot_sel}"] = "completo"
+                        else:
+                            st.session_state[f"inf_html_{id_ot_sel}"] = _inf_solo
+                            st.session_state[f"inf_tipo_{id_ot_sel}"] = "solo"
 
                     if f"inf_html_{id_ot_sel}" in st.session_state:
-                        _inf_h = st.session_state[f"inf_html_{id_ot_sel}"]
-                        st.success("✅ Informe generado. Descarga o guarda en la OT.")
+                        _inf_h    = st.session_state[f"inf_html_{id_ot_sel}"]
+                        _inf_tipo = st.session_state.get(f"inf_tipo_{id_ot_sel}", "solo")
+                        _es_comp  = _inf_tipo == "completo"
+                        _msg_ok   = "✅ Documento completo listo (Informe + OT + Fotos)." if _es_comp else "✅ Informe generado."
+                        st.success(_msg_ok + " Descarga o guarda en la OT.")
                         _ic1, _ic2, _ic3, _ic4 = st.columns(4)
-                        _inf_pdf = html_to_pdf(_inf_h)
+                        _inf_pdf  = html_to_pdf(_inf_h)
+                        _prefijo  = "DocCompleto" if _es_comp else "Informe"
                         if _inf_pdf:
                             _ic1.download_button(
                                 "⬇️ PDF", data=_inf_pdf,
-                                file_name=f"Informe_{id_ot_sel}.pdf",
+                                file_name=f"{_prefijo}_{id_ot_sel}.pdf",
                                 mime="application/pdf",
                                 use_container_width=True,
                                 key=f"dl_inf_pdf_{id_ot_sel}",
                             )
                         _ic2.download_button(
                             "⬇️ HTML", data=_inf_h.encode("utf-8"),
-                            file_name=f"Informe_{id_ot_sel}.html",
+                            file_name=f"{_prefijo}_{id_ot_sel}.html",
                             mime="text/html",
                             use_container_width=True,
                             key=f"dl_inf_html_{id_ot_sel}",
                         )
                         if _ic3.button("💾 Guardar en OT", key=f"save_inf_{id_ot_sel}",
                                        use_container_width=True, type="primary"):
+                            _tipo_lbl = (f"Documento Completo IA — {fila_ot.get('Servicio','')}"
+                                         if _es_comp else
+                                         f"Informe IA — {fila_ot.get('Servicio','')}")
                             guardar_reporte_sb(
                                 ot_id   = id_ot_sel,
-                                tipo    = f"Informe IA — {fila_ot.get('Servicio','')}",
+                                tipo    = _tipo_lbl,
                                 cliente = fila_ot.get("Cliente",""),
                                 fecha   = fila_ot.get("Fecha_Ejecucion",""),
                                 html    = _inf_h,
                             )
-                            st.success("✅ Informe guardado. Visible en el tab 📄 Reportar.")
+                            st.success("✅ Guardado. Visible en el tab 📄 Reportar.")
                             st.session_state.pop(f"inf_html_{id_ot_sel}", None)
+                            st.session_state.pop(f"inf_tipo_{id_ot_sel}", None)
                             st.rerun()
                         if _ic4.button("🗑️ Descartar", key=f"del_inf_{id_ot_sel}",
                                        use_container_width=True):
                             st.session_state.pop(f"inf_html_{id_ot_sel}", None)
+                            st.session_state.pop(f"inf_tipo_{id_ot_sel}", None)
                             st.rerun()
 
                     # ── MENSAJE WHATSAPP ──────────────────────────────────
