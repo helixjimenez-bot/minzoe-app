@@ -1258,6 +1258,208 @@ def llamar_claude(prompt: str, max_tokens: int = 600) -> str:
         return f"[Error IA: {e}]"
 
 
+def generar_informe_ia(fila_ot: dict) -> str:
+    """Genera un informe técnico HTML completo usando Claude, adaptado al tipo de servicio."""
+    servicio    = fila_ot.get("Servicio", "Servicio General")
+    ot_id       = fila_ot.get("ID", "")
+    cliente     = fila_ot.get("Cliente", "")
+    nit         = fila_ot.get("NIT", "")
+    sede        = fila_ot.get("Sede", "")
+    tecnico     = fila_ot.get("Tecnico", "")
+    fecha       = fila_ot.get("Fecha_Ejecucion", "")
+    hora_ini    = fila_ot.get("Hora_Inicio", "")
+    hora_fin    = fila_ot.get("Hora_Final", "")
+    horas       = fila_ot.get("Horas_Laboradas", "")
+    descripcion = fila_ot.get("Descripcion", "")
+    materiales  = fila_ot.get("Materiales", "")
+    observ      = fila_ot.get("Observaciones", "")
+    sol_ref     = fila_ot.get("SOL_Ref", "")
+
+    conocimientos = {
+        "Aires Acondicionados": (
+            "Eres técnico especialista certificado en sistemas HVAC (Heating, Ventilation, Air Conditioning). "
+            "Dominas: mantenimiento preventivo y correctivo de equipos split, cassette, VRF/VRV, chiller, fan-coil; "
+            "limpieza de filtros, serpentines evaporador y condensador; carga de gas refrigerante R-410A, R-22, R-32, R-134a; "
+            "medición de presiones con manifold, amperajes con pinza amperimétrica, voltajes; "
+            "diagnóstico de fallas eléctricas (compresor, ventiladores, tarjetas electrónicas) y mecánicas; "
+            "instalación, desmontaje, puesta en marcha; revisión de drenajes, rubatex y soportes."
+        ),
+        "Cámaras de Seguridad": (
+            "Eres técnico especialista en sistemas CCTV y videovigilancia IP. "
+            "Dominas: instalación y configuración de cámaras IP, HD-TVI, AHD, CVBS; DVR y NVR; switches PoE; "
+            "cableado UTP CAT6 y coaxial RG59; crimping y conectores BNC/RJ45; "
+            "configuración de grabación continua y por eventos; acceso remoto via app; "
+            "configuración de detección de movimiento, líneas virtuales e intrusión; "
+            "limpieza de lentes y ajuste de enfoque; integración con alarmas; "
+            "marcas: Hikvision, Dahua, Axis, Bosch, Samsung. Revisión de DVR/NVR y discos duros."
+        ),
+        "Arreglos Locativos": (
+            "Eres técnico especialista en mantenimiento locativo de instalaciones comerciales e industriales. "
+            "Dominas: pintura interior y exterior (vinilo, esmalte, epóxica, anticorrosivo); "
+            "instalación de drywall, enchape y baldosas; pisos (cerámica, porcelanato, vinilo, tableta, madera laminada); "
+            "electricidad menor (tomas, interruptores, luminarias LED, acometidas menores, breakers); "
+            "fontanería (grifería, sanitarios, tuberías PVC, CPVC, accesorios, sifones); "
+            "carpintería metálica y en madera (puertas, ventanas, cerraduras, bisagras); "
+            "impermeabilización, estuco, resanes de grietas, mampostería menor, cielos rasos."
+        ),
+        "Obra Civil": (
+            "Eres maestro de obra y técnico en construcción civil con experiencia en proyectos comerciales e industriales. "
+            "Dominas: estructuras en concreto reforzado y mampostería estructural; cimentaciones superficiales (zapatas, vigas de cimentación); "
+            "instalaciones eléctricas e hidráulicas internas; acabados arquitectónicos (pañetes, estucos, pinturas); "
+            "remodelaciones y ampliaciones de espacios; construcción de cubiertas (losa, teja termoacústica, zinc); "
+            "fachadas y cerramientos; cálculo de mezclas de mortero y concreto; "
+            "control de obra, rendimientos y lectura de planos."
+        ),
+        "UPS / Plantas Eléctricas": (
+            "Eres técnico especialista certificado en sistemas de energía eléctrica crítica e ininterrumpida. "
+            "Dominas: UPS on-line doble conversión, off-line e interactivo (1 kVA a 500 kVA); "
+            "baterías VRLA (AGM y Gel), litio; prueba de capacidad y carga de baterías; "
+            "inversores y rectificadores; plantas eléctricas de emergencia diesel y a gas; "
+            "transferencias automáticas ATS, breakers de transferencia; tableros eléctricos de distribución; "
+            "mediciones: voltaje AC/DC, corriente, factor de potencia, THD, autonomía; "
+            "marcas: APC, Schneider, Socomec, Borri, Emerson, Leoch, Trojan, Caterpillar."
+        ),
+        "Aseo y Limpieza": (
+            "Eres supervisor de servicios de aseo y limpieza industrial, comercial e institucional. "
+            "Dominas: limpieza profunda de pisos (pulido, encerado, cristalizado, lavado), ventanas y vidrios, fachadas; "
+            "áreas comunes, baños, cocinas, laboratorios; manejo de productos químicos (desengrasantes, desinfectantes, "
+            "brilladores, desmanchadores, hipoclorito); lavado de alfombras, tapetes y muebles; "
+            "limpieza post-obra y post-evento; desinfección y fumigación básica; "
+            "equipos: hidrolavadoras, pulidoras, aspiradoras industriales, autolustradora."
+        ),
+    }
+    ctx = conocimientos.get(servicio, (
+        "Eres técnico multiservicios de Construcciones Minzoe SAS, empresa colombiana de mantenimiento integral. "
+        "Tienes experiencia en servicios de mantenimiento, instalaciones y construcción. "
+        "Usas lenguaje técnico profesional en español colombiano."
+    ))
+
+    prompt = (
+        f"{ctx}\n\n"
+        f"Redacta el contenido de un INFORME TÉCNICO DE SERVICIO para Construcciones Minzoe SAS.\n"
+        f"Usa HTML limpio: solo <p>, <ul>, <li>, <strong>, <br>. "
+        f"NO uses clases CSS, estilos inline, ni etiquetas H1/H2/H3/H4.\n"
+        f"Responde con exactamente 4 bloques separados por el delimitador ===SECCION===\n\n"
+        f"DATOS DE LA INTERVENCIÓN:\n"
+        f"- OT: {ot_id} | Solicitud: {sol_ref}\n"
+        f"- Servicio: {servicio}\n"
+        f"- Cliente: {cliente} | NIT: {nit} | Sede: {sede}\n"
+        f"- Técnico: {tecnico}\n"
+        f"- Fecha: {fecha} | Inicio: {hora_ini} | Final: {hora_fin} | Horas: {horas}\n"
+        f"- Problema reportado: {descripcion or '(no especificado)'}\n"
+        f"- Materiales registrados: {materiales or '(no registrados)'}\n"
+        f"- Observaciones del técnico: {observ or '(sin observaciones)'}\n\n"
+        f"BLOQUE 1 — TRABAJO REALIZADO:\n"
+        f"Describe detalladamente las actividades ejecutadas en esta intervención de {servicio}. "
+        f"Menciona equipos, áreas o elementos intervenidos con terminología técnica propia del servicio. "
+        f"(5-8 oraciones)\n"
+        f"===SECCION===\n"
+        f"BLOQUE 2 — HALLAZGOS Y DIAGNÓSTICO TÉCNICO:\n"
+        f"Describe el estado encontrado, fallas identificadas y diagnóstico técnico basado en las observaciones. "
+        f"Si no hay observaciones específicas, infiere hallazgos típicos de un mantenimiento de {servicio}. "
+        f"(4-6 oraciones)\n"
+        f"===SECCION===\n"
+        f"BLOQUE 3 — MATERIALES Y REPUESTOS UTILIZADOS:\n"
+        f"Lista en formato <ul><li> los materiales. "
+        f"Si no hay materiales registrados, indica 'No se requirieron materiales adicionales' o lista los típicos del servicio.\n"
+        f"===SECCION===\n"
+        f"BLOQUE 4 — RECOMENDACIONES TÉCNICAS:\n"
+        f"Redacta 4-5 recomendaciones técnicas específicas para {servicio}, "
+        f"orientadas a prevenir fallas y mantener el sistema en óptimas condiciones. "
+        f"Formato <ul><li>."
+    )
+
+    respuesta = llamar_claude(prompt, max_tokens=2200)
+
+    partes        = respuesta.split("===SECCION===")
+    sec_trabajo   = partes[0].strip() if len(partes) > 0 else "<p>Información no disponible.</p>"
+    sec_hallazgos = partes[1].strip() if len(partes) > 1 else "<p>Información no disponible.</p>"
+    sec_mats      = partes[2].strip() if len(partes) > 2 else "<p>No se requirieron materiales adicionales.</p>"
+    sec_recomend  = partes[3].strip() if len(partes) > 3 else "<p>Información no disponible.</p>"
+
+    logo_b64  = get_logo_base64()
+    logo_html = (f'<img src="{logo_b64}" style="height:60px;object-fit:contain">'
+                 if logo_b64 else
+                 '<span style="font-size:1.1rem;font-weight:900;color:#dc2626">CONSTRUCCIONES MINZOE SAS</span>')
+    fecha_gen = ahora_colombia().strftime("%Y-%m-%d %H:%M")
+
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+{css_formato_carta()}
+.titulo-inf {{font-size:10pt;font-weight:900;color:#dc2626;text-align:center;margin:4pt 0 2pt 0}}
+.sub-inf    {{font-size:7pt;text-align:center;color:#555;margin:0 0 6pt 0}}
+.sec-inf    {{background:#dc2626;color:white;font-weight:bold;padding:3pt 6pt;font-size:8pt;margin:8pt 0 3pt 0}}
+.cont-inf   {{padding:3pt 6pt;font-size:7.5pt;line-height:1.5}}
+.cont-inf ul{{margin:2pt 0 2pt 14pt;padding:0}} .cont-inf li{{margin:2pt 0}}
+.tdatos     {{width:100%;border-collapse:collapse;font-size:7pt;margin-bottom:6pt}}
+.tdatos td  {{border:0.5pt solid #bbb;padding:3pt 5pt}}
+.tdatos .lb {{background:#f5f5f5;font-weight:bold;color:#444;width:28%}}
+.firma-wrap {{margin-top:20pt;display:table;width:100%}}
+.firma-col  {{display:table-cell;width:50%;text-align:center;font-size:7pt;padding:0 8pt}}
+.firma-line {{border-top:0.5pt solid #000;margin-top:40pt;padding-top:3pt}}
+.pie        {{border-top:0.5pt solid #ccc;margin-top:10pt;padding-top:3pt;font-size:6pt;color:#888;text-align:center}}
+</style>
+</head>
+<body><div class="pagina">
+
+<div class="header" style="display:table;width:100%">
+  <div style="display:table-cell;vertical-align:middle">{logo_html}</div>
+  <div style="display:table-cell;vertical-align:middle;text-align:right;font-size:6.5pt;color:#555;line-height:1.6">
+    Cra 5 # 8a-18<br>📞 3175102668 – 3173748665<br>jeyson.jimenez@construminzoe.com
+  </div>
+</div>
+
+<div class="titulo-inf">INFORME TÉCNICO DE SERVICIO — {servicio.upper()}</div>
+<div class="sub-inf">OT: {ot_id} &nbsp;|&nbsp; Generado: {fecha_gen}</div>
+
+<div class="sec-inf">INFORMACIÓN GENERAL</div>
+<table class="tdatos">
+  <tr><td class="lb">Orden de Trabajo</td><td>{ot_id}</td><td class="lb">Solicitud</td><td>{sol_ref or '—'}</td></tr>
+  <tr><td class="lb">Cliente</td><td>{cliente}</td><td class="lb">NIT</td><td>{nit or '—'}</td></tr>
+  <tr><td class="lb">Sede</td><td colspan="3">{sede}</td></tr>
+  <tr><td class="lb">Servicio</td><td colspan="3">{servicio}</td></tr>
+  <tr><td class="lb">Técnico responsable</td><td colspan="3">{tecnico}</td></tr>
+  <tr><td class="lb">Fecha de ejecución</td><td>{fecha}</td><td class="lb">Horas laboradas</td><td>{horas or '—'}</td></tr>
+  <tr><td class="lb">Hora inicio</td><td>{hora_ini or '—'}</td><td class="lb">Hora final</td><td>{hora_fin or '—'}</td></tr>
+  <tr><td class="lb">Trabajo solicitado</td><td colspan="3">{descripcion or '—'}</td></tr>
+</table>
+
+<div class="sec-inf">1. TRABAJO REALIZADO</div>
+<div class="cont-inf">{sec_trabajo}</div>
+
+<div class="sec-inf">2. HALLAZGOS Y DIAGNÓSTICO TÉCNICO</div>
+<div class="cont-inf">{sec_hallazgos}</div>
+
+<div class="sec-inf">3. MATERIALES Y REPUESTOS UTILIZADOS</div>
+<div class="cont-inf">{sec_mats}</div>
+
+<div class="sec-inf">4. RECOMENDACIONES TÉCNICAS</div>
+<div class="cont-inf">{sec_recomend}</div>
+
+<div class="firma-wrap">
+  <div class="firma-col">
+    <div class="firma-line">
+      <strong>{tecnico}</strong><br>Técnico Ejecutor<br>Construcciones Minzoe SAS
+    </div>
+  </div>
+  <div class="firma-col">
+    <div class="firma-line">
+      Nombre: _______________________<br>C.C.: __________________________<br>Firma y sello del cliente
+    </div>
+  </div>
+</div>
+
+<div class="pie">
+  Construcciones Minzoe SAS &nbsp;|&nbsp;
+  Documento generado automáticamente por el sistema de gestión Minzoe &nbsp;|&nbsp; {fecha_gen}
+</div>
+
+</div></body></html>"""
+
+
 def ocr_documento(file_bytes, mime_type):
     """Extrae texto de imagen o PDF usando Google Cloud Vision. Retorna (texto, confianza, error)."""
     try:
@@ -4295,6 +4497,52 @@ elif pagina == "ots":
                         st.info(st.session_state[f"ia_res_{id_ot_sel}"])
                         if st.button("🗑️ Limpiar resumen", key=f"ia_res_x_{id_ot_sel}"):
                             del st.session_state[f"ia_res_{id_ot_sel}"]
+                            st.rerun()
+
+                    # ── Informe técnico IA ────────────────────────────────
+                    st.divider()
+                    _btn_inf, _btn_inf2 = st.columns(2)
+                    if _btn_inf.button("📄 Crear informe", key=f"btn_inf_{id_ot_sel}",
+                                       use_container_width=True, type="primary"):
+                        with st.spinner("Generando informe técnico con IA... (puede tardar ~20 s)"):
+                            _inf_html = generar_informe_ia(fila_ot.to_dict())
+                            st.session_state[f"inf_html_{id_ot_sel}"] = _inf_html
+
+                    if f"inf_html_{id_ot_sel}" in st.session_state:
+                        _inf_h = st.session_state[f"inf_html_{id_ot_sel}"]
+                        st.success("✅ Informe generado. Descarga o guarda en la OT.")
+                        _ic1, _ic2, _ic3, _ic4 = st.columns(4)
+                        _inf_pdf = html_to_pdf(_inf_h)
+                        if _inf_pdf:
+                            _ic1.download_button(
+                                "⬇️ PDF", data=_inf_pdf,
+                                file_name=f"Informe_{id_ot_sel}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True,
+                                key=f"dl_inf_pdf_{id_ot_sel}",
+                            )
+                        _ic2.download_button(
+                            "⬇️ HTML", data=_inf_h.encode("utf-8"),
+                            file_name=f"Informe_{id_ot_sel}.html",
+                            mime="text/html",
+                            use_container_width=True,
+                            key=f"dl_inf_html_{id_ot_sel}",
+                        )
+                        if _ic3.button("💾 Guardar en OT", key=f"save_inf_{id_ot_sel}",
+                                       use_container_width=True, type="primary"):
+                            guardar_reporte_sb(
+                                ot_id   = id_ot_sel,
+                                tipo    = f"Informe IA — {fila_ot.get('Servicio','')}",
+                                cliente = fila_ot.get("Cliente",""),
+                                fecha   = fila_ot.get("Fecha_Ejecucion",""),
+                                html    = _inf_h,
+                            )
+                            st.success("✅ Informe guardado. Visible en el tab 📄 Reportar.")
+                            st.session_state.pop(f"inf_html_{id_ot_sel}", None)
+                            st.rerun()
+                        if _ic4.button("🗑️ Descartar", key=f"del_inf_{id_ot_sel}",
+                                       use_container_width=True):
+                            st.session_state.pop(f"inf_html_{id_ot_sel}", None)
                             st.rerun()
 
                     # ── MENSAJE WHATSAPP ──────────────────────────────────
