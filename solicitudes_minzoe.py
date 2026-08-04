@@ -1023,20 +1023,27 @@ def enviar_confirmacion_sol(sol_id, cliente, sede, servicio, tipo_servicio, sla,
         # ID fijo basado en la SOL — no necesita guardarse en base de datos
         message_id = f"<{sol_id}@{dominio}>"
 
+        # CC: correos configurados en secrets.toml (cc_correos, separados por coma)
+        _cc_raw  = st.secrets.get("cc_correos", "")
+        _cc_list = [c.strip() for c in _cc_raw.split(",") if c.strip()] if _cc_raw else []
+
         msg = MIMEMultipart("alternative")
         msg["Subject"]    = asunto
         msg["From"]       = f"Construcciones Minzoe SAS <{email_user}>"
         msg["To"]         = correo_destino
-        msg["Bcc"]        = email_user  # Copia a tu bandeja de entrada
+        if _cc_list:
+            msg["Cc"]     = ", ".join(_cc_list)
+        msg["Bcc"]        = email_user  # Copia interna
         msg["Message-ID"] = message_id
         msg.attach(MIMEText(cuerpo, "html", "utf-8"))
 
         context   = ssl.create_default_context()
         msg_bytes = msg.as_bytes()
+        _destinos = [correo_destino, email_user] + _cc_list
 
         with smtplib.SMTP_SSL("smtp.hostinger.com", 465, context=context) as server:
             server.login(email_user, email_pwd)
-            server.sendmail(email_user, [correo_destino, email_user], msg_bytes)
+            server.sendmail(email_user, _destinos, msg_bytes)
 
         return True, f"Confirmación enviada a {correo_destino}", message_id
     except Exception as e:
@@ -1133,25 +1140,32 @@ def enviar_actualizacion_ot(sol_id, ot_id, cliente, sede, contacto_nombre, corre
 </div>
 </body></html>"""
 
+        # CC: correos configurados en secrets.toml (cc_correos, separados por coma)
+        _cc_raw  = st.secrets.get("cc_correos", "")
+        _cc_list = [c.strip() for c in _cc_raw.split(",") if c.strip()] if _cc_raw else []
+
         import uuid
         msg = MIMEMultipart("alternative")
         # Re: para que sea hilo de respuesta
         msg["Subject"]    = f"Re: ✅ Solicitud {sol_id} {cliente.upper()} {sede.upper()} recibida — Construcciones Minzoe SAS"
         msg["From"]       = f"Construcciones Minzoe SAS <{email_user}>"
         msg["To"]         = correo_destino
+        if _cc_list:
+            msg["Cc"]     = ", ".join(_cc_list)
         msg["Message-ID"] = f"<{ot_id}.{uuid.uuid4().hex[:8]}@{dominio}>"
         # Encadenar con el correo original de la solicitud
         if reply_to_id:
             msg["In-Reply-To"] = reply_to_id
             msg["References"]  = reply_to_id
-        msg["Bcc"] = email_user  # Copia a tu bandeja de entrada
+        msg["Bcc"] = email_user  # Copia interna
         msg.attach(MIMEText(cuerpo, "html", "utf-8"))
         msg_bytes = msg.as_bytes()
+        _destinos = [correo_destino, email_user] + _cc_list
 
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL("smtp.hostinger.com", 465, context=context) as server:
             server.login(email_user, email_pwd)
-            server.sendmail(email_user, [correo_destino, email_user], msg_bytes)
+            server.sendmail(email_user, _destinos, msg_bytes)
 
         return True, f"Actualización enviada a {correo_destino}"
     except Exception as e:
