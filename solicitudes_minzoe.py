@@ -709,8 +709,7 @@ def save_ots(df):
     if df is None or (hasattr(df, 'empty') and df.empty):
         st.error("❌ Guardado cancelado: no se puede guardar una lista de OTs vacía (protección anti-borrado).")
         return False
-    sb_save("ordenes_trabajo", df)
-    _invalidar_cache("ordenes_trabajo")
+    return sb_save("ordenes_trabajo", df)
 
 def _tocar_ot(df, ot_id):
     """Sella Fecha_Modificacion en la OT indicada para que suba al tope."""
@@ -4162,11 +4161,14 @@ elif pagina == "ots":
                         "Observaciones":   (f"Equipo: {ot_equipo_id} — {ot_equipo_desc}\n" if ot_equipo_id else "") + ot_obs.strip(),
                     }
                     ots = pd.concat([ots, pd.DataFrame([nueva_ot])], ignore_index=True)
-                    save_ots(ots)
-                    msg_ot = f"✅ OT **{nueva_ot['ID']}** guardada para {empresa_final_ot}."
-                    if ot_equipo_id:
-                        msg_ot += f" Vinculada al equipo **{ot_equipo_id}**."
-                    st.success(msg_ot)
+                    if save_ots(ots) is not False:
+                        msg_ot = f"✅ OT **{nueva_ot['ID']}** guardada para {empresa_final_ot}."
+                        if ot_equipo_id:
+                            msg_ot += f" Vinculada al equipo **{ot_equipo_id}**."
+                        st.success(msg_ot)
+                        st.rerun()
+                    else:
+                        st.error("❌ No se pudo guardar la OT. Intenta de nuevo.")
 
     # ── VER OTs ───────────────────────────────────────────────────────────────
     else:
