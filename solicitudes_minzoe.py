@@ -1247,7 +1247,13 @@ def llamar_claude(prompt: str, max_tokens: int = 600) -> str:
     """Llama a Claude API y retorna el texto generado."""
     try:
         import anthropic as _ant
-        _c = _ant.Anthropic(api_key=st.secrets.get("anthropic_api_key", ""))
+        try:
+            _api_key = st.secrets["anthropic_api_key"]
+        except Exception:
+            _api_key = ""
+        if not _api_key:
+            return "[Error IA: falta 'anthropic_api_key' en Streamlit Cloud → Manage app → Settings → Secrets]"
+        _c = _ant.Anthropic(api_key=_api_key)
         msg = _c.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=max_tokens,
