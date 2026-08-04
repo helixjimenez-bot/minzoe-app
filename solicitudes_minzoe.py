@@ -929,7 +929,7 @@ def _guardar_en_enviados(imap, msg_bytes):
             pass
 
 
-def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, contacto_nombre, correo_destino, fecha, dominio="construminzoe.com"):
+def enviar_confirmacion_sol(sol_id, cliente, sede, servicio, tipo_servicio, sla, contacto_nombre, correo_destino, fecha, dominio="construminzoe.com"):
     """Envía correo de confirmación al cliente con el código de la solicitud."""
     import smtplib, ssl
     from email.mime.multipart import MIMEMultipart
@@ -945,7 +945,7 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
         if not email_user or not email_pwd:
             return False, f"Credenciales de correo no configuradas para {email_user}."
 
-        asunto = f"✅ Solicitud {sol_id} recibida — Construcciones Minzoe SAS"
+        asunto = f"✅ Solicitud {sol_id} {cliente.upper()} {sede.upper()} recibida — Construcciones Minzoe SAS"
 
         hora   = ahora_colombia().hour
         saludo = "Buenos días" if hora < 12 else ("Buenas tardes" if hora < 18 else "Buenas noches")
@@ -1043,7 +1043,7 @@ def enviar_confirmacion_sol(sol_id, cliente, servicio, tipo_servicio, sla, conta
         return False, str(e)
 
 
-def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_destino, fecha, reply_to_id=None, dominio="construminzoe.com"):
+def enviar_actualizacion_ot(sol_id, ot_id, cliente, sede, contacto_nombre, correo_destino, fecha, reply_to_id=None, dominio="construminzoe.com"):
     """Envía correo de actualización al cliente cuando la SOL es aprobada y se crea la OT."""
     import smtplib, ssl, imaplib, time
     from email.mime.multipart import MIMEMultipart
@@ -1136,7 +1136,7 @@ def enviar_actualizacion_ot(sol_id, ot_id, cliente, contacto_nombre, correo_dest
         import uuid
         msg = MIMEMultipart("alternative")
         # Re: para que sea hilo de respuesta
-        msg["Subject"]    = f"Re: ✅ Solicitud {sol_id} recibida — Construcciones Minzoe SAS"
+        msg["Subject"]    = f"Re: ✅ Solicitud {sol_id} {cliente.upper()} {sede.upper()} recibida — Construcciones Minzoe SAS"
         msg["From"]       = f"Construcciones Minzoe SAS <{email_user}>"
         msg["To"]         = correo_destino
         msg["Message-ID"] = f"<{ot_id}.{uuid.uuid4().hex[:8]}@{dominio}>"
@@ -2448,6 +2448,7 @@ if pagina == "nueva":
                     resultado_mail = enviar_confirmacion_sol(
                         sol_id          = nueva["ID"],
                         cliente         = empresa_final,
+                        sede            = sede_v or "",
                         servicio        = servicio,
                         tipo_servicio   = tipo_servicio,
                         sla             = sla,
@@ -2726,6 +2727,7 @@ elif pagina == "ver":
                                             sol_id          = id_sel,
                                             ot_id           = nueva_ot_id,
                                             cliente         = sol_row.get("Cliente",""),
+                                            sede            = sol_row.get("Sede",""),
                                             contacto_nombre = sol_row.get("Nombre_Contacto",""),
                                             correo_destino  = correo_cli,
                                             fecha           = ahora_colombia().strftime("%Y-%m-%d %H:%M"),
