@@ -556,6 +556,8 @@ def sb_load(table_name, cols, _v=0):
         offset   = 0
         while True:
             resp = sb.table(table_name).select("*").range(offset, offset + PAGE - 1).execute()
+            if hasattr(resp, "error") and resp.error:
+                raise RuntimeError(f"Error API Supabase en '{table_name}': {resp.error}")
             if resp.data:
                 all_data.extend(resp.data)
                 if len(resp.data) < PAGE:
@@ -570,8 +572,8 @@ def sb_load(table_name, cols, _v=0):
                     df[c] = ""
             return df[list(cols)]
         return pd.DataFrame(columns=list(cols))
-    except Exception:
-        return pd.DataFrame(columns=list(cols))
+    except Exception as _e:
+        raise RuntimeError(f"Error cargando '{table_name}' desde Supabase: {_e}") from _e
 
 def _sb_columnas_tabla(table_name):
     """Devuelve el set de columnas que realmente existen en la tabla de Supabase."""
@@ -696,6 +698,9 @@ def load_ots():
     return sb_load("ordenes_trabajo", COLS_OT, _v=_ver_cache("ordenes_trabajo"))
 
 def save_ots(df):
+    if df is None or (hasattr(df, 'empty') and df.empty):
+        st.error("❌ Guardado cancelado: no se puede guardar una lista de OTs vacía (protección anti-borrado).")
+        return False
     sb_save("ordenes_trabajo", df)
     _invalidar_cache("ordenes_trabajo")
 
@@ -2597,15 +2602,23 @@ if pagina == "nueva":
                         (equipos["Sede"].str.strip().str.lower() == sede_sel.strip().lower())
                     ]
                     if not _eq_sede.empty:
-                        st.markdown("**🔧 Equipos en esta sede:**")
-                        _cols_eq = [c for c in ["ID_Item","Servicio","Marca","Modelo",
-                                                 "Numero_Serie","Ubicacion","Ultimo_Mantenimiento"]
-                                    if c in _eq_sede.columns]
-                        for _srv in SERVICIOS_CON_EQUIPOS:
-                            _eq_srv = _eq_sede[_eq_sede["Servicio"] == _srv]
-                            if not _eq_srv.empty:
-                                with st.expander(f"🔧 {_srv} — {len(_eq_srv)} equipo(s)"):
-                                    tabla_html(_eq_srv[_cols_eq].reset_index(drop=True))
+                        st.markdown("**🔧 Equipos en esta sede — selecciona el/los que presentan falla:**")
+                        _eq_opts = []
+                        for _, _r in _eq_sede.iterrows():
+                            _lbl = f"{_r.get('ID_Item','')} — {_r.get('Marca','')} {_r.get('Modelo','')}".strip()
+                            _ubi = str(_r.get('Ubicacion','') or '').strip()
+                            if _ubi:
+                                _lbl += f" | {_ubi}"
+                            _eq_opts.append(_lbl)
+                        st.multiselect(
+                            "Equipo(s) con falla:",
+                            options=_eq_opts,
+                            key="eq_con_falla",
+                            placeholder="Selecciona uno o más equipos...",
+                        )
+                        _sel_count = len(st.session_state.get("eq_con_falla", []))
+                        if _sel_count:
+                            st.caption(f"✅ {_sel_count} equipo(s) marcado(s) con falla")
 
     elif empresa_sel == opcion_nueva:
         # Entrada manual
@@ -2666,6 +2679,12 @@ if pagina == "nueva":
             if not empresa_final:
                 st.error("Selecciona o ingresa el nombre de la empresa.")
             else:
+                _desc_base = descripcion.strip()
+                _eq_sel    = st.session_state.get("eq_con_falla", [])
+                if _eq_sel:
+                    _desc_final = (_desc_base + "\n\n🔧 Equipo(s) con falla:\n• " + "\n• ".join(_eq_sel)).strip()
+                else:
+                    _desc_final = _desc_base
                 nueva = {
                     "ID":               generate_id(df),
                     "Fecha":            ahora_colombia().strftime("%Y-%m-%d %H:%M"),
@@ -2680,7 +2699,7 @@ if pagina == "nueva":
                     "Celular_Contacto": cel_c_v,
                     "Servicio":         servicio,
                     "Tipo_Servicio":    tipo_servicio,
-                    "Descripcion":      descripcion.strip(),
+                    "Descripcion":      _desc_final,
                     "SLA":              sla,
                     "Ciudad":           ciudad_sel or "",
                     "Zona":             zona_final,
@@ -2688,7 +2707,10 @@ if pagina == "nueva":
                     "Estado":           "Pendiente",
                 }
                 df = pd.concat([df, pd.DataFrame([nueva])], ignore_index=True)
-                save_sol(df)
+                _guardado_ok = save_sol(df)
+                if _guardado_ok is False:
+                    st.error("❌ No se pudo guardar la solicitud. Intenta de nuevo.")
+                    st.stop()
                 correo_cli = cor_c_v.strip() if cor_c_v.strip() else ""
                 st.session_state["_cc_dialog_sol"] = {
                     "sol_id":          nueva["ID"],
