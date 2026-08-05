@@ -557,7 +557,6 @@ def sb_load(table_name, cols, _v=0):
         while True:
             resp = sb.table(table_name).select("*").range(offset, offset + PAGE - 1).execute()
             if hasattr(resp, "error") and resp.error:
-                st.warning(f"⚠️ Error Supabase en tabla '{table_name}': {resp.error}")
                 return pd.DataFrame(columns=list(cols))
             if resp.data:
                 all_data.extend(resp.data)
@@ -573,8 +572,7 @@ def sb_load(table_name, cols, _v=0):
                     df[c] = ""
             return df[list(cols)]
         return pd.DataFrame(columns=list(cols))
-    except Exception as _e:
-        st.warning(f"⚠️ No se pudo conectar a Supabase ('{table_name}'): {_e} — Recarga la página.")
+    except Exception:
         return pd.DataFrame(columns=list(cols))
 
 def _sb_columnas_tabla(table_name):
