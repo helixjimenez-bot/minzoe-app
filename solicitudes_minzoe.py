@@ -192,8 +192,10 @@ def load_counters():
     return sb_load("contadores", COLS_COUNTERS, _v=_ver_cache("contadores"))
 
 def save_counters(df):
-    sb_save("contadores", df)
-    _invalidar_cache("contadores")
+    ok = sb_save("contadores", df)
+    if ok:
+        _invalidar_cache("contadores")
+    return ok
 
 def load_historial():
     return sb_load("historial", COLS_HISTORIAL, _v=_ver_cache("historial"))
@@ -588,19 +590,22 @@ def _sb_columnas_tabla(table_name):
     except Exception:
         return None
 
-def sb_save(table_name, df):
+def sb_save(table_name, df, permitir_vacio=False):
     """Guarda dataframe en Supabase (truncate + insert por lotes de 200).
     Valida columnas ANTES de truncar para evitar pérdida de datos.
-    Si el insert falla de todas formas, restaura el backup automáticamente."""
+    Si el insert falla de todas formas, restaura el backup automáticamente.
+    permitir_vacio=True: permite guardar df vacío (usar en eliminaciones deliberadas)."""
     sb = get_sb()
 
     # ── Protección anti-borrado accidental ───────────────────────────────────
-    if df is None or (hasattr(df, "empty") and df.empty):
+    if not permitir_vacio and (df is None or (hasattr(df, "empty") and df.empty)):
         st.error(
             f"❌ GUARDADO CANCELADO — se intentó guardar '{table_name}' vacía. "
             f"Operación bloqueada para proteger los datos existentes."
         )
         return False
+    if df is None:
+        df = pd.DataFrame()
 
     # ── Validación preventiva de columnas ────────────────────────────────────
     if not df.empty:
@@ -614,6 +619,15 @@ def sb_save(table_name, df):
                     f"Créalas primero con ALTER TABLE antes de guardar."
                 )
                 return False
+
+    # ── Backup previo al truncate ─────────────────────────────────────────────
+    _backup = None
+    try:
+        resp_bk = sb.table(table_name).select("*").execute()
+        if resp_bk.data:
+            _backup = resp_bk.data
+    except Exception:
+        pass  # Si no se puede leer el backup, continuamos sin él
 
     try:
         sb.rpc("truncate_table", {"table_name": table_name}).execute()
@@ -632,7 +646,16 @@ def sb_save(table_name, df):
         _invalidar_cache(table_name)
         return True
     except Exception as e:
-        st.error(f"❌ Error guardando en '{table_name}': {e}")
+        st.error(f"❌ Error guardando en '{table_name}': {e}. Intentando restaurar datos anteriores…")
+        # Intentar restaurar backup
+        if _backup:
+            try:
+                sb.rpc("truncate_table", {"table_name": table_name}).execute()
+                for i in range(0, len(_backup), 200):
+                    sb.table(table_name).insert(_backup[i:i+200]).execute()
+                st.warning(f"⚠️ Datos de '{table_name}' restaurados al estado anterior. Intenta guardar de nuevo.")
+            except Exception as e2:
+                st.error(f"❌ CRÍTICO: no se pudo restaurar '{table_name}': {e2}. Revisa Supabase directamente.")
         return False
 
 def get_sheet(tab_name):
@@ -688,9 +711,11 @@ def gs_save(tab_name, df):
 def load_sol():
     return sb_load("solicitudes", COLS_SOL, _v=_ver_cache("solicitudes"))
 
-def save_sol(df):
-    sb_save("solicitudes", df)
-    _invalidar_cache("solicitudes")
+def save_sol(df, permitir_vacio=False):
+    ok = sb_save("solicitudes", df, permitir_vacio=permitir_vacio)
+    if ok:
+        _invalidar_cache("solicitudes")
+    return ok
 
 def load_cli():
     df = sb_load("clientes", COLS_CLI, _v=_ver_cache("clientes"))
@@ -698,18 +723,20 @@ def load_cli():
         df[col] = df[col].str.strip()
     return df[df["Empresa"] != ""].reset_index(drop=True)
 
-def save_cli(df):
-    sb_save("clientes", df)
-    _invalidar_cache("clientes")
+def save_cli(df, permitir_vacio=False):
+    ok = sb_save("clientes", df, permitir_vacio=permitir_vacio)
+    if ok:
+        _invalidar_cache("clientes")
+    return ok
 
 def load_ots():
     return sb_load("ordenes_trabajo", COLS_OT, _v=_ver_cache("ordenes_trabajo"))
 
-def save_ots(df):
-    if df is None or (hasattr(df, 'empty') and df.empty):
+def save_ots(df, permitir_vacio=False):
+    if not permitir_vacio and (df is None or (hasattr(df, 'empty') and df.empty)):
         st.error("❌ Guardado cancelado: no se puede guardar una lista de OTs vacía (protección anti-borrado).")
         return False
-    return sb_save("ordenes_trabajo", df)
+    return sb_save("ordenes_trabajo", df, permitir_vacio=permitir_vacio)
 
 def _tocar_ot(df, ot_id):
     """Sella Fecha_Modificacion en la OT indicada para que suba al tope."""
@@ -722,8 +749,10 @@ def load_cv():
     return sb_load("compras_ventas", COLS_CV, _v=_ver_cache("compras_ventas"))
 
 def save_cv(df):
-    sb_save("compras_ventas", df)
-    _invalidar_cache("compras_ventas")
+    ok = sb_save("compras_ventas", df)
+    if ok:
+        _invalidar_cache("compras_ventas")
+    return ok
 
 def gen_cv_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
@@ -736,8 +765,10 @@ def load_ventas():
     return sb_load("ventas", COLS_VENTA, _v=_ver_cache("ventas"))
 
 def save_ventas(df):
-    sb_save("ventas", df)
-    _invalidar_cache("ventas")
+    ok = sb_save("ventas", df)
+    if ok:
+        _invalidar_cache("ventas")
+    return ok
 
 def gen_fac_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
@@ -770,8 +801,10 @@ def load_costos():
     return df[COLS_COSTO]
 
 def save_costos(df):
-    sb_save("costos", df)
-    _invalidar_cache("costos")
+    ok = sb_save("costos", df)
+    if ok:
+        _invalidar_cache("costos")
+    return ok
 
 def gen_costo_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
@@ -800,8 +833,10 @@ def load_equipos():
     return sb_load("equipos", COLS_EQUIPO, _v=_ver_cache("equipos"))
 
 def save_equipos(df):
-    sb_save("equipos", df)
-    _invalidar_cache("equipos")
+    ok = sb_save("equipos", df)
+    if ok:
+        _invalidar_cache("equipos")
+    return ok
 
 
 def gen_contrato_id(df):
@@ -879,8 +914,9 @@ def form_crear_equipo(form_key, cliente, sede, servicio_fijo=None):
                 "Proximo_Mantenimiento": _prox.strip(),
             }
             _eq_all = pd.concat([_eq_all, pd.DataFrame([_nuevo])], ignore_index=True)
-            save_equipos(_eq_all)
-            return _nuevo
+            if save_equipos(_eq_all):
+                return _nuevo
+            return None
     return None
 
 
@@ -1833,8 +1869,10 @@ def load_usuarios():
                    _v=_ver_cache("usuarios"))
 
 def save_usuarios(df):
-    sb_save("usuarios", df)
-    _invalidar_cache("usuarios")
+    ok = sb_save("usuarios", df)
+    if ok:
+        _invalidar_cache("usuarios")
+    return ok
 
 def verificar_login(correo, pwd, usuarios):
     u = usuarios[usuarios["correo"].str.lower() == correo.strip().lower()]
@@ -3157,9 +3195,9 @@ elif pagina == "ver":
                     if st.button("🗑️ Sí, eliminar", type="primary", use_container_width=True):
                         registrar_cambio("SOL", id_sel, "Estado", fila["Estado"], "ELIMINADA")
                         df = df[df["ID"] != id_sel].reset_index(drop=True)
-                        save_sol(df)
-                        st.success(f"Solicitud {id_sel} eliminada.")
-                        st.rerun()
+                        if save_sol(df, permitir_vacio=True) is not False:
+                            st.success(f"Solicitud {id_sel} eliminada.")
+                            st.rerun()
                 with c2:
                     st.button("❌ Cancelar", use_container_width=True)
 
@@ -3656,8 +3694,8 @@ elif pagina == "clientes":
                     "Celular_Contacto":  emp_cel_c.strip(),
                 }
                 cli = pd.concat([cli, pd.DataFrame([nueva_cli])], ignore_index=True)
-                save_cli(cli)
-                st.success(f"✅ {emp_nombre} — sede '{emp_sede}' registrada.")
+                if save_cli(cli) is not False:
+                    st.success(f"✅ {emp_nombre} — sede '{emp_sede}' registrada.")
 
     st.divider()
 
@@ -3670,9 +3708,9 @@ elif pagina == "clientes":
             if st.button("🧹 Eliminar duplicados", use_container_width=True, help="Borra filas repetidas automáticamente"):
                 antes = len(cli)
                 cli = cli.drop_duplicates().reset_index(drop=True)
-                save_cli(cli)
-                st.success(f"Se eliminaron {antes - len(cli)} duplicado(s). Quedaron {len(cli)} registros.")
-                st.rerun()
+                if save_cli(cli) is not False:
+                    st.success(f"Se eliminaron {antes - len(cli)} duplicado(s). Quedaron {len(cli)} registros.")
+                    st.rerun()
         with c2:
             if st.button("🗑️ BORRAR TODO", use_container_width=True, type="secondary"):
                 st.session_state["confirmar_borrar_todo"] = True
@@ -3683,10 +3721,10 @@ elif pagina == "clientes":
             with cc1:
                 if st.button("✅ Sí, borrar todo", type="primary", use_container_width=True):
                     cli = pd.DataFrame(columns=COLS_CLI)
-                    save_cli(cli)
-                    st.session_state["confirmar_borrar_todo"] = False
-                    st.success("Todas las empresas fueron eliminadas.")
-                    st.rerun()
+                    if save_cli(cli, permitir_vacio=True) is not False:
+                        st.session_state["confirmar_borrar_todo"] = False
+                        st.success("Todas las empresas fueron eliminadas.")
+                        st.rerun()
             with cc2:
                 if st.button("❌ Cancelar", use_container_width=True):
                     st.session_state["confirmar_borrar_todo"] = False
@@ -4755,16 +4793,17 @@ elif pagina == "ots":
                             ots.loc[idx_ot, "Materiales"]     = ee_mat
                             ots.loc[idx_ot, "Observaciones"]  = ee_obs
                             ots = _tocar_ot(ots, id_ot_sel)
-                            save_ots(ots)
-                            msg = f"✅ OT {id_ot_sel} actualizada."
-                            if ee_estado == "Finalizada":
-                                ot_row = ots[ots["ID"] == id_ot_sel].iloc[0]
-                                df, cerrada = cerrar_sol_si_aplica(ot_row, df)
-                                if cerrada:
-                                    save_sol(df)
-                                    msg += f" Solicitud **{ot_row['SOL_Ref']}** marcada como Completado."
-                            st.success(msg)
-                            st.rerun()
+                            if save_ots(ots) is not False:
+                                msg = f"✅ OT {id_ot_sel} actualizada."
+                                if ee_estado == "Finalizada":
+                                    ot_row = ots[ots["ID"] == id_ot_sel].iloc[0]
+                                    df, cerrada = cerrar_sol_si_aplica(ot_row, df)
+                                    if cerrada and save_sol(df) is not False:
+                                        msg += f" Solicitud **{ot_row['SOL_Ref']}** marcada como Completado."
+                                st.success(msg)
+                                st.rerun()
+                            else:
+                                st.error("❌ No se guardaron los cambios de la OT. Intenta de nuevo.")
 
                 with rep:
                     servicio_ot = fila_ot.get("Servicio", "")
@@ -5913,18 +5952,17 @@ elif pagina == "ots":
                                 """Técnico entregó reporte: pasa a En revisión (admin la cierra después)."""
                                 ots.loc[ots["ID"] == ot_id, "Estado"] = "En revisión"
                                 _tocar_ot(ots, ot_id)
-                                save_ots(ots)
-                                return f"OT **{ot_id}** enviada a revisión. El administrador la cerrará definitivamente."
+                                return save_ots(ots)
 
                             ok_h, res_h = guardar_reporte_local(_html, _cli, _sede, id_ot_sel, _fec)
-                            msg_fin = _finalizar_ot_y_sol(id_ot_sel)
-                            del st.session_state[_html_key]
-                            for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect",
-                                       f"fotos_oblig_{id_ot_sel}", f"fotos_extra_{id_ot_sel}",
-                                       f"hvac_cat_{id_ot_sel}", f"gps_{id_ot_sel}"]:
-                                st.session_state.pop(_k, None)
-                            st.session_state["_msg_tec_ok"] = f"✅ {msg_fin}"
-                            st.rerun()
+                            if _finalizar_ot_y_sol(id_ot_sel) is not False:
+                                del st.session_state[_html_key]
+                                for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect",
+                                           f"fotos_oblig_{id_ot_sel}", f"fotos_extra_{id_ot_sel}",
+                                           f"hvac_cat_{id_ot_sel}", f"gps_{id_ot_sel}"]:
+                                    st.session_state.pop(_k, None)
+                                st.session_state["_msg_tec_ok"] = f"✅ OT **{id_ot_sel}** enviada a revisión. El administrador la cerrará definitivamente."
+                                st.rerun()
 
                     else:
                         # ── FORMATO LOCATIVOS ─────────────────────────────
@@ -6415,14 +6453,14 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                             ok_h, res_h = guardar_reporte_local(_html_l, _cli_l, _sede_l, id_ot_sel, _fec_l)
                             ots.loc[ots["ID"] == id_ot_sel, "Estado"] = "En revisión"
                             _tocar_ot(ots, id_ot_sel)
-                            save_ots(ots)
-                            del st.session_state[_loc_key]
-                            for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect",
-                                       f"fotos_{id_ot_sel}", f"gps_{id_ot_sel}",
-                                       f"gps_l_{id_ot_sel}"]:
-                                st.session_state.pop(_k, None)
-                            st.session_state["_msg_tec_ok"] = f"✅ OT **{id_ot_sel}** enviada a revisión."
-                            st.rerun()
+                            if save_ots(ots) is not False:
+                                del st.session_state[_loc_key]
+                                for _k in ["_tec_en_reporte", "_tec_viewing_ot", "ot_preselect",
+                                           f"fotos_{id_ot_sel}", f"gps_{id_ot_sel}",
+                                           f"gps_l_{id_ot_sel}"]:
+                                    st.session_state.pop(_k, None)
+                                st.session_state["_msg_tec_ok"] = f"✅ OT **{id_ot_sel}** enviada a revisión."
+                                st.rerun()
 
                 if ot_com is not None:
                  with ot_com:
@@ -6471,9 +6509,9 @@ EL INTERVENTOR CERTIFICA QUE EL TRABAJO HA SIDO EJECUTADO A SATISFACCIÓN.
                         if st.button("🗑️ Sí, eliminar", type="primary", use_container_width=True, key="eli_ot"):
                             registrar_cambio("OT", id_ot_sel, "Estado", fila_ot.get("Estado",""), "ELIMINADA")
                             ots = ots[ots["ID"] != id_ot_sel].reset_index(drop=True)
-                            save_ots(ots)
-                            st.success("OT eliminada.")
-                            st.rerun()
+                            if save_ots(ots, permitir_vacio=True) is not False:
+                                st.success("OT eliminada.")
+                                st.rerun()
                     with c2:
                         st.button("❌ Cancelar", use_container_width=True, key="cancel_eli_ot")
 
@@ -6722,9 +6760,9 @@ elif pagina == "contratos_mto":
                 if st.button("🗑️ Eliminar estas OTs", type="secondary",
                              use_container_width=True, key="btn_del_ots_ref"):
                     ots = ots[ots["SOL_Ref"] != sel_con_ref].reset_index(drop=True)
-                    save_ots(ots)
-                    st.success(f"✅ {len(ots_a_borrar)} OT(s) eliminadas.")
-                    st.rerun()
+                    if save_ots(ots, permitir_vacio=True) is not False:
+                        st.success(f"✅ {len(ots_a_borrar)} OT(s) eliminadas.")
+                        st.rerun()
             else:
                 st.info("No hay OTs de contratos de mantenimiento registradas.")
 
@@ -6754,18 +6792,19 @@ elif pagina == "contratos_mto":
                             st.warning("No hay OTs asociadas a este contrato.")
                         else:
                             ots = ots[ots["SOL_Ref"] != sel_eli_con].reset_index(drop=True)
-                            save_ots(ots)
-                            st.success(f"✅ {len(ots_del_con)} OT(s) eliminadas.")
-                            st.rerun()
+                            if save_ots(ots, permitir_vacio=True) is not False:
+                                st.success(f"✅ {len(ots_del_con)} OT(s) eliminadas.")
+                                st.rerun()
                 with c_del2:
                     if st.button("🗑️ Eliminar contrato y sus OTs", type="secondary",
                                  use_container_width=True, key="btn_del_con_y_ots"):
                         ots = ots[ots["SOL_Ref"] != sel_eli_con].reset_index(drop=True)
                         contratos = contratos[contratos["ID_Contrato"] != sel_eli_con].reset_index(drop=True)
-                        save_ots(ots)
-                        save_contratos(contratos)
-                        st.success(f"✅ Contrato y OTs eliminados.")
-                        st.rerun()
+                        ok_ots = save_ots(ots, permitir_vacio=True)
+                        ok_con = save_contratos(contratos) if ok_ots is not False else False
+                        if ok_ots is not False and ok_con is not False:
+                            st.success(f"✅ Contrato y OTs eliminados.")
+                            st.rerun()
 
             st.divider()
             st.markdown("**✏️ Editar contrato**")
@@ -7068,6 +7107,8 @@ elif pagina == "contratos_mto":
                         st.success(f"✅ {len(creadas)} OT(s) creadas: {', '.join(creadas[:5])}{'...' if len(creadas)>5 else ''}")
                     else:
                         st.error("❌ Las OTs se armaron pero hubo un error al guardar en Supabase.")
+                    if ok_eq is False:
+                        st.warning("⚠️ Las OTs se guardaron, pero no se actualizaron las fechas de mantenimiento en los equipos. Edítalas manualmente.")
                 except Exception as _e_gen:
                     st.error(f"❌ Error al generar OTs: {_e_gen}")
                 st.info("Encuéntralas en 🛠️ Órdenes de Trabajo con origen 'Contrato Mantenimiento'.")
