@@ -5515,14 +5515,12 @@ elif pagina == "ots":
                             st.divider()
                             # ── Observaciones generales del técnico ────────
                             st.markdown("**📝 Observaciones generales del técnico**")
-                            _ia_hvac_key = f"ia_obs_hvac_{id_ot_sel}"
-                            _default_r_obs = st.session_state.pop(_ia_hvac_key, None)
-                            r_obs = st.text_area("Describe lo que evidenciaste durante el mantenimiento",
-                                                  value=_default_r_obs if _default_r_obs else fila_ot.get("Observaciones",""),
-                                                  height=100, key=f"r_obs_{id_ot_sel}")
+                            _obs_key = f"r_obs_{id_ot_sel}"
+                            if _obs_key not in st.session_state:
+                                st.session_state[_obs_key] = fila_ot.get("Observaciones","")
                             if st.button("✨ Redactar con IA", key=f"btn_ia_hvac_{id_ot_sel}"):
                                 with st.spinner("Generando observaciones..."):
-                                    st.session_state[_ia_hvac_key] = llamar_claude(
+                                    st.session_state[_obs_key] = llamar_claude(
                                         f"Eres técnico de mantenimiento HVAC de Construcciones Minzoe SAS en Colombia.\n"
                                         f"Redacta observaciones técnicas en español (máximo 100 palabras) para incluir "
                                         f"en un informe de mantenimiento preventivo/correctivo de aires acondicionados:\n"
@@ -5532,6 +5530,8 @@ elif pagina == "ots":
                                         max_tokens=200
                                     )
                                 st.rerun()
+                            r_obs = st.text_area("Describe lo que evidenciaste durante el mantenimiento",
+                                                  height=100, key=_obs_key)
 
                             st.divider()
                             # ── Tiempo de servicio ──────────────────────────
@@ -6302,8 +6302,9 @@ elif pagina == "ots":
                             _ia_loc_res = st.session_state.pop(_ia_loc_key, None)
                             if _ia_loc_res is not None:
                                 st.session_state["l_obs"] = _ia_loc_res
+                            elif "l_obs" not in st.session_state:
+                                st.session_state["l_obs"] = fila_ot.get("Observaciones","")
                             l_obs = st.text_area("Describe lo que evidenciaste durante el trabajo",
-                                                  value=fila_ot.get("Observaciones",""),
                                                   height=100, key="l_obs")
 
                             st.divider()
