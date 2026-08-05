@@ -729,7 +729,8 @@ def gen_cv_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
     pre = f"CV-{hoy}-"
     ids = df[df["ID_Registro"].str.startswith(pre, na=False)]["ID_Registro"] if not df.empty else pd.Series(dtype=str)
-    return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CV-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
+    _pat = r'CV-\d{6}-(\d{3})'
+    return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(_pat)[0].astype(int).max()+1:03d}"
 
 def load_ventas():
     return sb_load("ventas", COLS_VENTA, _v=_ver_cache("ventas"))
@@ -742,7 +743,8 @@ def gen_fac_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
     pre = f"FAC-{hoy}-"
     ids = df[df["ID_Factura"].str.startswith(pre, na=False)]["ID_Factura"] if not df.empty else pd.Series(dtype=str)
-    return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'FAC-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
+    _pat = r'FAC-\d{6}-(\d{3})'
+    return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(_pat)[0].astype(int).max()+1:03d}"
 
 def viernes_mas_cercano(fecha):
     """Devuelve el viernes calendario más cercano (antes o después) a la fecha dada."""
@@ -775,7 +777,8 @@ def gen_costo_id(df):
     hoy = ahora_colombia().strftime("%y%m%d")
     pre = f"COS-{hoy}-"
     ids = df[df["ID_Costo"].str.startswith(pre, na=False)]["ID_Costo"] if not df.empty else pd.Series(dtype=str)
-    return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'COS-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
+    _pat = r'COS-\d{6}-(\d{3})'
+    return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(_pat)[0].astype(int).max()+1:03d}"
 
 
 def to_num(val):
