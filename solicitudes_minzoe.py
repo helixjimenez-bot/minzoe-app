@@ -189,17 +189,17 @@ COLS_HISTORIAL   = ["ID_Log","Fecha","Usuario","Entidad","Entidad_ID","Campo","V
 COLS_COMENTARIOS = ["ID_Com","Fecha","Usuario","Entidad","Entidad_ID","Comentario"]
 
 def load_counters():
-    return _sb_check(sb_load("contadores", COLS_COUNTERS, _v=_ver_cache("contadores")), "contadores")
+    return sb_load("contadores", COLS_COUNTERS, _v=_ver_cache("contadores"))
 
 def save_counters(df):
     sb_save("contadores", df)
     _invalidar_cache("contadores")
 
 def load_historial():
-    return _sb_check(sb_load("historial", COLS_HISTORIAL, _v=_ver_cache("historial")), "historial")
+    return sb_load("historial", COLS_HISTORIAL, _v=_ver_cache("historial"))
 
 def load_comentarios():
-    return _sb_check(sb_load("comentarios", COLS_COMENTARIOS, _v=_ver_cache("comentarios")), "comentarios")
+    return sb_load("comentarios", COLS_COMENTARIOS, _v=_ver_cache("comentarios"))
 
 def _sb_insert(tabla, registro):
     """Inserta un único registro sin truncar la tabla (para historial y comentarios)."""
@@ -548,8 +548,7 @@ def get_sb():
 @st.cache_data(ttl=600)
 def sb_load(table_name, cols, _v=0):
     """Carga datos desde Supabase paginando de 1000 en 1000 (sin límite).
-    _v se usa solo como clave de invalidación — cambia con _invalidar_cache().
-    Retorna None si hay error de conexión (el llamador debe verificar)."""
+    _v se usa solo como clave de invalidación — cambia con _invalidar_cache()."""
     try:
         sb       = get_sb()
         all_data = []
@@ -558,7 +557,8 @@ def sb_load(table_name, cols, _v=0):
         while True:
             resp = sb.table(table_name).select("*").range(offset, offset + PAGE - 1).execute()
             if hasattr(resp, "error") and resp.error:
-                return None
+                st.warning(f"⚠️ Error Supabase en tabla '{table_name}': {resp.error}")
+                return pd.DataFrame(columns=list(cols))
             if resp.data:
                 all_data.extend(resp.data)
                 if len(resp.data) < PAGE:
@@ -573,8 +573,9 @@ def sb_load(table_name, cols, _v=0):
                     df[c] = ""
             return df[list(cols)]
         return pd.DataFrame(columns=list(cols))
-    except Exception:
-        return None
+    except Exception as _e:
+        st.warning(f"⚠️ No se pudo conectar a Supabase ('{table_name}'): {_e} — Recarga la página.")
+        return pd.DataFrame(columns=list(cols))
 
 def _sb_columnas_tabla(table_name):
     """Devuelve el set de columnas que realmente existen en la tabla de Supabase."""
@@ -686,25 +687,15 @@ def gs_save(tab_name, df):
 
 # ── Carga / guardado ──────────────────────────────────────────────────────────
 
-def _sb_check(df, tabla):
-    """Detiene el app con mensaje claro si sb_load no pudo conectar a Supabase."""
-    if df is None:
-        st.error(
-            f"❌ No se pudo cargar la tabla **{tabla}** desde Supabase. "
-            f"Puede ser un problema de conexión temporal — recarga la página en unos segundos."
-        )
-        st.stop()
-    return df
-
 def load_sol():
-    return _sb_check(sb_load("solicitudes", COLS_SOL, _v=_ver_cache("solicitudes")), "solicitudes")
+    return sb_load("solicitudes", COLS_SOL, _v=_ver_cache("solicitudes"))
 
 def save_sol(df):
     sb_save("solicitudes", df)
     _invalidar_cache("solicitudes")
 
 def load_cli():
-    df = _sb_check(sb_load("clientes", COLS_CLI, _v=_ver_cache("clientes")), "clientes")
+    df = sb_load("clientes", COLS_CLI, _v=_ver_cache("clientes"))
     for col in df.columns:
         df[col] = df[col].str.strip()
     return df[df["Empresa"] != ""].reset_index(drop=True)
@@ -714,7 +705,7 @@ def save_cli(df):
     _invalidar_cache("clientes")
 
 def load_ots():
-    return _sb_check(sb_load("ordenes_trabajo", COLS_OT, _v=_ver_cache("ordenes_trabajo")), "ordenes_trabajo")
+    return sb_load("ordenes_trabajo", COLS_OT, _v=_ver_cache("ordenes_trabajo"))
 
 def save_ots(df):
     if df is None or (hasattr(df, 'empty') and df.empty):
@@ -730,7 +721,7 @@ def _tocar_ot(df, ot_id):
 
 
 def load_cv():
-    return _sb_check(sb_load("compras_ventas", COLS_CV, _v=_ver_cache("compras_ventas")), "compras_ventas")
+    return sb_load("compras_ventas", COLS_CV, _v=_ver_cache("compras_ventas"))
 
 def save_cv(df):
     sb_save("compras_ventas", df)
@@ -743,7 +734,7 @@ def gen_cv_id(df):
     return f"{pre}001" if ids.empty else f"{pre}{ids.str.extract(r'CV-\d{6}-(\d{3})')[0].astype(int).max()+1:03d}"
 
 def load_ventas():
-    return _sb_check(sb_load("ventas", COLS_VENTA, _v=_ver_cache("ventas")), "ventas")
+    return sb_load("ventas", COLS_VENTA, _v=_ver_cache("ventas"))
 
 def save_ventas(df):
     sb_save("ventas", df)
@@ -797,7 +788,7 @@ def to_num(val):
 
 
 def load_contratos():
-    return _sb_check(sb_load("contratos", COLS_CONTRATO, _v=_ver_cache("contratos")), "contratos")
+    return sb_load("contratos", COLS_CONTRATO, _v=_ver_cache("contratos"))
 
 def save_contratos(df):
     ok = sb_save("contratos", df)
@@ -805,7 +796,7 @@ def save_contratos(df):
     return ok
 
 def load_equipos():
-    return _sb_check(sb_load("equipos", COLS_EQUIPO, _v=_ver_cache("equipos")), "equipos")
+    return sb_load("equipos", COLS_EQUIPO, _v=_ver_cache("equipos"))
 
 def save_equipos(df):
     sb_save("equipos", df)
@@ -1837,8 +1828,8 @@ def hash_pwd(pwd):
     return hashlib.sha256(pwd.encode()).hexdigest()
 
 def load_usuarios():
-    return _sb_check(sb_load("usuarios", ["nombre", "correo", "password_hash", "rol", "Empresa_Vinculada"],
-                   _v=_ver_cache("usuarios")), "usuarios")
+    return sb_load("usuarios", ["nombre", "correo", "password_hash", "rol", "Empresa_Vinculada"],
+                   _v=_ver_cache("usuarios"))
 
 def save_usuarios(df):
     sb_save("usuarios", df)
