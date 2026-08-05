@@ -5,6 +5,10 @@ import calendar
 from functools import lru_cache
 import os
 import hashlib
+import time as _time_mod
+
+# ── Control de intentos de login (compartido entre sesiones, se resetea al reiniciar) ──
+_login_bloqueos: dict = {}   # correo.lower() -> (intentos_fallidos, timestamp_ultimo_fallo)
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -1882,21 +1886,48 @@ def verificar_login(correo, pwd, usuarios):
         return u.iloc[0]
     return None
 
+_TOKEN_DURACION_HORAS = 8   # sesión expira a las 8 horas
+_MAX_INTENTOS_LOGIN   = 5   # intentos antes de bloquear
+_BLOQUEO_MINUTOS      = 15  # minutos de bloqueo tras agotar intentos
+
+def _check_bloqueo_login(correo: str):
+    """Retorna (bloqueado, segundos_restantes). Bloqueado=True si el correo está en cuarentena."""
+    key = correo.strip().lower()
+    if key not in _login_bloqueos:
+        return False, 0
+    intentos, ts = _login_bloqueos[key]
+    if intentos < _MAX_INTENTOS_LOGIN:
+        return False, 0
+    elapsed = _time_mod.time() - ts
+    restantes = _BLOQUEO_MINUTOS * 60 - elapsed
+    if restantes <= 0:
+        del _login_bloqueos[key]
+        return False, 0
+    return True, int(restantes)
+
+def _registrar_fallo_login(correo: str):
+    key = correo.strip().lower()
+    intentos, _ = _login_bloqueos.get(key, (0, 0))
+    _login_bloqueos[key] = (intentos + 1, _time_mod.time())
+
+def _limpiar_fallo_login(correo: str):
+    _login_bloqueos.pop(correo.strip().lower(), None)
+
 def crear_token(correo, password_hash):
-    """Crea token de sesión válido 7 días embebido en la URL."""
-    import base64, json, time as _time
-    data = json.dumps({"c": correo, "t": int(_time.time())})
+    """Crea token de sesión válido 8 horas embebido en la URL."""
+    import base64, json
+    data = json.dumps({"c": correo, "t": int(_time_mod.time())})
     sig  = hashlib.sha256(f"{data}{password_hash}".encode()).hexdigest()[:20]
     return base64.urlsafe_b64encode(f"{data}|||{sig}".encode()).decode()
 
 def validar_token(token, usuarios):
     """Valida token de URL. Retorna fila de usuario o None."""
-    import base64, json, time as _time
+    import base64, json
     try:
         decoded  = base64.urlsafe_b64decode(token.encode()).decode()
         data_str, sig = decoded.rsplit("|||", 1)
         data     = json.loads(data_str)
-        if _time.time() - data["t"] > 7 * 86400:  # 7 días
+        if _time_mod.time() - data["t"] > _TOKEN_DURACION_HORAS * 3600:
             return None
         u = usuarios[usuarios["correo"].str.lower() == data["c"].lower()]
         if u.empty:
@@ -1941,25 +1972,40 @@ def pagina_login():
             entrar   = st.form_submit_button("Iniciar sesión", type="primary", use_container_width=True)
 
         if entrar:
-            usuarios = load_usuarios()
-            if usuarios.empty:
-                st.error("No hay usuarios registrados. Contacta al administrador.")
+            # ── Verificar bloqueo por intentos fallidos ──────────────────────
+            bloqueado, secs = _check_bloqueo_login(correo_i)
+            if bloqueado:
+                mins = secs // 60
+                segs = secs % 60
+                st.error(f"🔒 Cuenta bloqueada por demasiados intentos. Espera **{mins}:{segs:02d}** minutos e intenta de nuevo.")
             else:
-                user = verificar_login(correo_i, pwd_i, usuarios)
-                if user is not None:
-                    st.session_state["logged_in"]   = True
-                    st.session_state["user_nombre"] = user["nombre"]
-                    st.session_state["user_correo"] = user["correo"]
-                    st.session_state["user_rol"]    = user["rol"]
-                    st.session_state["user_empresa"]= user.get("Empresa_Vinculada","")
-                    # Guardar token en URL para auto-login al refrescar
-                    try:
-                        st.query_params["t"] = crear_token(user["correo"], user["password_hash"])
-                    except Exception:
-                        pass
-                    st.rerun()
+                usuarios = load_usuarios()
+                if usuarios.empty:
+                    st.error("No hay usuarios registrados. Contacta al administrador.")
                 else:
-                    st.error("Correo o contraseña incorrectos.")
+                    user = verificar_login(correo_i, pwd_i, usuarios)
+                    if user is not None:
+                        _limpiar_fallo_login(correo_i)
+                        st.session_state["logged_in"]    = True
+                        st.session_state["user_nombre"]  = user["nombre"]
+                        st.session_state["user_correo"]  = user["correo"]
+                        st.session_state["user_rol"]     = user["rol"]
+                        st.session_state["user_empresa"] = user.get("Empresa_Vinculada","")
+                        st.session_state["login_ts"]     = _time_mod.time()
+                        try:
+                            st.query_params["t"] = crear_token(user["correo"], user["password_hash"])
+                        except Exception:
+                            pass
+                        st.rerun()
+                    else:
+                        _registrar_fallo_login(correo_i)
+                        _, intentos_restantes = _login_bloqueos.get(
+                            correo_i.strip().lower(), (0, 0))
+                        restantes = _MAX_INTENTOS_LOGIN - intentos_restantes
+                        if restantes > 0:
+                            st.error(f"Correo o contraseña incorrectos. Intentos restantes: **{restantes}**")
+                        else:
+                            st.error(f"🔒 Cuenta bloqueada {_BLOQUEO_MINUTOS} minutos por demasiados intentos fallidos.")
 
 
 # ── Página ────────────────────────────────────────────────────────────────────
@@ -2342,6 +2388,20 @@ if usuarios.empty:
     save_usuarios(admin_default)
     usuarios = admin_default
 
+# ── Expiración de sesión activa (8 horas) ────────────────────────────────────
+if st.session_state.get("logged_in", False):
+    _login_ts = st.session_state.get("login_ts", 0)
+    if _time_mod.time() - _login_ts > _TOKEN_DURACION_HORAS * 3600:
+        _nombre_exp = st.session_state.get("user_nombre", "")
+        for _k in ["logged_in","user_nombre","user_correo","user_rol","user_empresa","login_ts"]:
+            st.session_state.pop(_k, None)
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
+        st.warning(f"Tu sesión expiró después de {_TOKEN_DURACION_HORAS} horas. Inicia sesión de nuevo.")
+        st.rerun()
+
 # Auto-login desde token en URL al refrescar la página
 if not st.session_state.get("logged_in", False):
     _token_url = st.query_params.get("t", "")
@@ -2353,6 +2413,7 @@ if not st.session_state.get("logged_in", False):
             st.session_state["user_correo"] = _u_token["correo"]
             st.session_state["user_rol"]    = _u_token["rol"]
             st.session_state["user_empresa"]= _u_token.get("Empresa_Vinculada","")
+            st.session_state["login_ts"]    = _time_mod.time()
             st.rerun()
 
 # Si no ha iniciado sesión (ni token válido), mostrar pantalla de login
